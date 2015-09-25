@@ -129,15 +129,17 @@ public class AuthenticationServlet extends HttpServlet {
     }
 
     private void handleAccessTokenRequest(AccessTokenRequest request, HttpServletResponse resp) throws IOException {
-        try {
-            if (!continuationTokenManager.isValid(request.getToken())) {
-                LOG.warn("Use of an invalid ContinuationToken : " + request.getToken().serialize());
-                returnUnauthorizedResponse(resp);
-            } else {
-                manageAuthenticationResponse(request, resp);
-            }
-        } catch (Exception e) {
-            throw new InternalErrorException("Internal error while managing access token request", e);
+        switch (continuationTokenManager.getValidity(request.getToken())) {
+        case EXPIRED:
+            returnRestartAuthentication(resp);
+            break;
+        case INVALID:
+            LOG.warn("Use of an invalid ContinuationToken : " + request.getToken().serialize());
+            returnUnauthorizedResponse(resp);
+            break;
+        case OK:
+            manageAuthenticationResponse(request, resp);
+            break;
         }
     }
 
@@ -185,6 +187,10 @@ public class AuthenticationServlet extends HttpServlet {
 
     private void returnUnauthorizedResponse(HttpServletResponse resp) throws IOException {
         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+    }
+
+    private void returnRestartAuthentication(HttpServletResponse resp) throws IOException {
+        resp.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
 
     public void setUsersRepository(UsersRepository usersRepository) {
