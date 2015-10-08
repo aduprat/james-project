@@ -64,3 +64,20 @@ as we don't want to download all dependencies on each build
 as it is needed by the container that will run James.
 - SHA1 (optional): is the given git SHA1 of the james-project repository to build or trunk if none.
 - -s option: given tests will not be played while building. Not specifying means play tests.
+
+
+* Java 6
+First step, you have to build the Docker image
+$ docker build -f Dockerfile-java6 -t james/project .
+
+In order to run the build, you have to launch the following command:
+$ docker run -v $PWD/.m2:/root/.m2 -v $PWD:/origin -v $PWD/destination:/destination -t james/project -s SHA1
+
+Where:
+
+- $PWD/.m2:/root/.m2: is the first volume used to share the maven repository, 
+as we don't want to download all dependencies on each build
+- $PWD/destination:/destination: is the third volume used to get the compiled elements, 
+as it is needed by the container that will run James.
+- SHA1 (optional): is the given git SHA1 of the james-project repository to build or trunk if none.
+- -s option: given tests will not be played while building. Not specifying means play tests.
