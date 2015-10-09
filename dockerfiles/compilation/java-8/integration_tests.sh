@@ -59,6 +59,7 @@ export JAMES_ADDRESS=$JAMES_ADDRESS
 export JAMES_IMAP_PORT=$JAMES_IMAP_PORT
 
 git clone $URL
+cd james-project
 git checkout $SHA1
 
 mvn -Dtest=ExternalJamesTest -DfailIfNoTests=false -pl org.apache.james:apache-james-mpt-external-james -am test
