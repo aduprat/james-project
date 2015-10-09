@@ -17,9 +17,9 @@ RUN apt-get update
 RUN apt-get install -y git="$GIT_VERSION"
 
 # Copy the script
-COPY compile-java6.sh compile-java6.sh
+COPY compile.sh compile.sh
 COPY integration_tests.sh integration_tests.sh
 
 # Define the entrypoint
 WORKDIR /james-parent
-ENTRYPOINT ["/root/compile-java6.sh"]
+ENTRYPOINT ["/root/compile.sh"]
