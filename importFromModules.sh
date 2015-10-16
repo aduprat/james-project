@@ -26,6 +26,6 @@ do
 
     cd $CURRENT_PATH
     git apply --stat $patchFile
-    git am < $patchFile
+    git am --ignore-space-change < $patchFile
     rm $patchFile
 done
