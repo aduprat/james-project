@@ -33,12 +33,12 @@ public class ProtocolRequest {
     }
 
     private final String method;
-    private final ObjectNode json;
+    private final ObjectNode parameters;
     private final String clientId;
 
-    private ProtocolRequest(String method, ObjectNode json, String clientId) {
+    private ProtocolRequest(String method, ObjectNode parameters, String clientId) {
         this.method = method;
-        this.json = json;
+        this.parameters = parameters;
         this.clientId = clientId;
     }
 
@@ -46,8 +46,8 @@ public class ProtocolRequest {
         return method;
     }
 
-    public ObjectNode getJson() {
-        return json;
+    public ObjectNode getParameters() {
+        return parameters;
     }
 
     public String getClientId() {

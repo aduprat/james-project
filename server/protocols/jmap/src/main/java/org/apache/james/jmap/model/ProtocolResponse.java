@@ -19,16 +19,21 @@
 package org.apache.james.jmap.model;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 
 public class ProtocolResponse {
 
     private final String method;
-    private final ObjectNode json;
+    private final ObjectNode results;
     private final String clientId;
 
-    public ProtocolResponse(String method, ObjectNode json, String clientId) {
+    public ProtocolResponse(String method, ObjectNode results, String clientId) {
+        Preconditions.checkState(!Strings.isNullOrEmpty(method), "method is mandatory");
+        Preconditions.checkState(results != null, "results is mandatory");
+        Preconditions.checkState(!Strings.isNullOrEmpty(clientId), "clientId is mandatory");
         this.method = method;
-        this.json = json;
+        this.results = results;
         this.clientId = clientId;
     }
 
@@ -36,8 +41,8 @@ public class ProtocolResponse {
         return method;
     }
 
-    public ObjectNode getJson() {
-        return json;
+    public ObjectNode getResults() {
+        return results;
     }
 
     public String getClientId() {
@@ -45,6 +50,6 @@ public class ProtocolResponse {
     }
 
     public Object[] asProtocolSpecification() {
-        return new Object[] { getMethod(), getJson(), getClientId() };
+        return new Object[] { getMethod(), getResults(), getClientId() };
     }
 }

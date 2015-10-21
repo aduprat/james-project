@@ -21,7 +21,6 @@ package org.apache.james.jmap;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,15 +31,13 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.james.jmap.methods.MethodDispatcher;
+import org.apache.james.jmap.methods.RequestHandler;
 import org.apache.james.jmap.model.ProtocolRequest;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.io.CharStreams;
 
 public class JMAPServlet extends HttpServlet {
 
@@ -50,7 +47,7 @@ public class JMAPServlet extends HttpServlet {
     public static final String JSON_CONTENT_TYPE_UTF8 = "application/json; charset=UTF-8";
 
     private ObjectMapper objectMapper = new ObjectMapper();
-    private MethodDispatcher methodDispatcher;
+    private RequestHandler requestHandler;
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException {
@@ -58,7 +55,7 @@ public class JMAPServlet extends HttpServlet {
             List<Object[]> responses = 
                 requestAsJsonStream(req)
                 .map(ProtocolRequest::deserialize)
-                .map(methodDispatcher::process)
+                .map(requestHandler::process)
                 .map(protocolResponse -> protocolResponse.asProtocolSpecification())
                 .collect(Collectors.toList());
 
@@ -69,12 +66,11 @@ public class JMAPServlet extends HttpServlet {
     }
 
     private Stream<JsonNode[]> requestAsJsonStream(HttpServletRequest req) throws IOException, JsonParseException, JsonMappingException {
-        String requestAsString = CharStreams.toString(new InputStreamReader(req.getInputStream(), Charsets.UTF_8));
-        JsonNode[][] objects = objectMapper.readValue(requestAsString, JsonNode[][].class);
-        return Arrays.stream(objects);
+        return Arrays.stream(
+                objectMapper.readValue(req.getInputStream(), JsonNode[][].class));
     }
 
-    public void setMethodDispatcher(MethodDispatcher methodDispatcher) {
-        this.methodDispatcher = methodDispatcher;
+    public void setRequestHandler(RequestHandler requestHandler) {
+        this.requestHandler = requestHandler;
     }
 }

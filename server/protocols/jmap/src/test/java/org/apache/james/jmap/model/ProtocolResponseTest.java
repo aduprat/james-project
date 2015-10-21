@@ -28,6 +28,31 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class ProtocolResponseTest {
 
+    @Test(expected=IllegalStateException.class)
+    public void newInstanceShouldThrowWhenMethodIsNull() {
+        new ProtocolResponse(null, null, null);
+    }
+
+    @Test(expected=IllegalStateException.class)
+    public void newInstanceShouldThrowWhenMethodIsEmpty() {
+        new ProtocolResponse("", null, null);
+    }
+
+    @Test(expected=IllegalStateException.class)
+    public void newInstanceShouldThrowWhenResultsIsNull() {
+        new ProtocolResponse("method", null, null);
+    }
+
+    @Test(expected=IllegalStateException.class)
+    public void newInstanceShouldThrowWhenClientIdIsNull() {
+        new ProtocolResponse("method", new ObjectNode(new JsonNodeFactory(false)).putObject("{}"), null);
+    }
+
+    @Test(expected=IllegalStateException.class)
+    public void newInstanceShouldThrowWhenClientIdIsEmpty() {
+        new ProtocolResponse("method", new ObjectNode(new JsonNodeFactory(false)).putObject("{}"), "");
+    }
+
     @Test
     public void asProtocolSpecificationShouldReturnAnArrayWithThreeElements() {
         Object[] asProtocolSpecification = new ProtocolResponse("method", new ObjectNode(new JsonNodeFactory(false)).putObject("{}"), "#1")
