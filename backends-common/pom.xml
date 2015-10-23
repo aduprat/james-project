@@ -27,7 +27,6 @@
     </parent>
 
     <artifactId>james-backends-common</artifactId>
-    <version>1.8.3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Apache JAMES backends common</name>
