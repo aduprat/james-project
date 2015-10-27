@@ -20,6 +20,7 @@ package org.apache.james.rrt.cassandra;
 
 import org.apache.commons.configuration.DefaultConfigurationBuilder;
 import org.apache.james.backends.cassandra.CassandraClusterSingleton;
+import org.apache.james.rrt.CassandraRRTModule;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.lib.RewriteTablesStepdefs;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public class CassandraStepdefs {
     }
 
     private AbstractRecipientRewriteTable getRecipientRewriteTable() throws Exception {
-        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable();
+        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable(cassandra.getConf());
         rrt.setLog(LoggerFactory.getLogger("MockLog"));
         rrt.configure(new DefaultConfigurationBuilder());
         return rrt;
