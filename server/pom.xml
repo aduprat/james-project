@@ -76,6 +76,7 @@
 
         <module>data/data-api</module>
         <module>data/data-library</module>
+        <module>data/data-cassandra</module>
         <module>data/data-jpa</module>
         <module>data/data-jcr</module>
         <module>data/data-jdbc</module>
@@ -438,6 +439,11 @@
                 <version>${project.version}</version>
                 <scope>test</scope>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.james</groupId>
+                <artifactId>james-server-data-cassandra</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.james</groupId>
