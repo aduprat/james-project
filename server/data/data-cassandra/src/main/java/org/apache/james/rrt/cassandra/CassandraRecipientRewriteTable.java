@@ -18,35 +18,114 @@
  ****************************************************************/
 package org.apache.james.rrt.cassandra;
 
+import static com.datastax.driver.core.querybuilder.QueryBuilder.delete;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
+import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
+import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.DOMAIN;
+import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.MAPPING;
+import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.TABLE_NAME;
+import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.USER;
+
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collector;
 
 import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
+import org.apache.james.rrt.lib.RecipientRewriteTableUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datastax.driver.core.Session;
+import com.google.common.annotations.VisibleForTesting;
 
 public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTable {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraRecipientRewriteTable.class);
+    private final Session session;
+
+    @VisibleForTesting public CassandraRecipientRewriteTable(Session session) {
+        this.session = session;
+    }
+
     @Override
     protected void addMappingInternal(String user, String domain, String mapping) throws RecipientRewriteTableException {
+        session.execute(insertInto(TABLE_NAME)
+            .value(USER, getFixedUser(user))
+            .value(DOMAIN, getFixedDomain(domain))
+            .value(MAPPING, mapping));
     }
 
     @Override
     protected void removeMappingInternal(String user, String domain, String mapping) throws RecipientRewriteTableException {
+        session.execute(delete()
+            .from(TABLE_NAME)
+            .where(eq(USER, getFixedUser(user)))
+            .and(eq(DOMAIN, getFixedDomain(domain)))
+            .and(eq(MAPPING, mapping)));
     }
 
     @Override
     protected Collection<String> getUserDomainMappingsInternal(String user, String domain) throws RecipientRewriteTableException {
-        return null;
+        return session.execute(select(MAPPING)
+                .from(TABLE_NAME)
+                .where(eq(USER, getFixedUser(user)))
+                .and(eq(DOMAIN, getFixedDomain(domain))))
+            .all()
+            .stream()
+            .map(row -> row.getString(MAPPING))
+            .collect(toImmutableCollection());
+    }
+
+    private static <t> Collector<t, Collection<t>, Collection<t>> toImmutableCollection() {
+        return Collector.of(ArrayList::new, Collection::add, 
+                (left, right) -> {
+                    left.addAll(right);
+                    return left;
+                }, 
+                Collections::unmodifiableCollection);
     }
 
     @Override
     protected Map<String, Collection<String>> getAllMappingsInternal() throws RecipientRewriteTableException {
-        return null;
+        Map<String, Collection<String>> map = new HashMap<>();
+        session.execute(select(USER, DOMAIN)
+            .from(TABLE_NAME))
+            .all()
+            .stream()
+            .forEach(row -> putUserDomainMappings(map, row.getString(USER), row.getString(DOMAIN)));
+        return map;
+    }
+
+    private void putUserDomainMappings(Map<String, Collection<String>> map, String user, String domain) {
+        try {
+            Collection<String> userDomainMappingsInternal = getUserDomainMappingsInternal(user, domain);
+            if (!userDomainMappingsInternal.isEmpty()) {
+                map.put(user + "@" + domain, userDomainMappingsInternal);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Unhandled error occurs", e);
+        }
     }
 
     @Override
     protected String mapAddressInternal(String user, String domain) throws RecipientRewriteTableException {
-        return null;
+        Collection<String> userDomainMappingsInternal = getUserDomainMappingsInternal(user, domain);
+        if (!userDomainMappingsInternal.isEmpty()) {
+            return RecipientRewriteTableUtil.CollectionToMapping(userDomainMappingsInternal);
+        }
+
+        Collection<String> wildcardUserMappingsInternal = getUserDomainMappingsInternal(WILDCARD, domain);
+        if (!wildcardUserMappingsInternal.isEmpty()) {
+            return RecipientRewriteTableUtil.CollectionToMapping(wildcardUserMappingsInternal);
+        }
+
+        Collection<String> wildcardDomainMappingsInternal = getUserDomainMappingsInternal(user, WILDCARD);
+        return RecipientRewriteTableUtil.CollectionToMapping(wildcardDomainMappingsInternal);
     }
 
 }
