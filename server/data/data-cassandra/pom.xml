@@ -174,15 +174,6 @@
                 <dependency>
                     <groupId>org.apache.james</groupId>
                     <artifactId>apache-james-backends-cassandra</artifactId>
-                    <version>1.8.3-SNAPSHOT</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>james-server-lifecycle-api</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>james-server-dnsservice-api</artifactId>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.james</groupId>
@@ -193,16 +184,17 @@
                     <artifactId>james-server-data-library</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>commons-configuration</groupId>
-                    <artifactId>commons-configuration</artifactId>
+                    <groupId>org.apache.james</groupId>
+                    <artifactId>james-server-dnsservice-api</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.apache.james</groupId>
+                    <artifactId>james-server-lifecycle-api</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
+                    <groupId>com.datastax.cassandra</groupId>
+                    <artifactId>cassandra-driver-core</artifactId>
+                    <version>2.1.7</version>
                 </dependency>
                 <dependency>
                     <groupId>com.google.guava</groupId>
@@ -212,23 +204,32 @@
                     <groupId>commons-codec</groupId>
                     <artifactId>commons-codec</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>commons-configuration</groupId>
+                    <artifactId>commons-configuration</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </dependency>
 
                 <!-- Test dependencies -->
                 <dependency>
-                    <groupId>com.datastax.cassandra</groupId>
-                    <artifactId>cassandra-driver-core</artifactId>
-                    <version>2.1.7</version>
+                    <groupId>org.apache.james</groupId>
+                    <artifactId>apache-james-backends-cassandra</artifactId>
+                    <version>1.8.3-SNAPSHOT</version>
+                    <scope>test</scope>
+                    <type>test-jar</type>
                 </dependency>
                 <dependency>
-                    <groupId>org.cassandraunit</groupId>
-                    <artifactId>cassandra-unit</artifactId>
-                    <version>2.0.2.2</version>
+                    <groupId>org.apache.james</groupId>
+                    <artifactId>james-server-data-library</artifactId>
+                    <type>test-jar</type>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
-                    <groupId>${project.groupId}</groupId>
-                    <artifactId>apache-james-backends-cassandra</artifactId>
-                    <version>1.8.3-SNAPSHOT</version>
+                    <groupId>org.apache.james</groupId>
+                    <artifactId>james-server-dnsservice-api</artifactId>
                     <scope>test</scope>
                     <type>test-jar</type>
                 </dependency>
@@ -248,16 +249,10 @@
                     <scope>test</scope>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>james-server-data-library</artifactId>
-                    <type>test-jar</type>
+                    <groupId>org.cassandraunit</groupId>
+                    <artifactId>cassandra-unit</artifactId>
+                    <version>2.0.2.2</version>
                     <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>james-server-dnsservice-api</artifactId>
-                    <scope>test</scope>
-                    <type>test-jar</type>
                 </dependency>
                 <dependency>
                     <groupId>org.slf4j</groupId>
