@@ -30,6 +30,7 @@ import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTab
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -73,6 +74,11 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
 
     @Override
     protected Mappings getUserDomainMappingsInternal(String user, String domain) throws RecipientRewriteTableException {
+        return retrieveMappings(user, domain)
+            .orElse(null);
+    }
+
+    private Optional<Mappings> retrieveMappings(String user, String domain) {
         List<String> mappings = session.execute(select(MAPPING)
                 .from(TABLE_NAME)
                 .where(eq(USER, getFixedUser(user)))
@@ -81,48 +87,35 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
             .stream()
             .map(row -> row.getString(MAPPING))
             .collect(Collectors.toList());
-        return mappings.isEmpty() ? null : MappingsImpl.fromCollection(mappings);
+
+        return MappingsOptional.of(MappingsImpl.fromCollection(mappings)).nullToEmpty();
     }
 
     @Override
     protected Map<String, Mappings> getAllMappingsInternal() throws RecipientRewriteTableException {
         Map<String, Mappings> map = new HashMap<>();
-        session.execute(select(USER, DOMAIN)
+        session.execute(select(USER, DOMAIN, MAPPING)
             .from(TABLE_NAME))
             .all()
             .stream()
-            .forEach(row -> putUserDomainMappings(map, row.getString(USER), row.getString(DOMAIN)));
+            .forEach(row -> putUserDomainMappings(map, row.getString(USER), row.getString(DOMAIN), MappingsImpl.fromRawString(row.getString(MAPPING))));
         return map.isEmpty() ? null : map;
     }
 
-    private void putUserDomainMappings(Map<String, Mappings> map, String user, String domain) {
-        try {
-            Mappings userDomainMappingsInternal = getUserDomainMappingsInternal(user, domain);
-            if (userDomainMappingsInternal != null) {
-                map.put(user + "@" + domain, userDomainMappingsInternal);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Unhandled error occurs", e);
-        }
+    private void putUserDomainMappings(Map<String, Mappings> map, String user, String domain, Mappings mapping) {
+        map.merge(user + "@" + domain, mapping, 
+                (first, second) -> MappingsImpl.from(first).addAll(second).build());
     }
 
     @Override
     protected String mapAddressInternal(String user, String domain) throws RecipientRewriteTableException {
-        Mappings userDomainMappingsInternal = getUserDomainMappingsInternal(user, domain);
-        if (userDomainMappingsInternal != null) {
-            return userDomainMappingsInternal.serialize();
-        }
-
-        Mappings wildcardUserMappingsInternal = getUserDomainMappingsInternal(WILDCARD, domain);
-        if (wildcardUserMappingsInternal != null) {
-            return wildcardUserMappingsInternal.serialize();
-        }
-
-        Mappings wildcardDomainMappingsInternal = getUserDomainMappingsInternal(user, WILDCARD);
-        if (wildcardDomainMappingsInternal != null) {
-            return wildcardDomainMappingsInternal.serialize();
-        }
-        return null;
+        return MappingsOptional.of(
+            retrieveMappings(user, domain)
+                .orElseGet(() -> retrieveMappings(WILDCARD, domain)
+                        .orElseGet(() -> retrieveMappings(user, WILDCARD)
+                                .orElse(MappingsImpl.empty())))
+            )
+            .serialize();
     }
 
 }

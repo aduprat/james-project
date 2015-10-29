@@ -31,6 +31,7 @@ import org.apache.james.backends.cassandra.components.CassandraType;
 import org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable;
 
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import com.google.common.collect.ImmutableList;
 
 public class CassandraRRTModule implements CassandraModule {
 
@@ -39,7 +40,7 @@ public class CassandraRRTModule implements CassandraModule {
     private final List<CassandraType> types;
 
     public CassandraRRTModule() {
-        tables = Arrays.asList(
+        tables = ImmutableList.of(
                 new CassandraTable(CassandraRecipientRewriteTableTable.TABLE_NAME,
                     SchemaBuilder.createTable(CassandraRecipientRewriteTableTable.TABLE_NAME)
                         .ifNotExists()
