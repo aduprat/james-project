@@ -170,23 +170,23 @@
             </activation>
             <dependencies>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>apache-james-backends-cassandra</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-data-api</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-data-library</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-dnsservice-api</artifactId>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-lifecycle-api</artifactId>
                 </dependency>
                 <dependency>
@@ -208,20 +208,19 @@
 
                 <!-- Test dependencies -->
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>apache-james-backends-cassandra</artifactId>
-                    <version>1.8.3-SNAPSHOT</version>
                     <scope>test</scope>
                     <type>test-jar</type>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-data-library</artifactId>
                     <type>test-jar</type>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
-                    <groupId>org.apache.james</groupId>
+                    <groupId>${project.groupId}</groupId>
                     <artifactId>james-server-dnsservice-api</artifactId>
                     <scope>test</scope>
                     <type>test-jar</type>
@@ -245,7 +244,6 @@
                     <groupId>org.cassandraunit</groupId>
                     <artifactId>cassandra-unit</artifactId>
                     <version>2.0.2.2</version>
-                    <scope>test</scope>
                 </dependency>
                 <dependency>
                     <groupId>org.slf4j</groupId>
