@@ -18,10 +18,8 @@
  ****************************************************************/
 package org.apache.james.backends.cassandra;
 
-import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-import com.google.common.base.Throwables;
+import java.util.Optional;
+
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraTableManager;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
@@ -30,10 +28,11 @@ import org.apache.james.backends.cassandra.init.ClusterWithKeyspaceCreatedFactor
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.utils.FunctionRunnerWithRetry;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.google.common.base.Throwables;
 
 public final class CassandraClusterSingleton {
     private static final String CLUSTER_IP = "localhost";
@@ -44,18 +43,12 @@ public final class CassandraClusterSingleton {
     private static final long SLEEP_BEFORE_RETRY = 200;
     private static final int MAX_RETRY = 200;
 
-    private static final Logger LOG = LoggerFactory.getLogger(CassandraClusterSingleton.class);
-    private static CassandraClusterSingleton cluster = null;
     private final CassandraModule module;
     private Session session;
     private CassandraTypesProvider typesProvider;
 
     public static synchronized CassandraClusterSingleton create(CassandraModule module) throws RuntimeException {
-        LOG.info("Retrieving cluster instance.");
-        if (cluster == null) {
-            cluster = new CassandraClusterSingleton(module);
-        }
-        return cluster;
+        return new CassandraClusterSingleton(module);
     }
 
     private CassandraClusterSingleton(CassandraModule module) throws RuntimeException {
