@@ -50,7 +50,8 @@ public class CassandraRecipientRewriteTableTest extends AbstractRecipientRewrite
 
     @Override
     protected AbstractRecipientRewriteTable getRecipientRewriteTable() throws Exception {
-        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable(cassandra.getConf());
+        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable();
+        rrt.setSession(cassandra.getConf());
         rrt.setLog(LoggerFactory.getLogger("MockLog"));
         rrt.configure(new DefaultConfigurationBuilder());
         return rrt;

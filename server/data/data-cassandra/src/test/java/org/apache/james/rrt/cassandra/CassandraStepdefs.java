@@ -51,7 +51,8 @@ public class CassandraStepdefs {
     }
 
     private AbstractRecipientRewriteTable getRecipientRewriteTable() throws Exception {
-        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable(cassandra.getConf());
+        CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable();
+        rrt.setSession(cassandra.getConf());
         rrt.setLog(LoggerFactory.getLogger("MockLog"));
         rrt.configure(new DefaultConfigurationBuilder());
         return rrt;

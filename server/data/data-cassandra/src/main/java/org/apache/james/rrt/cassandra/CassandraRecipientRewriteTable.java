@@ -31,7 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
@@ -39,15 +41,15 @@ import org.apache.james.rrt.lib.Mappings;
 import org.apache.james.rrt.lib.MappingsImpl;
 
 import com.datastax.driver.core.Session;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 
 public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTable {
 
-    private final Session session;
+    private Session session;
 
     @Inject
-    @VisibleForTesting CassandraRecipientRewriteTable(Session session) {
+    @Resource
+    public void setSession(@Named("cassandra-session") Session session) {
         this.session = session;
     }
 
