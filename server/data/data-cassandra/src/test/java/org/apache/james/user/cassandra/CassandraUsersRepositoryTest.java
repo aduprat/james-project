@@ -20,7 +20,6 @@
 package org.apache.james.user.cassandra;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
-import org.apache.james.user.CassandraUsersRepositoryModule;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.lib.AbstractUsersRepositoryTest;
 import org.junit.After;

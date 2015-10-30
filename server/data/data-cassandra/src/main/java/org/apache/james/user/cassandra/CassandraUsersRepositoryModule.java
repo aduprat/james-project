@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.user;
+package org.apache.james.user.cassandra;
 
 import static com.datastax.driver.core.DataType.text;
 
