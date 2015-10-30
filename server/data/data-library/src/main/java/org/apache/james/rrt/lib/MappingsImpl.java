@@ -10,6 +10,7 @@ import org.apache.james.rrt.lib.Mapping.Type;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -59,7 +60,13 @@ public class MappingsImpl implements Mappings {
         builder.addAll(from);
         return builder;
     }
-    
+
+    public static Mappings merge(Mappings first, Mappings second) {
+        Preconditions.checkState(first != null, "First mappings is mandatory");
+        Preconditions.checkState(second != null, "Second mappings is mandatory");
+        return MappingsImpl.from(first).addAll(second).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -179,12 +186,20 @@ public class MappingsImpl implements Mappings {
         Preconditions.checkState(!errors.isEmpty());
         return Iterables.getFirst(errors, null);
     }
-    
+
+    @Override
+    public Optional<Mappings> toOptional() {
+        if (isEmpty()) {
+            return Optional.absent();
+        }
+        return Optional.<Mappings> of(this);
+    }
+
     @Override
     public int hashCode() {
         return Objects.hashCode(mappings);
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof MappingsImpl) {
@@ -193,11 +208,9 @@ public class MappingsImpl implements Mappings {
         }
         return false;
     }
-    
+
     @Override
     public String toString() {
         return Objects.toStringHelper(getClass()).add("mappings", mappings).toString();
     }
-    
-
 }

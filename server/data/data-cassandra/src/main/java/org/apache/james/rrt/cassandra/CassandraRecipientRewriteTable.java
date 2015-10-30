@@ -27,10 +27,8 @@ import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTab
 import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.TABLE_NAME;
 import static org.apache.james.rrt.cassandra.tables.CassandraRecipientRewriteTableTable.USER;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -39,15 +37,13 @@ import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.lib.Mappings;
 import org.apache.james.rrt.lib.MappingsImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datastax.driver.core.Session;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 
 public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraRecipientRewriteTable.class);
     private final Session session;
 
     @Inject
@@ -75,7 +71,7 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
     @Override
     protected Mappings getUserDomainMappingsInternal(String user, String domain) throws RecipientRewriteTableException {
         return retrieveMappings(user, domain)
-            .orElse(null);
+            .orNull();
     }
 
     private Optional<Mappings> retrieveMappings(String user, String domain) {
@@ -88,34 +84,57 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
             .map(row -> row.getString(MAPPING))
             .collect(Collectors.toList());
 
-        return MappingsOptional.of(MappingsImpl.fromCollection(mappings)).nullToEmpty();
+        return MappingsImpl.fromCollection(mappings).toOptional();
     }
 
     @Override
     protected Map<String, Mappings> getAllMappingsInternal() throws RecipientRewriteTableException {
-        Map<String, Mappings> map = new HashMap<>();
-        session.execute(select(USER, DOMAIN, MAPPING)
+        Map<String, Mappings> map = session.execute(select(USER, DOMAIN, MAPPING)
             .from(TABLE_NAME))
             .all()
             .stream()
-            .forEach(row -> putUserDomainMappings(map, row.getString(USER), row.getString(DOMAIN), MappingsImpl.fromRawString(row.getString(MAPPING))));
+            .map(row -> new UserMapping(row.getString(USER), row.getString(DOMAIN), row.getString(MAPPING)))
+            .collect(Collectors.toMap(UserMapping::asKey, 
+                    userMapping -> MappingsImpl.fromRawString(userMapping.getMapping()),
+                    MappingsImpl::merge));
         return map.isEmpty() ? null : map;
     }
 
-    private void putUserDomainMappings(Map<String, Mappings> map, String user, String domain, Mappings mapping) {
-        map.merge(user + "@" + domain, mapping, 
-                (first, second) -> MappingsImpl.from(first).addAll(second).build());
+    private static class UserMapping {
+
+        private final String user;
+        private final String domain;
+        private final String mapping;
+
+        public UserMapping(String user, String domain, String mapping) {
+            this.user = user;
+            this.domain = domain;
+            this.mapping = mapping;
+        }
+
+        public String getUser() {
+            return user;
+        }
+
+        public String getDomain() {
+            return domain;
+        }
+
+        public String getMapping() {
+            return mapping;
+        }
+
+        public String asKey() {
+            return getUser() + "@" + getDomain();
+        }
     }
 
     @Override
     protected String mapAddressInternal(String user, String domain) throws RecipientRewriteTableException {
-        return MappingsOptional.of(
-            retrieveMappings(user, domain)
-                .orElseGet(() -> retrieveMappings(WILDCARD, domain)
-                        .orElseGet(() -> retrieveMappings(user, WILDCARD)
-                                .orElse(MappingsImpl.empty())))
-            )
-            .serialize();
+        Optional<Mappings> optional = retrieveMappings(user, domain)
+            .or(retrieveMappings(WILDCARD, domain))
+            .or(retrieveMappings(user, WILDCARD));
+        return optional.isPresent() ? optional.get().serialize() : null;
     }
 
 }

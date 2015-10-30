@@ -2,6 +2,8 @@ package org.apache.james.rrt.lib;
 
 import org.apache.james.rrt.lib.Mapping.Type;
 
+import com.google.common.base.Optional;
+
 public interface Mappings extends Iterable<Mapping> {
 
     boolean contains(String mapping);
@@ -23,5 +25,6 @@ public interface Mappings extends Iterable<Mapping> {
     Mappings exclude(Type type);
 
     Mapping getError();
-    
+
+    Optional<Mappings> toOptional();
 }
