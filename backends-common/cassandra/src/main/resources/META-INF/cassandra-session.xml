@@ -44,7 +44,7 @@
           lazy-init="true"/>
 
     <bean id="cassandra-rrt-module"
-          class="org.apache.james.rrt.CassandraRRTModule"
+          class="org.apache.james.rrt.cassandra.CassandraRRTModule"
           lazy-init="true"/>
 
     <bean id="cassandra-module-composite"
