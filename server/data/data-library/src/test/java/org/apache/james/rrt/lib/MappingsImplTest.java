@@ -219,7 +219,7 @@ public class MappingsImplTest {
 
     @Test(expected=IllegalStateException.class)
     public void mergeShouldThrowWhenFirstIsNull() {
-        MappingsImpl.merge(null, null);
+        MappingsImpl.merge(null, MappingsImpl.empty());
     }
 
     @Test(expected=IllegalStateException.class)

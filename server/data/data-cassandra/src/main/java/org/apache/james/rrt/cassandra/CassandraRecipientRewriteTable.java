@@ -133,10 +133,11 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
 
     @Override
     protected String mapAddressInternal(String user, String domain) throws RecipientRewriteTableException {
-        Optional<Mappings> optional = retrieveMappings(user, domain)
-            .or(retrieveMappings(WILDCARD, domain))
-            .or(retrieveMappings(user, WILDCARD));
-        return optional.isPresent() ? optional.get().serialize() : null;
+        Mappings mappings = retrieveMappings(user, domain)
+            .or(() -> retrieveMappings(WILDCARD, domain)
+                    .or(() -> retrieveMappings(user, WILDCARD)
+                            .orNull()));
+        return mappings != null ? mappings.serialize() : null;
     }
 
 }
