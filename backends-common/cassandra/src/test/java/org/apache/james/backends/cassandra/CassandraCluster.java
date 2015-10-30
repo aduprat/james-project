@@ -34,7 +34,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.google.common.base.Throwables;
 
-public final class CassandraClusterSingleton {
+public final class CassandraCluster {
     private static final String CLUSTER_IP = "localhost";
     private static final int CLUSTER_PORT_TEST = 9142;
     private static final String KEYSPACE_NAME = "apache_james";
@@ -47,16 +47,16 @@ public final class CassandraClusterSingleton {
     private Session session;
     private CassandraTypesProvider typesProvider;
 
-    public static synchronized CassandraClusterSingleton create(CassandraModule module) throws RuntimeException {
-        return new CassandraClusterSingleton(module);
+    public static CassandraCluster create(CassandraModule module) throws RuntimeException {
+        return new CassandraCluster(module);
     }
 
-    private CassandraClusterSingleton(CassandraModule module) throws RuntimeException {
+    private CassandraCluster(CassandraModule module) throws RuntimeException {
         this.module = module;
         try {
             EmbeddedCassandraServerHelper.startEmbeddedCassandra();
             session = new FunctionRunnerWithRetry(MAX_RETRY)
-                .executeAndRetrieveObject(CassandraClusterSingleton.this::tryInitializeSession);
+                .executeAndRetrieveObject(CassandraCluster.this::tryInitializeSession);
             typesProvider = new CassandraTypesProvider(module, session);
         } catch(Exception exception) {
             Throwables.propagate(exception);

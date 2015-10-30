@@ -19,7 +19,7 @@
 package org.apache.james.rrt.cassandra;
 
 import org.apache.commons.configuration.DefaultConfigurationBuilder;
-import org.apache.james.backends.cassandra.CassandraClusterSingleton;
+import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.rrt.CassandraRRTModule;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.lib.RewriteTablesStepdefs;
@@ -30,7 +30,7 @@ import cucumber.api.java.Before;
 
 public class CassandraStepdefs {
 
-    private CassandraClusterSingleton cassandra;
+    private CassandraCluster cassandra;
 
     private RewriteTablesStepdefs mainStepdefs;
 
@@ -40,7 +40,7 @@ public class CassandraStepdefs {
 
     @Before
     public void setup() throws Throwable {
-        cassandra = CassandraClusterSingleton.create(new CassandraRRTModule());
+        cassandra = CassandraCluster.create(new CassandraRRTModule());
         cassandra.ensureAllTables();
         mainStepdefs.rewriteTable = getRecipientRewriteTable(); 
     }

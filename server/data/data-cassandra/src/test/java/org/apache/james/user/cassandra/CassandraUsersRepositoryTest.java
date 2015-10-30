@@ -19,7 +19,7 @@
 
 package org.apache.james.user.cassandra;
 
-import org.apache.james.backends.cassandra.CassandraClusterSingleton;
+import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.user.CassandraUsersRepositoryModule;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.lib.AbstractUsersRepositoryTest;
@@ -27,7 +27,7 @@ import org.junit.After;
 
 public class CassandraUsersRepositoryTest extends AbstractUsersRepositoryTest {
 
-    private CassandraClusterSingleton cassandra;
+    private CassandraCluster cassandra;
 
     @After
     public void tearDown() {
@@ -36,7 +36,7 @@ public class CassandraUsersRepositoryTest extends AbstractUsersRepositoryTest {
 
     @Override
     protected UsersRepository getUsersRepository() throws Exception {
-        cassandra = CassandraClusterSingleton.create(new CassandraUsersRepositoryModule());
+        cassandra = CassandraCluster.create(new CassandraUsersRepositoryModule());
         return new CassandraUsersRepository(cassandra.getConf());
     }
 }
