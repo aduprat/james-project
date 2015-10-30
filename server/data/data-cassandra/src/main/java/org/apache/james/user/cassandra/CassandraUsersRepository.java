@@ -34,7 +34,9 @@ import static org.apache.james.user.cassandra.tables.CassandraUserTable.TABLE_NA
 import java.util.Iterator;
 import java.util.Optional;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.apache.james.backends.cassandra.utils.CassandraConstants;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
@@ -45,7 +47,6 @@ import org.apache.james.user.lib.model.DefaultUser;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
@@ -53,10 +54,11 @@ public class CassandraUsersRepository extends AbstractUsersRepository {
 
     private static final String DEFAULT_ALGO_VALUE = "SHA1";
 
-    private final Session session;
+    private Session session;
 
     @Inject
-    @VisibleForTesting CassandraUsersRepository(Session session) {
+    @Resource
+    public void setSession(@Named("cassandra-session") Session session) {
         this.session = session;
     }
 
