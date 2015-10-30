@@ -27,4 +27,6 @@ public interface Mappings extends Iterable<Mapping> {
     Mapping getError();
 
     Optional<Mappings> toOptional();
+
+    Mappings union(Mappings mappings);
 }

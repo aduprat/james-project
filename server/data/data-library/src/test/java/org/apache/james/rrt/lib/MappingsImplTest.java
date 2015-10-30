@@ -218,24 +218,19 @@ public class MappingsImplTest {
     }
 
     @Test(expected=IllegalStateException.class)
-    public void mergeShouldThrowWhenFirstIsNull() {
-        MappingsImpl.merge(null, MappingsImpl.empty());
-    }
-
-    @Test(expected=IllegalStateException.class)
-    public void mergeShouldThrowWhenSecondIsNull() {
-        MappingsImpl.merge(MappingsImpl.empty(), null);
+    public void unionShouldThrowWhenMappingsNull() {
+        MappingsImpl.empty().union(null);
     }
 
     @Test
-    public void mergeShouldReturnEmptyWhenBothEmpty() {
-        Mappings mappings = MappingsImpl.merge(MappingsImpl.empty(), MappingsImpl.empty());
+    public void unionShouldReturnEmptyWhenBothEmpty() {
+        Mappings mappings = MappingsImpl.empty().union(MappingsImpl.empty());
         assertThat(mappings).isEmpty();
     }
 
     @Test
-    public void mergeShouldReturnMergedWhenBothContainsData() {
-        Mappings mappings = MappingsImpl.merge(MappingsImpl.fromRawString("toto"), MappingsImpl.fromRawString("tata"));
+    public void unionShouldReturnMergedWhenBothContainsData() {
+        Mappings mappings = MappingsImpl.fromRawString("toto").union(MappingsImpl.fromRawString("tata"));
         assertThat(mappings).containsExactly(MappingImpl.address("toto"),MappingImpl.address("tata"));
     }
 }

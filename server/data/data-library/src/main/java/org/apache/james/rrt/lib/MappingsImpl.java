@@ -64,12 +64,6 @@ public class MappingsImpl implements Mappings, Serializable {
         return builder;
     }
 
-    public static Mappings merge(Mappings first, Mappings second) {
-        Preconditions.checkState(first != null, "First mappings is mandatory");
-        Preconditions.checkState(second != null, "Second mappings is mandatory");
-        return MappingsImpl.from(first).addAll(second).build();
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -196,6 +190,12 @@ public class MappingsImpl implements Mappings, Serializable {
             return Optional.absent();
         }
         return Optional.<Mappings> of(this);
+    }
+
+    @Override
+    public Mappings union(Mappings mappings) {
+        Preconditions.checkState(mappings != null, "mappings is mandatory");
+        return from(this).addAll(mappings).build();
     }
 
     @Override

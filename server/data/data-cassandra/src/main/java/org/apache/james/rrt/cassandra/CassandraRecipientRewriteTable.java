@@ -98,7 +98,7 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
             .map(row -> new UserMapping(row.getString(USER), row.getString(DOMAIN), row.getString(MAPPING)))
             .collect(Collectors.toMap(UserMapping::asKey, 
                     userMapping -> MappingsImpl.fromRawString(userMapping.getMapping()),
-                    MappingsImpl::merge));
+                    (first, second) -> first.union(second)));
         return map.isEmpty() ? null : map;
     }
 
@@ -136,8 +136,8 @@ public class CassandraRecipientRewriteTable extends AbstractRecipientRewriteTabl
         Mappings mappings = retrieveMappings(user, domain)
             .or(() -> retrieveMappings(WILDCARD, domain)
                     .or(() -> retrieveMappings(user, WILDCARD)
-                            .orNull()));
-        return mappings != null ? mappings.serialize() : null;
+                            .or(MappingsImpl.empty())));
+        return !mappings.isEmpty() ? mappings.serialize() : null;
     }
 
 }
