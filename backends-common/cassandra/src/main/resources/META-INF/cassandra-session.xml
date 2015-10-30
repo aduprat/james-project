@@ -44,7 +44,7 @@
           lazy-init="true"/>
 
     <bean id="cassandra-usersrepository-module"
-          class="org.apache.james.user.CassandraUsersRepositoryModule"
+          class="org.apache.james.user.cassandra.CassandraUsersRepositoryModule"
           lazy-init="true"/>
 
     <bean id="cassandra-module-composite"
