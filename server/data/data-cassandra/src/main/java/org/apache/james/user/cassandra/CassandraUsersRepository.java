@@ -33,12 +33,11 @@ import static org.apache.james.user.cassandra.tables.CassandraUserTable.TABLE_NA
 
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.stream.StreamSupport;
 
-import javax.annotation.Resource;
 import javax.inject.Inject;
-import javax.inject.Named;
 
+import org.apache.james.backends.cassandra.utils.CassandraConstants;
+import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.api.model.User;
 import org.apache.james.user.lib.AbstractUsersRepository;
@@ -46,6 +45,7 @@ import org.apache.james.user.lib.model.DefaultUser;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
@@ -53,11 +53,10 @@ public class CassandraUsersRepository extends AbstractUsersRepository {
 
     private static final String DEFAULT_ALGO_VALUE = "SHA1";
 
-    private Session session;
+    private final Session session;
 
     @Inject
-    @Resource
-    public void setSession(@Named("cassandra-session") Session session) {
+    @VisibleForTesting CassandraUsersRepository(Session session) {
         this.session = session;
     }
 
@@ -76,26 +75,32 @@ public class CassandraUsersRepository extends AbstractUsersRepository {
     public void updateUser(User user) throws UsersRepositoryException {
         Preconditions.checkArgument(user instanceof DefaultUser);
         DefaultUser defaultUser = (DefaultUser) user;
-        ResultSet result = session.execute(
+        boolean executed = session.execute(
                 update(TABLE_NAME)
                     .with(set(REALNAME, defaultUser.getUserName()))
                     .and(set(PASSWORD, defaultUser.getHashedPassword()))
                     .and(set(ALGORITHM, defaultUser.getHashAlgorithm()))
                     .where(eq(NAME, defaultUser.getUserName().toLowerCase()))
-                    .ifExists());
-        if (!applied(result)) {
+                    .ifExists())
+                .one()
+                .getBool(CassandraConstants.LIGHTWEIGHT_TRANSACTION_APPLIED);
+
+        if (!executed) {
             throw new UsersRepositoryException("Unable to update user");
         }
     }
 
     @Override
     public void removeUser(String name) throws UsersRepositoryException {
-        ResultSet result = session.execute(
-                delete()
+        boolean executed = session.execute(
+            delete()
                 .from(TABLE_NAME)
                 .where(eq(NAME, name))
-                .ifExists());
-        if (!applied(result)) {
+                .ifExists())
+            .one()
+            .getBool(CassandraConstants.LIGHTWEIGHT_TRANSACTION_APPLIED);
+
+        if (!executed) {
             throw new UsersRepositoryException("unable to remove unknown user " + name);
         }
     }
@@ -123,7 +128,7 @@ public class CassandraUsersRepository extends AbstractUsersRepository {
         ResultSet result = session.execute(
                 select(REALNAME)
                 .from(TABLE_NAME));
-        return StreamSupport.stream(result.spliterator(), false)
+        return CassandraUtils.convertToStream(result)
             .map(row -> row.getString(REALNAME))
             .iterator();
     }
@@ -138,20 +143,18 @@ public class CassandraUsersRepository extends AbstractUsersRepository {
     protected void doAddUser(String username, String password) throws UsersRepositoryException {
         DefaultUser user = new DefaultUser(username, DEFAULT_ALGO_VALUE);
         user.setPassword(password);
-        ResultSet result = session.execute(insertInto(TABLE_NAME)
+        boolean executed = session.execute(
+            insertInto(TABLE_NAME)
                 .value(NAME, user.getUserName().toLowerCase())
                 .value(REALNAME, user.getUserName())
                 .value(PASSWORD, user.getHashedPassword())
                 .value(ALGORITHM, user.getHashAlgorithm())
-                .ifNotExists());
-        
-        if (!applied(result)) {
+                .ifNotExists())
+            .one()
+            .getBool(CassandraConstants.LIGHTWEIGHT_TRANSACTION_APPLIED);
+
+        if (!executed) {
             throw new UsersRepositoryException("User with username " + username + " already exist!");
         }
     }
-
-    private boolean applied(ResultSet result) {
-        return result.one().getBool("[applied]");
-    }
-
 }
