@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.rrt;
+package org.apache.james.rrt.cassandra;
 
 import static com.datastax.driver.core.DataType.text;
 
