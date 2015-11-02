@@ -28,6 +28,9 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
@@ -36,9 +39,11 @@ import org.apache.james.protocols.lib.KeystoreLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 
+@Singleton
 public class JamesSignatureHandler implements SignatureHandler, Configurable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JamesSignatureHandler.class);
@@ -52,7 +57,8 @@ public class JamesSignatureHandler implements SignatureHandler, Configurable {
     private PrivateKey privateKey;
     private PublicKey publicKey;
 
-    public JamesSignatureHandler(KeystoreLoader keystoreLoader) {
+    @Inject
+    @VisibleForTesting JamesSignatureHandler(KeystoreLoader keystoreLoader) {
         this.keystoreLoader = keystoreLoader;
     }
 
@@ -61,6 +67,7 @@ public class JamesSignatureHandler implements SignatureHandler, Configurable {
         secret = configuration.getString("tls.secret", "");
     }
 
+    @Override
     public void init() throws Exception {
         KeyStore keystore = keystoreLoader.load(keystoreURL, secret);
         publicKey = keystore.getCertificate(ALIAS).getPublicKey();
