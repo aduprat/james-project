@@ -40,7 +40,7 @@ public class MemoryAccessTokenRepository implements AccessTokenRepository {
     private final PassiveExpiringMap<AccessToken, String> tokensExpirationDates;
 
     @Inject
-    @VisibleForTesting MemoryAccessTokenRepository(@Named("tokenExpirationInMs") Long durationInMilliseconds) {
+    @VisibleForTesting MemoryAccessTokenRepository(@Named("tokenExpirationInMs") long durationInMilliseconds) {
         tokensExpirationDates = new PassiveExpiringMap<>(durationInMilliseconds);
     }
 

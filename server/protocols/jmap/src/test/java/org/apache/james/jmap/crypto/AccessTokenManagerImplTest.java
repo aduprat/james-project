@@ -44,7 +44,7 @@ public class AccessTokenManagerImplTest {
             
             @Override
             protected void configure() {
-                bind(Long.class).annotatedWith(Names.named("tokenExpirationInMs")).toInstance(100L);
+                bindConstant().annotatedWith(Names.named("tokenExpirationInMs")).to(100L);
                 bind(AccessTokenRepository.class).to(MemoryAccessTokenRepository.class);
             }
         });

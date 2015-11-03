@@ -21,8 +21,6 @@ package org.apache.james.jmap.exceptions;
 
 public class MalformedContinuationTokenException extends Exception {
 
-    private static final long serialVersionUID = 1L;
-
     public MalformedContinuationTokenException(String s) {
         super(s);
     }

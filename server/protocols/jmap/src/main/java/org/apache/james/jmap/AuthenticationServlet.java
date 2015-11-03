@@ -46,7 +46,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Singleton
 public class AuthenticationServlet extends HttpServlet {
-    private static final long serialVersionUID = 1L;
 
     public static final String JSON_CONTENT_TYPE = "application/json";
     public static final String JSON_CONTENT_TYPE_UTF8 = "application/json; charset=UTF-8";
@@ -58,14 +57,16 @@ public class AuthenticationServlet extends HttpServlet {
         .registerClass(AccessTokenRequest.UNIQUE_JSON_PATH, AccessTokenRequest.class)
         .build();
 
-    @Inject
-    private UsersRepository usersRepository;
+    private final UsersRepository usersRepository;
+    private final ContinuationTokenManager continuationTokenManager;
+    private final AccessTokenManager accessTokenManager;
 
     @Inject
-    private ContinuationTokenManager continuationTokenManager;
-    
-    @Inject
-    private AccessTokenManager accessTokenManager;
+    private AuthenticationServlet(UsersRepository usersRepository, ContinuationTokenManager continuationTokenManager, AccessTokenManager accessTokenManager) {
+        this.usersRepository = usersRepository;
+        this.continuationTokenManager = continuationTokenManager;
+        this.accessTokenManager = accessTokenManager;
+    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

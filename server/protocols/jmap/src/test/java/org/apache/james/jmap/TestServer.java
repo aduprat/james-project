@@ -32,7 +32,7 @@ public class TestServer {
             install(new JamesSignatureHandlerModule());
             bind(UsersRepository.class).toInstance(usersRepository);
             bind(ZonedDateTimeProvider.class).toInstance(zonedDateTimeProvider);
-            bind(Long.class).annotatedWith(Names.named("tokenExpirationInMs")).toInstance(100L);
+            bindConstant().annotatedWith(Names.named("tokenExpirationInMs")).to(100L);
         }
     }
 
@@ -44,7 +44,7 @@ public class TestServer {
     private Server server;
 
     public void start() throws Exception {
-        Injector injector = Guice.createInjector(Modules.override(new JMAPModule())
+        Injector injector = Guice.createInjector(Modules.override(new JMAPCommonModule())
                 .with(new JMAPModuleTest()));
         accessTokenManager = injector.getInstance(AccessTokenManager.class);
         initJamesSignatureHandler(injector);

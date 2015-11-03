@@ -32,8 +32,12 @@ public class KeystoreLoader {
 
     public static final String JKS = "JKS";
 
+    private final FileSystem fileSystem;
+
     @Inject
-    private FileSystem fileSystem;
+    public KeystoreLoader(FileSystem fileSystem) {
+        this.fileSystem = fileSystem;
+    }
 
     public KeyStore load(String keystoreURL, String secret) throws Exception {
         KeyStore result = KeyStore.getInstance(JKS);
