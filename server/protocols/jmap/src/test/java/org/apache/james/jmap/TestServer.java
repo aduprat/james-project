@@ -4,16 +4,13 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.Filter;
 
+import org.apache.james.http.jetty.Configuration;
+import org.apache.james.http.jetty.JettyHttpServer;
 import org.apache.james.jmap.api.AccessTokenManager;
 import org.apache.james.jmap.crypto.JamesSignatureHandlerModule;
 import org.apache.james.jmap.crypto.SignatureHandler;
 import org.apache.james.jmap.utils.ZonedDateTimeProvider;
 import org.apache.james.user.api.UsersRepository;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -43,7 +40,7 @@ public class TestServer {
         this.zonedDateTimeProvider = zonedDateTimeProvider;
     }
 
-    private Server server;
+    private JettyHttpServer server;
 
     public void start() throws Exception {
         Injector injector = Guice.createInjector(Modules.override(new JMAPCommonModule())
@@ -51,19 +48,14 @@ public class TestServer {
         accessTokenManager = injector.getInstance(AccessTokenManager.class);
         initJamesSignatureHandler(injector);
 
-        server = new Server(JMAPAuthenticationTest.RANDOM_PORT);
-
-        ServletHandler handler = new ServletHandler();
-        server.setHandler(handler);
-
         AuthenticationServlet authenticationServlet = injector.getInstance(AuthenticationServlet.class);
-        ServletHolder servletHolder = new ServletHolder(authenticationServlet);
-        handler.addServletWithMapping(servletHolder, "/*");
-
         AuthenticationFilter authenticationFilter = new AuthenticationFilter(accessTokenManager);
         Filter getAuthenticationFilter = new BypassOnPostFilter(authenticationFilter);
-        FilterHolder authenticationFilterHolder = new FilterHolder(getAuthenticationFilter);
-        handler.addFilterWithMapping(authenticationFilterHolder, "/*", null);
+        server = JettyHttpServer.create(Configuration.builder()
+                .serve("/*").with(authenticationServlet)
+                .filter("/*").with(getAuthenticationFilter)
+                .randomPort()
+                .build());
 
         server.start();
     }
@@ -78,7 +70,7 @@ public class TestServer {
     }
     
     public int getLocalPort() {
-        return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+        return server.getPort();
     }
     
     public AccessTokenManager getAccessTokenManager() {

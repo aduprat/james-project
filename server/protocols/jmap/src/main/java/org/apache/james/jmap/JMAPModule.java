@@ -18,35 +18,23 @@
  ****************************************************************/
 package org.apache.james.jmap;
 
-import java.util.concurrent.TimeUnit;
-
-import org.apache.james.jmap.api.AccessTokenManager;
-import org.apache.james.jmap.api.ContinuationTokenManager;
-import org.apache.james.jmap.api.access.AccessTokenRepository;
-import org.apache.james.jmap.crypto.AccessTokenManagerImpl;
-import org.apache.james.jmap.crypto.JamesSignatureHandler;
-import org.apache.james.jmap.crypto.SignatureHandler;
-import org.apache.james.jmap.crypto.SignedContinuationTokenManager;
-import org.apache.james.jmap.memory.access.MemoryAccessTokenRepository;
-import org.apache.james.jmap.utils.DefaultZonedDateTimeProvider;
-import org.apache.james.jmap.utils.ZonedDateTimeProvider;
-
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 
-public class JMAPCommonModule extends AbstractModule {
-    
-    private static final long DEFAULT_TOKEN_EXPIRATION_IN_MS = TimeUnit.MILLISECONDS.convert(15, TimeUnit.MINUTES);
+public class JMAPModule extends AbstractModule {
+
+    private static final int DEFAULT_PORT = 80;
 
     @Override
     protected void configure() {
-        bind(SignatureHandler.class).to(JamesSignatureHandler.class);
-        bind(ZonedDateTimeProvider.class).to(DefaultZonedDateTimeProvider.class);
-        bind(ContinuationTokenManager.class).to(SignedContinuationTokenManager.class);
+        install(new JMAPCommonModule());
 
-        bindConstant().annotatedWith(Names.named("tokenExpirationInMs")).to(DEFAULT_TOKEN_EXPIRATION_IN_MS);
-        bind(AccessTokenRepository.class).to(MemoryAccessTokenRepository.class);
-        bind(AccessTokenManager.class).to(AccessTokenManagerImpl.class);
+        bind(AuthenticationServlet.class);
+        bind(JMAPServlet.class);
+        bind(AuthenticationFilter.class);
+
+        bindConstant().annotatedWith(Names.named("defaultJMAPPort")).to(DEFAULT_PORT);
+        bind(JMAPServer.class);
     }
 
 }
