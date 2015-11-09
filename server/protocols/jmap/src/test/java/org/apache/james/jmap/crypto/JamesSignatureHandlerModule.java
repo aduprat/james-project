@@ -8,11 +8,10 @@ import java.io.InputStream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
+import org.apache.james.jmap.JMAPConfiguration;
 import org.apache.james.protocols.lib.KeystoreLoader;
 
-import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 
 public class JamesSignatureHandlerModule extends AbstractModule {
@@ -40,24 +39,13 @@ public class JamesSignatureHandlerModule extends AbstractModule {
 
         @Inject
         TestJamesSignatureHandler(KeystoreLoader keystoreLoader) {
-            super(keystoreLoader);
+            super(keystoreLoader, new JMAPConfiguration("keystore", "james72laBalle"));
         }
 
         @Override
         public void init() throws Exception {
-            configure(createTestConfiguration());
             super.init();
         }
-
-        private HierarchicalConfiguration createTestConfiguration() {
-            HierarchicalConfiguration configuration = new HierarchicalConfiguration();
-            HierarchicalConfiguration.Node secretNode = new HierarchicalConfiguration.Node();
-            secretNode.setName("secret");
-            secretNode.setValue("james72laBalle");
-            configuration.addNodes("tls", Lists.newArrayList(secretNode));
-            return configuration;
-        }
-        
     }
 
     @Override
