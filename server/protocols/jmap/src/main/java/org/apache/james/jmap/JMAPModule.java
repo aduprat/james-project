@@ -49,7 +49,7 @@ public class JMAPModule extends AbstractModule {
 
     @Provides
     @Singleton
-    JMAPConfiguration provideSession(FileSystem fileSystem) throws FileNotFoundException, ConfigurationException{
+    JMAPConfiguration provideConfiguration(FileSystem fileSystem) throws FileNotFoundException, ConfigurationException{
         PropertiesConfiguration configuration = getConfiguration(fileSystem);
         String keystore = configuration.getString("tls.keystoreURL");
         String secret = configuration.getString("tls.secret");
