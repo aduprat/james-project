@@ -19,6 +19,8 @@
 
 package org.apache.james.modules;
 
+import org.apache.james.jmap.JMAPModule;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 
@@ -26,6 +28,6 @@ public class TestJMAPServerModule extends AbstractModule{
 
     @Override
     protected void configure() {
-        bindConstant().annotatedWith(Names.named("defaultJMAPPort")).to(1080);
+        bindConstant().annotatedWith(Names.named(JMAPModule.DEFAULT_JMAP_PORT)).to(1080);
     }
 }
