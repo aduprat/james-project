@@ -33,6 +33,7 @@ import com.google.inject.name.Names;
 public class JMAPModule extends AbstractModule {
 
     private static final int DEFAULT_PORT = 80;
+    public static final String DEFAULT_JMAP_PORT = "defaultJMAPPort";
 
     @Override
     protected void configure() {
@@ -42,7 +43,7 @@ public class JMAPModule extends AbstractModule {
         bind(JMAPServlet.class);
         bind(AuthenticationFilter.class);
 
-        bindConstant().annotatedWith(Names.named("defaultJMAPPort")).to(DEFAULT_PORT);
+        bindConstant().annotatedWith(Names.named(DEFAULT_JMAP_PORT)).to(DEFAULT_PORT);
         bind(JMAPServer.class);
     }
 

@@ -39,7 +39,7 @@ public class JMAPServer implements Configurable {
     private final JettyHttpServer server;
 
     @Inject
-    private JMAPServer(@Named("defaultJMAPPort") int port, 
+    private JMAPServer(@Named(JMAPModule.DEFAULT_JMAP_PORT) int port, 
             AuthenticationServlet authenticationServlet, JMAPServlet jmapServlet,
             AuthenticationFilter authenticationFilter) {
 
