@@ -27,7 +27,6 @@ import org.apache.james.jmap.model.ProtocolRequest;
 import org.apache.james.jmap.model.ProtocolResponse;
 
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -45,7 +44,6 @@ public class ProtocolArgumentsManagerImpl implements ProtocolArgumentsManager {
 
     @VisibleForTesting ProtocolArgumentsManagerImpl() {
         this.objectMapper = new ObjectMapper();
-        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     public <T extends JmapRequest> T extractJmapRequest(ProtocolRequest request, Class<T> requestClass) 
