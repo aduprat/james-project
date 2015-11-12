@@ -78,6 +78,7 @@ public class AuthCmdHandler
     private abstract class AbstractSMTPLineHandler implements LineHandler<SMTPSession> {
 
         public Response onLine(SMTPSession session, ByteBuffer line) {
+            session.getLogger().debug("In onLine");
             String charset = session.getCharset().name();
             try {
                 byte[] l;
@@ -101,6 +102,7 @@ public class AuthCmdHandler
             // "If the client wishes to cancel an authentication exchange, it issues a line with a single "*".
             // If the server receives such an answer, it MUST reject the AUTH
             // command by sending a 501 reply."
+            session.getLogger().debug("In handleCommand");
             if (line.equals("*\r\n")) {
                 session.popLineHandler();
                 return AUTH_ABORTED;

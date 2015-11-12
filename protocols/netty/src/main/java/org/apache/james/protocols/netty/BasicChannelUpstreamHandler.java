@@ -23,19 +23,18 @@ import java.util.List;
 
 import javax.net.ssl.SSLEngine;
 
-import org.apache.james.protocols.api.ProtocolSessionImpl;
+import org.apache.james.protocols.api.Encryption;
 import org.apache.james.protocols.api.Protocol;
 import org.apache.james.protocols.api.ProtocolSession;
+import org.apache.james.protocols.api.ProtocolSessionImpl;
 import org.apache.james.protocols.api.ProtocolTransport;
 import org.apache.james.protocols.api.Response;
-import org.apache.james.protocols.api.Encryption;
 import org.apache.james.protocols.api.future.FutureResponse;
 import org.apache.james.protocols.api.handler.ConnectHandler;
 import org.apache.james.protocols.api.handler.DisconnectHandler;
 import org.apache.james.protocols.api.handler.LineHandler;
 import org.apache.james.protocols.api.handler.ProtocolHandlerChain;
 import org.apache.james.protocols.api.handler.ProtocolHandlerResultHandler;
-import org.apache.james.protocols.netty.NettyProtocolTransport;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
@@ -134,6 +133,7 @@ public class BasicChannelUpstreamHandler extends SimpleChannelUpstreamHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         ProtocolSession pSession = (ProtocolSession) ctx.getAttachment();
+        pSession.getLogger().debug("In messageReceived");
         LinkedList<LineHandler> lineHandlers = chain.getHandlers(LineHandler.class);
         LinkedList<ProtocolHandlerResultHandler> resultHandlers = chain.getHandlers(ProtocolHandlerResultHandler.class);
 
@@ -163,6 +163,7 @@ public class BasicChannelUpstreamHandler extends SimpleChannelUpstreamHandler {
         }
         
         super.messageReceived(ctx, e);
+        pSession.getLogger().debug("End of messageReceived");
     }
 
 

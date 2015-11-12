@@ -154,6 +154,7 @@ public class MailCmdHandler extends AbstractHookableCmdHandler<MailHook> {
     private Response doMAILFilter(SMTPSession session, String argument) {
         String sender = null;
 
+        session.getLogger().debug("In doMAILFilter");
         if ((argument != null) && (argument.indexOf(":") > 0)) {
             int colonIndex = argument.indexOf(":");
             sender = argument.substring(colonIndex + 1);

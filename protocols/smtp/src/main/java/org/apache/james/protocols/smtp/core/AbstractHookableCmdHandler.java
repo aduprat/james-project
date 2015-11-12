@@ -52,6 +52,7 @@ public abstract class AbstractHookableCmdHandler<Hook extends org.apache.james.p
     public Response onCommand(SMTPSession session, Request request) {
         String command = request.getCommand();
         String parameters = request.getArgument();
+        session.getLogger().debug("In command: " + command);
         Response response = doFilterChecks(session, command, parameters);
 
         if (response == null) {

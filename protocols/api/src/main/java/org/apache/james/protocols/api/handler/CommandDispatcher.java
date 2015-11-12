@@ -151,7 +151,7 @@ public class CommandDispatcher<Session extends ProtocolSession> implements Exten
     public Response onLine(final Session session, ByteBuffer line) {
         
         try {
-            
+            session.getLogger().debug("Starting request parsing");
             Request request = parseRequest(session, line);
             if (request == null) {
                 return null;
