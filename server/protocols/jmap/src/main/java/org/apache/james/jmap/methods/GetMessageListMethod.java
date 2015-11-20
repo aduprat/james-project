@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 
+import org.apache.james.jmap.model.FilterCondition;
 import org.apache.james.jmap.model.GetMessageListRequest;
 import org.apache.james.jmap.model.GetMessageListResponse;
 import org.apache.james.mailbox.MailboxManager;
@@ -32,6 +33,7 @@ import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.SearchQuery;
+import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +49,12 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
     private static final Method.Name METHOD_NAME = Method.name("getMessageList");
 
     private final MailboxManager mailboxManager;
+    private final MailboxMapperFactory<Id> mailboxMapperFactory;
 
     @Inject
-    @VisibleForTesting public GetMessageListMethod(MailboxManager mailboxManager) {
+    @VisibleForTesting public GetMessageListMethod(MailboxManager mailboxManager, MailboxMapperFactory<Id> mailboxMapperFactory) {
         this.mailboxManager = mailboxManager;
+        this.mailboxMapperFactory = mailboxMapperFactory;
     }
 
     @Override
@@ -67,17 +71,18 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
     public GetMessageListResponse process(JmapRequest request, MailboxSession mailboxSession) {
         Preconditions.checkArgument(request instanceof GetMessageListRequest);
         try {
-            return getMessageListResponse(mailboxSession);
+            return getMessageListResponse((GetMessageListRequest) request, mailboxSession);
         } catch (MailboxException e) {
             throw Throwables.propagate(e);
         }
     }
 
-    private GetMessageListResponse getMessageListResponse(MailboxSession mailboxSession) throws MailboxException {
+    private GetMessageListResponse getMessageListResponse(GetMessageListRequest jmapRequest, MailboxSession mailboxSession) throws MailboxException {
         GetMessageListResponse.Builder builder = GetMessageListResponse.builder();
 
         mailboxManager.list(mailboxSession)
             .stream()
+            .filter(mailboxPath -> isMailboxRequested(jmapRequest, mailboxPath, mailboxSession))
             .map(mailboxPath -> getMailbox(mailboxPath, mailboxSession))
             .map(messageManager -> getMessageIds(messageManager.get(), mailboxSession))
             .flatMap(List::stream)
@@ -85,6 +90,37 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
             .forEach(builder::messageId);
 
         return builder.build();
+    }
+
+    private boolean isMailboxRequested(GetMessageListRequest jmapRequest, MailboxPath mailboxPath, MailboxSession mailboxSession) {
+        if (jmapRequest.getFilter().isPresent()) {
+            return jmapRequest.getFilter()
+                .filter(FilterCondition.class::isInstance)
+                .map(FilterCondition.class::cast)
+                .map(FilterCondition::getInMailboxes)
+                .filter(list -> isMailboxInList(mailboxPath, mailboxSession, list))
+                .isPresent();
+        }
+        return true;
+    }
+
+    private boolean isMailboxInList(MailboxPath mailboxPath, MailboxSession mailboxSession, List<String> inMailboxes) {
+        Optional<String> mailboxName = getMailboxName(mailboxPath, mailboxSession);
+        if (mailboxName.isPresent()) {
+            return inMailboxes.contains(mailboxName.get());
+        }
+        return true;
+    }
+
+    private Optional<String> getMailboxName(MailboxPath mailboxPath, MailboxSession mailboxSession) {
+        try {
+            return Optional.of(mailboxMapperFactory.getMailboxMapper(mailboxSession)
+                    .findMailboxByPath(mailboxPath)
+                    .getName());
+        } catch (MailboxException e) {
+            LOGGER.warn("Error retrieveing mailboxId :" + mailboxPath, e);
+            return Optional.empty();
+        }
     }
 
     private Optional<MessageManager> getMailbox(MailboxPath mailboxPath, MailboxSession mailboxSession) {

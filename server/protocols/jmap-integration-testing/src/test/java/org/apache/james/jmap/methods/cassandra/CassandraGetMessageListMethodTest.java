@@ -25,7 +25,7 @@ import org.apache.james.jmap.methods.GetMessageListMethodTest;
 import org.apache.james.mailbox.elasticsearch.EmbeddedElasticSearch;
 import org.junit.rules.TemporaryFolder;
 
-public class CassandraGetMessgeListMethodTest extends GetMessageListMethodTest {
+public class CassandraGetMessageListMethodTest extends GetMessageListMethodTest {
 
     @Override
     protected JmapServer jmapServer(TemporaryFolder temporaryFolder, EmbeddedElasticSearch embeddedElasticSearch) {

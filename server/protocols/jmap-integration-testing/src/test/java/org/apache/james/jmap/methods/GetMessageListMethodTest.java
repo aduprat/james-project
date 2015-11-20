@@ -97,7 +97,7 @@ public abstract class GetMessageListMethodTest {
 
     @Test
     public void getMessageListShouldReturnAllMessagesWhenSingleMailboxNoParameters() throws Exception {
-        String user = "user";
+        String user = "username";
         MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "name");
         jmapServer.createMailbox(user, mailboxPath);
 
@@ -122,7 +122,7 @@ public abstract class GetMessageListMethodTest {
     @Ignore("ISSUE-53")
     @Test
     public void getMessageListShouldReturnAllMessagesWhenMultipleMailboxesAndNoParameters() throws Exception {
-        String user = "user";
+        String user = "username";
         MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
         jmapServer.createMailbox(user, mailboxPath);
         jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -145,6 +145,76 @@ public abstract class GetMessageListMethodTest {
             .content(startsWith("[[\"getMessageList\","
                     + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
                     +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"1\",\"2\"]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldFilterMessagesWhenInMailboxesFilterMatches() throws Exception {
+        String user = "username";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"mailbox\"]}}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"1\"]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldFilterMessagesWhenMultipleInMailboxesFilterMatches() throws Exception {
+        String user = "username";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
+
+        MailboxPath mailboxPath2 = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox2");
+        jmapServer.createMailbox(user, mailboxPath2);
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"mailbox\",\"mailbox2\"]}}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"1\"]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldFilterMessagesWhenInMailboxesFilterDoesntMatches() throws Exception {
+        String user = "username";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"mailbox2\"]}}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[]},"
                     + "\"#0\"]]"));
     }
 }
