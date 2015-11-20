@@ -211,5 +211,6 @@ public class CassandraJmapServer implements JmapServer {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(username, LOGGER);
         MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
         messageManager.appendMessage(message, internalDate, mailboxSession, isRecent, flags);
+        embeddedElasticSearch.awaitForElasticSearch();
     }
 }
