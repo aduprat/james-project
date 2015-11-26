@@ -17,40 +17,39 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules;
+package org.apache.james.jmap.json;
 
-import java.io.FileNotFoundException;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import javax.inject.Singleton;
+import org.apache.james.jmap.model.Operator;
+import org.junit.Test;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.james.jmap.JMAPConfiguration;
-import org.apache.james.jmap.JMAPServer;
-import org.apache.james.jmap.methods.GetMessageListMethod;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.name.Names;
+public class OperatorSerializeDeserializeTest {
 
-public class TestJMAPServerModule extends AbstractModule{
-
-    private final int port;
-    private final int maximumLimit;
-
-    public TestJMAPServerModule(int port, int maximumLimit) {
-        this.port = port;
-        this.maximumLimit = maximumLimit;
+    @Test
+    public void deserializeKnownValue() throws Exception {
+        ObjectWithOperator operator = new ObjectMapper().readValue("{\"operator\":\"AND\"}", ObjectWithOperator.class);
+        assertThat(operator.operator).isEqualTo(Operator.AND);
     }
 
-    @Override
-    protected void configure() {
-        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
-        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(maximumLimit);
+    @Test(expected=InvalidFormatException.class)
+    public void deserializeUnknownValue() throws Exception {
+        new ObjectMapper().readValue("{\"operator\":\"UNKNOWN\"}", ObjectWithOperator.class);
     }
 
-    @Provides
-    @Singleton
-    JMAPConfiguration provideConfiguration() throws FileNotFoundException, ConfigurationException{
-        return new JMAPConfiguration("keystore", "james72laBalle");
+    @Test
+    public void serializeKnownValue() throws Exception {
+        ObjectWithOperator objectWithOperator = new ObjectWithOperator();
+        objectWithOperator.operator = Operator.AND;
+        String operator = new ObjectMapper().writeValueAsString(objectWithOperator);
+        assertThat(operator).isEqualTo("{\"operator\":\"AND\"}");
+    }
+
+    private static class ObjectWithOperator {
+
+        public Operator operator;
     }
 }

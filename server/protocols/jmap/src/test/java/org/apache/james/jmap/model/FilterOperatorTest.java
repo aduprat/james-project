@@ -17,40 +17,41 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules;
+package org.apache.james.jmap.model;
 
-import java.io.FileNotFoundException;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import javax.inject.Singleton;
+import org.junit.Test;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.james.jmap.JMAPConfiguration;
-import org.apache.james.jmap.JMAPServer;
-import org.apache.james.jmap.methods.GetMessageListMethod;
+import com.google.common.collect.ImmutableList;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.name.Names;
+public class FilterOperatorTest {
 
-public class TestJMAPServerModule extends AbstractModule{
-
-    private final int port;
-    private final int maximumLimit;
-
-    public TestJMAPServerModule(int port, int maximumLimit) {
-        this.port = port;
-        this.maximumLimit = maximumLimit;
+    @Test(expected=IllegalStateException.class)
+    public void builderShouldThrowWhenOperatorIsNotGiven() {
+        FilterOperator.builder().build();
     }
 
-    @Override
-    protected void configure() {
-        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
-        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(maximumLimit);
+    @Test(expected=NullPointerException.class)
+    public void builderShouldThrowWhenOperatorIsNull() {
+        FilterOperator.builder().operator(null);
     }
 
-    @Provides
-    @Singleton
-    JMAPConfiguration provideConfiguration() throws FileNotFoundException, ConfigurationException{
-        return new JMAPConfiguration("keystore", "james72laBalle");
+    @Test(expected=IllegalStateException.class)
+    public void builderShouldThrowWhenConditionsIsEmpty() {
+        FilterOperator.builder().operator(Operator.AND).build();
+    }
+
+    @Test
+    public void builderShouldWork() {
+        ImmutableList<Filter> conditions = ImmutableList.of(FilterCondition.builder().build());
+        FilterOperator expectedFilterOperator = new FilterOperator(Operator.AND, conditions);
+
+        FilterOperator filterOperator = FilterOperator.builder()
+            .operator(Operator.AND)
+            .conditions(conditions)
+            .build();
+
+        assertThat(filterOperator).isEqualToComparingFieldByField(expectedFilterOperator);
     }
 }

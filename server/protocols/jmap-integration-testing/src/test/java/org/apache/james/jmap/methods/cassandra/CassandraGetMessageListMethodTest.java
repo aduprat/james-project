@@ -17,40 +17,18 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules;
+package org.apache.james.jmap.methods.cassandra;
 
-import java.io.FileNotFoundException;
+import org.apache.james.jmap.JmapServer;
+import org.apache.james.jmap.cassandra.CassandraJmapServer;
+import org.apache.james.jmap.methods.GetMessageListMethodTest;
+import org.apache.james.mailbox.elasticsearch.EmbeddedElasticSearch;
+import org.junit.rules.TemporaryFolder;
 
-import javax.inject.Singleton;
-
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.james.jmap.JMAPConfiguration;
-import org.apache.james.jmap.JMAPServer;
-import org.apache.james.jmap.methods.GetMessageListMethod;
-
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.name.Names;
-
-public class TestJMAPServerModule extends AbstractModule{
-
-    private final int port;
-    private final int maximumLimit;
-
-    public TestJMAPServerModule(int port, int maximumLimit) {
-        this.port = port;
-        this.maximumLimit = maximumLimit;
-    }
+public class CassandraGetMessageListMethodTest extends GetMessageListMethodTest {
 
     @Override
-    protected void configure() {
-        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
-        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(maximumLimit);
-    }
-
-    @Provides
-    @Singleton
-    JMAPConfiguration provideConfiguration() throws FileNotFoundException, ConfigurationException{
-        return new JMAPConfiguration("keystore", "james72laBalle");
+    protected JmapServer jmapServer(TemporaryFolder temporaryFolder, EmbeddedElasticSearch embeddedElasticSearch) {
+        return new CassandraJmapServer(temporaryFolder, embeddedElasticSearch);
     }
 }

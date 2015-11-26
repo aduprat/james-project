@@ -20,6 +20,7 @@
 package org.apache.james.jmap;
 
 import org.apache.james.jmap.methods.GetMailboxesMethod;
+import org.apache.james.jmap.methods.GetMessageListMethod;
 import org.apache.james.jmap.methods.JmapRequestParser;
 import org.apache.james.jmap.methods.JmapRequestParserImpl;
 import org.apache.james.jmap.methods.JmapResponseWriter;
@@ -33,6 +34,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.name.Names;
 
 public class MethodsModule extends AbstractModule {
 
@@ -43,8 +45,11 @@ public class MethodsModule extends AbstractModule {
         bind(JmapRequestParser.class).to(JmapRequestParserImpl.class).in(Singleton.class);
         bind(JmapResponseWriter.class).to(JmapResponseWriterImpl.class).in(Singleton.class);
 
+        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(GetMessageListMethod.DEFAULT_MAXIMUM_LIMIT);
+
         Multibinder<Method> methods = Multibinder.newSetBinder(binder(), Method.class);
         methods.addBinding().to(new TypeLiteral<GetMailboxesMethod<CassandraId>>(){});
+        methods.addBinding().to(new TypeLiteral<GetMessageListMethod<CassandraId>>(){});
     }
 
 }

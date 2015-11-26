@@ -17,40 +17,20 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.modules;
+package org.apache.james.jmap.model;
 
-import java.io.FileNotFoundException;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import javax.inject.Singleton;
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.PROPERTY,
+        property = "filter",
+        defaultImpl = FilterCondition.class
+)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = FilterOperator.class, name = "operator")
+})
+public interface Filter {
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.james.jmap.JMAPConfiguration;
-import org.apache.james.jmap.JMAPServer;
-import org.apache.james.jmap.methods.GetMessageListMethod;
-
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.name.Names;
-
-public class TestJMAPServerModule extends AbstractModule{
-
-    private final int port;
-    private final int maximumLimit;
-
-    public TestJMAPServerModule(int port, int maximumLimit) {
-        this.port = port;
-        this.maximumLimit = maximumLimit;
-    }
-
-    @Override
-    protected void configure() {
-        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
-        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(maximumLimit);
-    }
-
-    @Provides
-    @Singleton
-    JMAPConfiguration provideConfiguration() throws FileNotFoundException, ConfigurationException{
-        return new JMAPConfiguration("keystore", "james72laBalle");
-    }
 }
