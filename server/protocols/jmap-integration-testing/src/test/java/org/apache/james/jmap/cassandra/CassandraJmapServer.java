@@ -19,13 +19,7 @@
 
 package org.apache.james.jmap.cassandra;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
 import static com.jayway.restassured.RestAssured.with;
-import static org.apache.james.user.cassandra.tables.CassandraUserTable.ALGORITHM;
-import static org.apache.james.user.cassandra.tables.CassandraUserTable.NAME;
-import static org.apache.james.user.cassandra.tables.CassandraUserTable.PASSWORD;
-import static org.apache.james.user.cassandra.tables.CassandraUserTable.REALNAME;
-import static org.apache.james.user.cassandra.tables.CassandraUserTable.TABLE_NAME;
 
 import java.io.InputStream;
 import java.util.Date;
@@ -38,6 +32,8 @@ import org.apache.james.CassandraJamesServer;
 import org.apache.james.CassandraJamesServerMain;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.jmap.JmapServer;
 import org.apache.james.jmap.api.access.AccessToken;
 import org.apache.james.mailbox.MailboxManager;
@@ -50,7 +46,9 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.modules.TestElasticSearchModule;
 import org.apache.james.modules.TestFilesystemModule;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.user.lib.model.DefaultUser;
+import org.apache.james.protocols.lib.PortUtil;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.Description;
@@ -58,7 +56,6 @@ import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Throwables;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
@@ -68,13 +65,17 @@ import com.jayway.restassured.http.ContentType;
 public class CassandraJmapServer implements JmapServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraJmapServer.class);
+    private static final int JMAP_PORT = PortUtil.getNonPrivilegedPort();
 
     private final TemporaryFolder temporaryFolder;
     private final EmbeddedElasticSearch embeddedElasticSearch;
 
     private CassandraJamesServer server;
     private CassandraCluster cassandra;
+
     private static MailboxManager mailboxManager;
+    private static DomainList domainList;
+    private static UsersRepository usersRepository;
 
     public CassandraJmapServer(TemporaryFolder temporaryFolder, EmbeddedElasticSearch embeddedElasticSearch) {
         this.temporaryFolder = temporaryFolder;
@@ -102,7 +103,7 @@ public class CassandraJmapServer implements JmapServer {
         server = new CassandraJamesServer(Modules.override(CassandraJamesServerMain.defaultModule)
                 .with(new TestElasticSearchModule(embeddedElasticSearch),
                         new TestFilesystemModule(temporaryFolder.newFolder()),
-                        new TestJMAPServerModule(),
+                        new TestJMAPServerModule(JMAP_PORT),
                         new AbstractModule() {
 
                     @Override
@@ -124,24 +125,26 @@ public class CassandraJmapServer implements JmapServer {
     private static class InjectedClassProxy implements ConfigurationPerformer {
 
         private MailboxManager injectedMailboxManager;
+        private DomainList injectedDomainList;
+        private UsersRepository injectedUsersRepository;
 
         @Inject
-        public InjectedClassProxy(MailboxManager mailboxManager) {
+        public InjectedClassProxy(MailboxManager mailboxManager, DomainList domainList, UsersRepository usersRepository) {
             this.injectedMailboxManager = mailboxManager;
+            this.injectedDomainList = domainList;
+            this.injectedUsersRepository = usersRepository;
         }
 
         @Override
         public void initModule() throws Exception {
             mailboxManager = injectedMailboxManager;
+            domainList = injectedDomainList;
+            usersRepository = injectedUsersRepository;
         }
     }
 
     private void after() {
-        try {
-            server.stop();
-        } catch (Exception e) {
-            Throwables.propagate(e);
-        }
+        server.stop();
     }
 
     @Override
@@ -151,20 +154,17 @@ public class CassandraJmapServer implements JmapServer {
 
     @Override
     public int getPort() {
-        return 1080;
+        return JMAP_PORT;
     }
 
     @Override
-    public void createJamesUser(String username, String password) {
-        DefaultUser user = new DefaultUser("username@domain.tld", "SHA1");
-        user.setPassword("password");
-        cassandra.getConf().execute(
-                insertInto(TABLE_NAME)
-                    .value(NAME, user.getUserName().toLowerCase())
-                    .value(REALNAME, user.getUserName())
-                    .value(PASSWORD, user.getHashedPassword())
-                    .value(ALGORITHM, user.getHashAlgorithm())
-                    .ifNotExists());
+    public void createJamesDomain(String domain) throws DomainListException {
+        domainList.addDomain(domain);
+    }
+
+    @Override
+    public void createJamesUser(String username, String password) throws UsersRepositoryException {
+        usersRepository.addUser(username, password);
     }
 
     @Override
@@ -175,7 +175,7 @@ public class CassandraJmapServer implements JmapServer {
             with()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .body("{\"token\": \"" + continuationToken + "\", \"method\": \"password\", \"password\": \"password\"}")
+                .body("{\"token\": \"" + continuationToken + "\", \"method\": \"password\", \"password\": \"" + password + "\"}")
             .post("/authentication")
                 .body()
                 .jsonPath()

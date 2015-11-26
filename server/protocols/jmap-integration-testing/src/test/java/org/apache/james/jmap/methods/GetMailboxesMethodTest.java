@@ -68,8 +68,10 @@ public abstract class GetMailboxesMethodTest {
         RestAssured.port = jmapServer.getPort();
         RestAssured.config = newConfig().encoderConfig(encoderConfig().defaultContentCharset(Charsets.UTF_8));
 
-        String username = "username@domain.tld";
+        String domain = "domain.tld";
+        String username = "username@" + domain;
         String password = "password";
+        jmapServer.createJamesDomain(domain);
         jmapServer.createJamesUser(username, password);
         accessToken = jmapServer.authenticateJamesUser(username, password);
     }

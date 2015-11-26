@@ -35,6 +35,7 @@ import org.apache.james.mailbox.elasticsearch.EmbeddedElasticSearch;
 import org.apache.james.modules.TestElasticSearchModule;
 import org.apache.james.modules.TestFilesystemModule;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.protocols.lib.PortUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,7 +58,7 @@ public class CassandraJamesServerTest {
     private static final int POP3_PORT = 1110;
     private static final int SMTP_PORT = 1025;
     private static final int LMTP_PORT = 1024;
-    private static final int JMAP_PORT = 1080;
+    private static final int JMAP_PORT = PortUtil.getNonPrivilegedPort();
     public static final int BUFFER_SIZE = 1000;
 
     private CassandraJamesServer server;
@@ -73,7 +74,7 @@ public class CassandraJamesServerTest {
         server = new CassandraJamesServer(Modules.override(CassandraJamesServerMain.defaultModule)
                 .with(new TestElasticSearchModule(embeddedElasticSearch),
                         new TestFilesystemModule(temporaryFolder.newFolder()),
-                        new TestJMAPServerModule(),
+                        new TestJMAPServerModule(JMAP_PORT),
                         new AbstractModule() {
                     
                     @Override

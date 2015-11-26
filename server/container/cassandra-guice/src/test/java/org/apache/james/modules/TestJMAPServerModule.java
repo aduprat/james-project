@@ -33,9 +33,15 @@ import com.google.inject.name.Names;
 
 public class TestJMAPServerModule extends AbstractModule{
 
+    private final int port;
+
+    public TestJMAPServerModule(int port) {
+        this.port = port;
+    }
+
     @Override
     protected void configure() {
-        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(1080);
+        bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
     }
 
     @Provides

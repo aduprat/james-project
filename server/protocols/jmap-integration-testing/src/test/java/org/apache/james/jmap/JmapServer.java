@@ -24,10 +24,12 @@ import java.util.Date;
 
 import javax.mail.Flags;
 
+import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.jmap.api.access.AccessToken;
 import org.apache.james.mailbox.exception.BadCredentialsException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.junit.rules.TestRule;
 
 public interface JmapServer extends TestRule {
@@ -36,11 +38,15 @@ public interface JmapServer extends TestRule {
 
     int getPort();
 
-    void createJamesUser(String username, String password);
+    void createJamesDomain(String domain) throws DomainListException;
+
+    void createJamesUser(String username, String password) throws UsersRepositoryException;
 
     AccessToken authenticateJamesUser(String username, String password);
 
     void createMailbox(String username, MailboxPath mailboxPath) throws BadCredentialsException, MailboxException;
 
     void appendMessage(String username, MailboxPath mailboxPath, InputStream message, Date internalDate, boolean isRecent, Flags flags) throws BadCredentialsException, MailboxException;
+
+
 }
