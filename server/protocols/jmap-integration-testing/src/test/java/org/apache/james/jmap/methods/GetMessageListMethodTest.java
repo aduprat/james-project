@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.startsWith;
 
 import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
 import java.util.Date;
 
 import javax.mail.Flags;
@@ -215,6 +216,78 @@ public abstract class GetMessageListMethodTest {
             .content(startsWith("[[\"getMessageList\","
                     + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
                     +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldSortMessagesWhenSortedByDateDefault() throws Exception {
+        String user = "user";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+        LocalDate date = LocalDate.now();
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(date.plusDays(1).toEpochDay()), false, new Flags());
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test2\r\n\r\ntestmail".getBytes()), new Date(date.toEpochDay()), false, new Flags());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"sort\":[\"date\"]}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"1\",\"2\"]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldSortMessagesWhenSortedByDateAsc() throws Exception {
+        String user = "user";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+        LocalDate date = LocalDate.now();
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(date.plusDays(1).toEpochDay()), false, new Flags());
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test2\r\n\r\ntestmail".getBytes()), new Date(date.toEpochDay()), false, new Flags());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"sort\":[\"date asc\"]}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"2\",\"1\"]},"
+                    + "\"#0\"]]"));
+    }
+
+    @Test
+    public void getMessageListShouldSortMessagesWhenSortedByDateDesc() throws Exception {
+        String user = "user";
+        MailboxPath mailboxPath = new MailboxPath(MailboxConstants.USER_NAMESPACE, user, "mailbox");
+        jmapServer.createMailbox(user, mailboxPath);
+        LocalDate date = LocalDate.now();
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(date.plusDays(1).toEpochDay()), false, new Flags());
+        jmapServer.appendMessage(user, mailboxPath, new ByteArrayInputStream("Subject: test2\r\n\r\ntestmail".getBytes()), new Date(date.toEpochDay()), false, new Flags());
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"sort\":[\"date desc\"]}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .content(startsWith("[[\"getMessageList\","
+                    + "{\"accountId\":null,\"filter\":null,\"sort\":[],\"collapseThreads\":false,\"state\":null,"
+                    +   "\"canCalculateUpdates\":false,\"position\":0,\"total\":0,\"threadIds\":[],\"messageIds\":[\"1\",\"2\"]},"
                     + "\"#0\"]]"));
     }
 }
