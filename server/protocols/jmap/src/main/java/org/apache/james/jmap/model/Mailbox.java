@@ -257,7 +257,7 @@ public class Mailbox {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (obj instanceof Mailbox) {
             Mailbox other = (Mailbox) obj;
             return Objects.equals(this.id, other.id)
@@ -281,7 +281,7 @@ public class Mailbox {
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return Objects.hash(id, name, parentId, role, sortOrder, mustBeOnlyMailbox, mayReadItems, mayAddItems, 
                 mayRemoveItems, mayCreateChild, mayRename, mayDelete, totalMessages, unreadMessages, totalThreads, unreadThreads);
     }
