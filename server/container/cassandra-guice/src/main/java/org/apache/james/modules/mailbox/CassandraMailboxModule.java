@@ -54,6 +54,7 @@ public class CassandraMailboxModule extends AbstractModule {
     protected void configure() {
         bind(new TypeLiteral<MessageMapperFactory<CassandraId>>(){}).to(CassandraMailboxSessionMapperFactory.class);
         bind(new TypeLiteral<MailboxMapperFactory<CassandraId>>(){}).to(CassandraMailboxSessionMapperFactory.class);
+        bind(new TypeLiteral<MailboxSessionMapperFactory<CassandraId>>(){}).to(CassandraMailboxSessionMapperFactory.class);
         bind(new TypeLiteral<ModSeqProvider<CassandraId>>(){}).to(new TypeLiteral<CassandraModSeqProvider>(){});
         bind(new TypeLiteral<UidProvider<CassandraId>>(){}).to(new TypeLiteral<CassandraUidProvider>(){});
 
