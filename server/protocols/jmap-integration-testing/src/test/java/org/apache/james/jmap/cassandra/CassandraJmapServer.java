@@ -64,6 +64,7 @@ import com.jayway.restassured.http.ContentType;
 
 public class CassandraJmapServer implements JmapServer {
 
+    private static final int LIMIT_TO_3_MESSAGES = 3;
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraJmapServer.class);
     private static final int JMAP_PORT = PortUtil.getNonPrivilegedPort();
 
@@ -103,7 +104,7 @@ public class CassandraJmapServer implements JmapServer {
         server = new CassandraJamesServer(Modules.override(CassandraJamesServerMain.defaultModule)
                 .with(new TestElasticSearchModule(embeddedElasticSearch),
                         new TestFilesystemModule(temporaryFolder.newFolder()),
-                        new TestJMAPServerModule(JMAP_PORT),
+                        new TestJMAPServerModule(JMAP_PORT, LIMIT_TO_3_MESSAGES),
                         new AbstractModule() {
 
                     @Override

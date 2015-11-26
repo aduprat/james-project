@@ -26,6 +26,7 @@ import javax.inject.Singleton;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.james.jmap.JMAPConfiguration;
 import org.apache.james.jmap.JMAPServer;
+import org.apache.james.jmap.methods.GetMessageListMethod;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -34,14 +35,17 @@ import com.google.inject.name.Names;
 public class TestJMAPServerModule extends AbstractModule{
 
     private final int port;
+    private final int maximumLimit;
 
-    public TestJMAPServerModule(int port) {
+    public TestJMAPServerModule(int port, int maximumLimit) {
         this.port = port;
+        this.maximumLimit = maximumLimit;
     }
 
     @Override
     protected void configure() {
         bindConstant().annotatedWith(Names.named(JMAPServer.DEFAULT_JMAP_PORT)).to(port);
+        bindConstant().annotatedWith(Names.named(GetMessageListMethod.MAXIMUM_LIMIT)).to(maximumLimit);
     }
 
     @Provides
