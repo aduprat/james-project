@@ -99,7 +99,7 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
 
         mailboxManager.list(mailboxSession)
             .stream()
-            .filter(mailboxPath -> isMailboxRequested(jmapRequest, mailboxPath, mailboxSession))
+            .filter(mailboxPath -> isMailboxRequested(jmapRequest, mailboxPath))
             .map(mailboxPath -> getMessages(mailboxPath, mailboxSession))
             .flatMap(List::stream)
             .sorted(comparatorFor(jmapRequest))
@@ -122,35 +122,20 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
         return SortToComparatorConvertor.comparatorFor(jmapRequest.getSort());
     }
 
-    private boolean isMailboxRequested(GetMessageListRequest jmapRequest, MailboxPath mailboxPath, MailboxSession mailboxSession) {
+    private boolean isMailboxRequested(GetMessageListRequest jmapRequest, MailboxPath mailboxPath) {
         if (jmapRequest.getFilter().isPresent()) {
             return jmapRequest.getFilter()
                 .filter(FilterCondition.class::isInstance)
                 .map(FilterCondition.class::cast)
                 .map(FilterCondition::getInMailboxes)
-                .filter(list -> isMailboxInList(mailboxPath, mailboxSession, list))
+                .filter(list -> isMailboxInList(mailboxPath, list))
                 .isPresent();
         }
         return true;
     }
 
-    private boolean isMailboxInList(MailboxPath mailboxPath, MailboxSession mailboxSession, List<String> inMailboxes) {
-        Optional<String> mailboxName = getMailboxName(mailboxPath, mailboxSession);
-        if (mailboxName.isPresent()) {
-            return inMailboxes.contains(mailboxName.get());
-        }
-        return true;
-    }
-
-    private Optional<String> getMailboxName(MailboxPath mailboxPath, MailboxSession mailboxSession) {
-        try {
-            return Optional.of(mailboxSessionMapperFactory.getMailboxMapper(mailboxSession)
-                    .findMailboxByPath(mailboxPath)
-                    .getName());
-        } catch (MailboxException e) {
-            LOGGER.warn("Error retrieveing mailboxId :" + mailboxPath, e);
-            return Optional.empty();
-        }
+    private boolean isMailboxInList(MailboxPath mailboxPath, List<String> inMailboxes) {
+        return inMailboxes.contains(mailboxPath.getName());
     }
 
     private Optional<MessageManager> getMessageManager(MailboxPath mailboxPath, MailboxSession mailboxSession) {
