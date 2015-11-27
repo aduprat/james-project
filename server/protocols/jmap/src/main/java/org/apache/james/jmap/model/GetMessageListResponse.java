@@ -95,6 +95,11 @@ public class GetMessageListResponse implements Method.Response {
             return this;
         }
 
+        public Builder messageId(long messageId) {
+            this.messageIds.add(String.valueOf(messageId));
+            return this;
+        }
+
         public Builder messageIds(List<String> messageIds) {
             this.messageIds.addAll(messageIds);
             return this;

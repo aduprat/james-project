@@ -44,15 +44,15 @@ public class GetMessageListRequest implements JmapRequest {
         private String accountId;
         private Filter filter;
         private ImmutableList.Builder<String> sort;
-        private boolean collapseThreads;
+        private Boolean collapseThreads;
         private int position;
         private String anchor;
         private Integer anchorOffset;
         private Integer limit;
-        private boolean fetchThreads;
-        private boolean fetchMessages;
+        private Boolean fetchThreads;
+        private Boolean fetchMessages;
         private ImmutableList.Builder<String> fetchMessageProperties;
-        private boolean fetchSearchSnippets;
+        private Boolean fetchSearchSnippets;
 
         private Builder() {
             sort = ImmutableList.builder();
@@ -115,9 +115,9 @@ public class GetMessageListRequest implements JmapRequest {
         public GetMessageListRequest build() {
             Preconditions.checkState(position >= 0, "'position' should be positive or null");
             checkLimit();
-            return new GetMessageListRequest(Optional.ofNullable(accountId), Optional.ofNullable(filter), sort.build(), collapseThreads, position,
-                    Optional.ofNullable(anchor), Optional.ofNullable(anchorOffset), Optional.ofNullable(limit), fetchThreads, fetchMessages,
-                    fetchMessageProperties.build(), fetchSearchSnippets);
+            return new GetMessageListRequest(Optional.ofNullable(accountId), Optional.ofNullable(filter), sort.build(), Optional.ofNullable(collapseThreads),
+                    position, Optional.ofNullable(anchor), Optional.ofNullable(anchorOffset), Optional.ofNullable(limit), Optional.ofNullable(fetchThreads),
+                    Optional.ofNullable(fetchMessages), fetchMessageProperties.build(), Optional.ofNullable(fetchSearchSnippets));
         }
 
         private void checkLimit() {
@@ -130,19 +130,19 @@ public class GetMessageListRequest implements JmapRequest {
     private final Optional<String> accountId;
     private final Optional<Filter> filter;
     private final List<String> sort;
-    private final boolean collapseThreads;
+    private final Optional<Boolean> collapseThreads;
     private final int position;
     private final Optional<String> anchor;
     private final Optional<Integer> anchorOffset;
     private final Optional<Integer> limit;
-    private final boolean fetchThreads;
-    private final boolean fetchMessages;
+    private final Optional<Boolean> fetchThreads;
+    private final Optional<Boolean> fetchMessages;
     private final List<String> fetchMessageProperties;
-    private final boolean fetchSearchSnippets;
+    private final Optional<Boolean> fetchSearchSnippets;
 
-    @VisibleForTesting GetMessageListRequest(Optional<String> accountId, Optional<Filter> filter, List<String> sort, boolean collapseThreads, int position,
-            Optional<String> anchor, Optional<Integer> anchorOffset, Optional<Integer> limit, boolean fetchThreads, boolean fetchMessages,
-            List<String> fetchMessageProperties, boolean fetchSearchSnippets) {
+    @VisibleForTesting GetMessageListRequest(Optional<String> accountId, Optional<Filter> filter, List<String> sort, Optional<Boolean> collapseThreads,
+            int position, Optional<String> anchor, Optional<Integer> anchorOffset, Optional<Integer> limit, Optional<Boolean> fetchThreads,
+            Optional<Boolean> fetchMessages, List<String> fetchMessageProperties, Optional<Boolean> fetchSearchSnippets) {
 
         this.accountId = accountId;
         this.filter = filter;
@@ -170,7 +170,7 @@ public class GetMessageListRequest implements JmapRequest {
         return sort;
     }
 
-    public boolean isCollapseThreads() {
+    public Optional<Boolean> isCollapseThreads() {
         return collapseThreads;
     }
 
@@ -190,11 +190,11 @@ public class GetMessageListRequest implements JmapRequest {
         return limit;
     }
 
-    public boolean isFetchThreads() {
+    public Optional<Boolean> isFetchThreads() {
         return fetchThreads;
     }
 
-    public boolean isFetchMessages() {
+    public Optional<Boolean> isFetchMessages() {
         return fetchMessages;
     }
 
@@ -202,7 +202,7 @@ public class GetMessageListRequest implements JmapRequest {
         return fetchMessageProperties;
     }
 
-    public boolean isFetchSearchSnippets() {
+    public Optional<Boolean> isFetchSearchSnippets() {
         return fetchSearchSnippets;
     }
 }

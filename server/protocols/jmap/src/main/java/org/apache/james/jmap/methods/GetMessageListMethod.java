@@ -106,7 +106,6 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
             .skip(jmapRequest.getPosition())
             .limit(limit(jmapRequest.getLimit()))
             .map(Message::getUid)
-            .map(String::valueOf)
             .forEach(builder::messageId);
 
         return builder.build();

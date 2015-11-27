@@ -83,8 +83,8 @@ public class GetMessageListRequestTest {
                 .build();
         List<String> sort = ImmutableList.of("date desc");
         List<String> fetchMessageProperties = ImmutableList.of("id", "blobId");
-        GetMessageListRequest expectedGetMessageListRequest = new GetMessageListRequest(Optional.empty(), Optional.of(filterCondition), sort, false, 1, Optional.empty(), Optional.empty(), Optional.of(2),
-                false, false, fetchMessageProperties, false);
+        GetMessageListRequest expectedGetMessageListRequest = new GetMessageListRequest(Optional.empty(), Optional.of(filterCondition), sort, Optional.empty(), 1, Optional.empty(), Optional.empty(), Optional.of(2),
+                Optional.empty(), Optional.empty(), fetchMessageProperties, Optional.empty());
 
         GetMessageListRequest getMessageListRequest = GetMessageListRequest.builder()
             .filter(filterCondition)
