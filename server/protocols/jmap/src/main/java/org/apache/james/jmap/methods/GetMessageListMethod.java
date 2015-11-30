@@ -113,10 +113,7 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
     }
 
     private long limit(Optional<Integer> limit) {
-        if (limit.isPresent()) {
-            return limit.get();
-        }
-        return maximumLimit;
+        return limit.orElse(maximumLimit);
     }
 
     private Comparator<Message<Id>> comparatorFor(GetMessageListRequest jmapRequest) {
