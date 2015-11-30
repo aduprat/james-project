@@ -71,7 +71,7 @@ public class FilterConditionTest {
 
     @Test(expected=NotImplementedException.class)
     public void builderShouldThrowWhenIsFlagged() {
-        FilterCondition.builder().isFlagger(false);
+        FilterCondition.builder().isFlagged(false);
     }
 
     @Test(expected=NotImplementedException.class)

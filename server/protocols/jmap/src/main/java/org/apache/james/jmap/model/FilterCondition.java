@@ -91,7 +91,7 @@ public class FilterCondition implements Filter {
             throw new NotImplementedException();
         }
 
-        public Builder isFlagger(boolean isFlagger) {
+        public Builder isFlagged(boolean isFlagger) {
             throw new NotImplementedException();
         }
 
