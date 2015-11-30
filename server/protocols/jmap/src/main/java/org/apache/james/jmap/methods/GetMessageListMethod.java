@@ -47,6 +47,7 @@ import org.apache.james.mailbox.store.mail.model.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
@@ -155,8 +156,7 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
             Optional<MessageManager> messageManager = getMessageManager(mailboxPath, mailboxSession);
             return ImmutableList.copyOf(messageManager.get().search(searchQuery, mailboxSession))
                     .stream()
-                    .map(messageId -> getMessage(mailboxPath, mailboxSession, messageMapper, messageId))
-                    .map(optional -> optional.get())
+                    .map(Throwing.function(messageId -> getMessage(mailboxPath, mailboxSession, messageMapper, messageId)))
                     .collect(Collectors.toList());
         } catch (MailboxException e) {
             LOGGER.warn("Error when searching messages for query :" + searchQuery, e);
@@ -164,7 +164,7 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
         }
     }
 
-    private Optional<Message<Id>> getMessage(MailboxPath mailboxPath, MailboxSession mailboxSession, MessageMapper<Id> messageMapper, long messageId) {
+    private Message<Id> getMessage(MailboxPath mailboxPath, MailboxSession mailboxSession, MessageMapper<Id> messageMapper, long messageId) throws MailboxException {
         try {
             return ImmutableList.copyOf(messageMapper.findInMailbox(
                         getMailbox(mailboxPath, mailboxSession).get(), 
@@ -172,10 +172,11 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
                         FetchType.Metadata,
                         NO_LIMIT))
                     .stream()
-                    .findFirst();
+                    .findFirst()
+                    .get();
         } catch (MailboxException e) {
             LOGGER.warn("Error retrieveing message :" + messageId, e);
-            return Optional.empty();
+            throw e;
         }
     }
 
