@@ -27,10 +27,11 @@ import java.util.function.Function;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.mailbox.store.mail.model.Message;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
-public class SortToComparatorConvertor<Id extends MailboxId> {
+public class SortToComparatorConvertor {
 
     private static final String SEPARATOR = " ";
     private static final String DESC_ORDERING = "desc";
@@ -43,39 +44,33 @@ public class SortToComparatorConvertor<Id extends MailboxId> {
             "date", Message::getInternalDate,
             "id", Message::getUid);
 
-    public static <Id extends MailboxId> Comparator<Message<Id>> comparatorFor(List<String> sort) {
-        ComparatorBuilder<Message<Id>> comparator = new ComparatorBuilder<Message<Id>>();
-        sort.stream()
-            .forEach(field -> comparatorForField(field, comparator));
-        return comparator.getComparator();
+    public static <M extends Message<Id>, Id extends MailboxId> Comparator<M> comparatorFor(List<String> sort) {
+        return sort.stream()
+            .map(SortToComparatorConvertor::<M, Id> comparatorForField)
+            .reduce(new EmptyComparator<M>(), (x, y) -> x.thenComparing(y));
     }
 
     @SuppressWarnings("unchecked")
-    private static <Id extends MailboxId> void comparatorForField(String field, ComparatorBuilder<Message<Id>> comparator) {
+    private static <M extends Message<Id>, Id extends MailboxId> Comparator<M> comparatorForField(String field) {
         List<String> splitToList = Splitter.on(SEPARATOR).splitToList(field);
-        Comparator<Message<Id>> fieldComparator = Comparator.comparing(fieldsMessageFunctionMap.get(splitToList.get(0)));
+        checkField(splitToList);
+        Comparator<M> fieldComparator = Comparator.comparing(functionForField(splitToList.get(0)));
         if (splitToList.size() == 1 || splitToList.get(1).equals(DESC_ORDERING)) {
-            comparator.thenComparing(fieldComparator.reversed());
-        } else {
-            comparator.thenComparing(fieldComparator);
+            return fieldComparator.reversed();
         }
+        return fieldComparator;
     }
 
-    private static class ComparatorBuilder<Type> {
-
-        private Comparator<Type> comparator;
-
-        public ComparatorBuilder() {
-            comparator = new EmptyComparator<Type>();
+    @SuppressWarnings("rawtypes")
+    private static Function<Message<?>, Comparable> functionForField(String field) {
+        if (!fieldsMessageFunctionMap.containsKey(field)) {
+            throw new IllegalArgumentException("Unknown sorting field");
         }
+        return fieldsMessageFunctionMap.get(field);
+    }
 
-        public void thenComparing(Comparator<Type> otherComparator) {
-            comparator = comparator.thenComparing(otherComparator);
-        }
-
-        public Comparator<Type> getComparator() {
-            return comparator;
-        }
+    private static void checkField(List<String> splitToList) {
+        Preconditions.checkArgument(splitToList.size() >= 1 && splitToList.size() <= 2, "Bad sort field definition");
     }
 
     private static class EmptyComparator<Type> implements Comparator<Type> {

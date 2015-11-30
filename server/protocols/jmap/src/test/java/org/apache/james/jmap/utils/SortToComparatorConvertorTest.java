@@ -40,9 +40,9 @@ import com.google.common.collect.Lists;
 
 public class SortToComparatorConvertorTest {
 
-    private List<Message<TestId>> messages;
-    private Message<TestId> firstMessage;
-    private Message<TestId> secondMessage;
+    private List<SimpleMessage<TestId>> messages;
+    private SimpleMessage<TestId> firstMessage;
+    private SimpleMessage<TestId> secondMessage;
 
     @Before
     @SuppressWarnings("unchecked")
@@ -52,13 +52,13 @@ public class SortToComparatorConvertorTest {
         firstMessage.setUid(1);
         secondMessage = new SimpleMessage<TestId>(new Date(date.plusDays(1).toEpochDay()), 0, 0, null, new Flags(), new PropertyBuilder(), null);
         secondMessage.setUid(2);
-        messages = Lists.<Message<TestId>> newArrayList(firstMessage, secondMessage);
+        messages = Lists.newArrayList(firstMessage, secondMessage);
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void comparatorForShouldBeInitialOrderWhenEmptyList() {
-        Comparator<Message<TestId>> comparator = SortToComparatorConvertor.comparatorFor(ImmutableList.of());
+        Comparator<SimpleMessage<TestId>> comparator = SortToComparatorConvertor.comparatorFor(ImmutableList.of());
         messages.sort(comparator);
         assertThat(messages).containsExactly(firstMessage, secondMessage);
     }
@@ -97,5 +97,20 @@ public class SortToComparatorConvertorTest {
         Comparator<Message<TestId>> comparator = SortToComparatorConvertor.comparatorFor(ImmutableList.of("date asc", "id desc"));
         messages.sort(comparator);
         assertThat(messages).containsExactly(firstMessage, thirdMessage, secondMessage);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void comparatorForShouldThrowWhenBadFieldFormat() {
+        SortToComparatorConvertor.comparatorFor(ImmutableList.of("this is a bad field"));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void comparatorForShouldThrowWhenEmptyField() {
+        SortToComparatorConvertor.comparatorFor(ImmutableList.of(" "));
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void comparatorForShouldThrowWhenUnknownField() {
+        SortToComparatorConvertor.comparatorFor(ImmutableList.of("unknown"));
     }
 }
