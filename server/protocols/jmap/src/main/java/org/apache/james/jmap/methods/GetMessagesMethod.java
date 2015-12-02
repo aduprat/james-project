@@ -89,13 +89,13 @@ public class GetMessagesMethod<Id extends MailboxId> implements Method {
         Function<Pair<org.apache.james.mailbox.store.mail.model.Message<Id>, MailboxPath>, Message> convertToJmapMessage = toJmapMessage(mailboxSession);
         Function<Message, Message> filterFields = new JmapMessageFactory(getMessagesRequest);
         
-        List<Message> result = getMessagesRequest.getMessageIds().stream()
+        List<Message> result = getMessagesRequest.getIds().stream()
             .flatMap(loadMessages)
             .map(convertToJmapMessage)
 //            .map(filterFields)
             .collect(Collectors.toList());
 
-        return GetMessagesResponse.builder().messages(result).expectedMessageIds(getMessagesRequest.getMessageIds()).build();
+        return GetMessagesResponse.builder().messages(result).expectedMessageIds(getMessagesRequest.getIds()).build();
     }
 
     private static void notImplemented(String input) {

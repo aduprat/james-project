@@ -29,7 +29,7 @@ public class GetMessagesRequestTest {
 
     @Test
     public void shouldAllowOptionalAccountId() {
-        GetMessagesRequest result = GetMessagesRequest.builder().messages(MessageId.of("user-inbox-1")).properties(Property.id).build();
+        GetMessagesRequest result = GetMessagesRequest.builder().ids(MessageId.of("user-inbox-1")).properties(Property.id).build();
         assertThat(result).isNotNull();
         assertThat(result.getAccountId()).isEmpty();
     }
@@ -41,21 +41,21 @@ public class GetMessagesRequestTest {
 
     @Test
     public void shouldAllowEmptyMessagesList() {
-        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").messages().properties(Property.id).build();
+        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").ids().properties(Property.id).build();
         assertThat(result).isNotNull();
-        assertThat(result.getMessageIds()).isEmpty();
+        assertThat(result.getIds()).isEmpty();
     }
 
     @Test
     public void shouldAllowAbsentPropertyList() {
-        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").messages().build();
+        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").ids().build();
         assertThat(result).isNotNull();
         assertThat(result.getProperties()).isEmpty();
     }
 
     @Test
     public void shouldAllowEmptyPropertyList() {
-        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").messages().properties(new Property[0]).build();
+        GetMessagesRequest result = GetMessagesRequest.builder().accountId("accountId").ids().properties(new Property[0]).build();
         assertThat(result).isNotNull();
         assertThat(result.getProperties()).contains(ImmutableList.of());
     }

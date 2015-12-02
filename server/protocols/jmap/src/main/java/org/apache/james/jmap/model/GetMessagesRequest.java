@@ -38,12 +38,12 @@ public class GetMessagesRequest implements JmapRequest {
     public static class Builder {
         
         private Optional<String> accountId;
-        private ImmutableList.Builder<MessageId> messages;
+        private ImmutableList.Builder<MessageId> ids;
         private Optional<ImmutableList<Property>> properties;
 
         private Builder() {
             accountId = Optional.empty();
-            messages = ImmutableList.builder();
+            ids = ImmutableList.builder();
             properties = Optional.empty();
         }
         
@@ -52,8 +52,8 @@ public class GetMessagesRequest implements JmapRequest {
             return this;
         }
 
-        public Builder messages(MessageId... messages) {
-            this.messages.addAll(Arrays.asList(messages));
+        public Builder ids(MessageId... ids) {
+            this.ids.addAll(Arrays.asList(ids));
             return this;
         }
 
@@ -63,17 +63,17 @@ public class GetMessagesRequest implements JmapRequest {
         }
         
         public GetMessagesRequest build() {
-            return new GetMessagesRequest(accountId, messages.build(), properties);
+            return new GetMessagesRequest(accountId, ids.build(), properties);
         }
     }
 
     private final Optional<String> accountId;
-    private final ImmutableList<MessageId> messages;
+    private final ImmutableList<MessageId> ids;
     private final Optional<ImmutableList<Property>> properties;
 
-    public GetMessagesRequest(Optional<String> accountId, ImmutableList<MessageId> messages, Optional<ImmutableList<Property>> properties) {
+    public GetMessagesRequest(Optional<String> accountId, ImmutableList<MessageId> ids, Optional<ImmutableList<Property>> properties) {
         this.accountId = accountId;
-        this.messages = messages;
+        this.ids = ids;
         this.properties = properties;
     }
     
@@ -81,8 +81,8 @@ public class GetMessagesRequest implements JmapRequest {
         return accountId;
     }
     
-    public ImmutableList<MessageId> getMessageIds() {
-        return messages;
+    public ImmutableList<MessageId> getIds() {
+        return ids;
     }
     
     public Optional<ImmutableList<Property>> getProperties() {

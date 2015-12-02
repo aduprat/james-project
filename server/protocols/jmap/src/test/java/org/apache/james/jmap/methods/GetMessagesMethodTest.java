@@ -141,7 +141,7 @@ public class GetMessagesMethodTest {
         long message3Uid = inbox.appendMessage(message3Content, now, session, false, null);
         
         GetMessagesRequest request = GetMessagesRequest.builder()
-                .messages(new MessageId(ROBERT, inboxPath, message1Uid),
+                .ids(new MessageId(ROBERT, inboxPath, message1Uid),
                           new MessageId(ROBERT, inboxPath, message2Uid),
                           new MessageId(ROBERT, inboxPath, message3Uid))
                 .build();
@@ -165,7 +165,7 @@ public class GetMessagesMethodTest {
         long message1Uid = inbox.appendMessage(message1Content, now, session, false, null);
         
         GetMessagesRequest request = GetMessagesRequest.builder()
-                .messages(new MessageId(ROBERT, inboxPath, message1Uid))
+                .ids(new MessageId(ROBERT, inboxPath, message1Uid))
                 .properties(new Property[0])
                 .build();
 
@@ -185,7 +185,7 @@ public class GetMessagesMethodTest {
         long message1Uid = inbox.appendMessage(message1Content, now, session, false, null);
         
         GetMessagesRequest request = GetMessagesRequest.builder()
-                .messages(new MessageId(ROBERT, inboxPath, message1Uid))
+                .ids(new MessageId(ROBERT, inboxPath, message1Uid))
                 .properties(Property.subject)
                 .build();
 
@@ -205,7 +205,7 @@ public class GetMessagesMethodTest {
         long message1Uid = inbox.appendMessage(message1Content, now, session, false, null);
         
         GetMessagesRequest request = GetMessagesRequest.builder()
-                .messages(new MessageId(ROBERT, inboxPath, message1Uid))
+                .ids(new MessageId(ROBERT, inboxPath, message1Uid))
                 .build();
 
         GetMessagesMethod<InMemoryId> testee = new GetMessagesMethod<>(mailboxSessionMapperFactory, mailboxSessionMapperFactory);
