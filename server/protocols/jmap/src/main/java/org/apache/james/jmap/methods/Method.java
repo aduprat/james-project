@@ -108,8 +108,8 @@ public interface Method {
         
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof RequestName) {
-                RequestName other = (RequestName) obj;
+            if (obj instanceof ResponseName) {
+                ResponseName other = (ResponseName) obj;
                 return Objects.equals(name, other.name);
             }
             return false;
