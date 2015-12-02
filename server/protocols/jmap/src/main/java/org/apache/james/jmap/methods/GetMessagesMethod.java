@@ -141,7 +141,7 @@ public class GetMessagesMethod<Id extends MailboxId> implements Method {
         
         public ImmutableMap<Property, ThrowingBiFunction<Message, Message.Builder, Message.Builder>> fieldCopiers = 
                 ImmutableMap.of(
-                        Property.id, (message, builder) -> builder.id(message.getMessageId()),
+                        Property.id, (message, builder) -> builder.id(message.getId()),
                         Property.subject, (message, builder) -> builder.subject(message.getSubject())
                         );
         

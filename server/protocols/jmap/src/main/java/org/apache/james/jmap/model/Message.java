@@ -384,7 +384,7 @@ public class Message {
         this.attachedMessages = attachedMessages;
     }
 
-    public MessageId getMessageId() {
+    public MessageId getId() {
         return id;
     }
 

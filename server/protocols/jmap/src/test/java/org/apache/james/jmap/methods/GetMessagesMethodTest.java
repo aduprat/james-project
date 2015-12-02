@@ -150,7 +150,7 @@ public class GetMessagesMethodTest {
         GetMessagesResponse result = testee.process(request, session);
         
         assertThat(result.list())
-            .extracting(message -> message.getMessageId().getUid(), Message::getSubject)
+            .extracting(message -> message.getId().getUid(), Message::getSubject)
             .containsOnly(
                     Tuple.tuple(message1Uid, "message 1 subject"), 
                     Tuple.tuple(message2Uid, "message 2 subject"),
@@ -173,7 +173,7 @@ public class GetMessagesMethodTest {
         GetMessagesResponse result = testee.process(request, session);
         
         assertThat(result.list())
-            .extracting(message -> message.getMessageId().getUid(), Message::getSubject)
+            .extracting(message -> message.getId().getUid(), Message::getSubject)
             .containsOnly(Tuple.tuple(message1Uid, "message 1 subject")); 
     }
 
@@ -193,7 +193,7 @@ public class GetMessagesMethodTest {
         GetMessagesResponse result = testee.process(request, session);
         
         assertThat(result.list())
-            .extracting(message -> message.getMessageId().getUid(), Message::getSubject)
+            .extracting(message -> message.getId().getUid(), Message::getSubject)
             .containsOnly(Tuple.tuple(message1Uid, "message 1 subject")); 
     }
     
@@ -212,7 +212,7 @@ public class GetMessagesMethodTest {
         GetMessagesResponse result = testee.process(request, session);
         
         assertThat(result.list())
-            .extracting(message -> message.getMessageId().getUid(), Message::getSubject)
+            .extracting(message -> message.getId().getUid(), Message::getSubject)
             .containsOnly(Tuple.tuple(message1Uid, "message 1 subject")); 
     }
 

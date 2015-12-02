@@ -63,7 +63,7 @@ public class GetMessagesResponse implements Method.Response {
         
 
         private List<MessageId> messagesNotFound() {
-            Set<MessageId> foundMessageIds = messages.stream().map(Message::getMessageId).collect(Collectors.toSet());
+            Set<MessageId> foundMessageIds = messages.stream().map(Message::getId).collect(Collectors.toSet());
             return ImmutableList.copyOf(expectedMessageIds.stream()
                 .filter(id -> !foundMessageIds.contains(id))
                 .collect(Collectors.toList()));
