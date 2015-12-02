@@ -182,6 +182,10 @@ public class AuthenticationServlet extends HttpServlet {
             .builder()
             .accessToken(accessTokenManager.grantAccessToken(username))
             // TODO Send API endpoints
+            .api("/jmap")
+            .eventSource("/jmap")
+            .upload("/jmap")
+            .download("/jmap")
             .build();
         mapper.writeValue(resp.getOutputStream(), response);
     }
