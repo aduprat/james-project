@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -30,6 +31,7 @@ import javax.inject.Named;
 import org.apache.james.jmap.model.FilterCondition;
 import org.apache.james.jmap.model.GetMessageListRequest;
 import org.apache.james.jmap.model.GetMessageListResponse;
+import org.apache.james.jmap.model.MessageId;
 import org.apache.james.jmap.utils.SortToComparatorConvertor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
@@ -101,18 +103,21 @@ public class GetMessageListMethod<Id extends MailboxId> implements Method {
         mailboxManager.list(mailboxSession)
             .stream()
             .filter(mailboxPath -> isMailboxRequested(jmapRequest, mailboxPath))
-            .map(mailboxPath -> getMessages(mailboxPath, mailboxSession))
-            .flatMap(List::stream)
-            .sorted(comparatorFor(jmapRequest))
+            .flatMap(mailboxPath -> listMessages(mailboxPath, mailboxSession, jmapRequest))
             .skip(jmapRequest.getPosition())
             .limit(limit(jmapRequest.getLimit()))
-            .map(Message::getUid)
-            .map(String::valueOf)
+            .map(MessageId::serialize)
             .forEach(builder::messageId);
 
         return builder.build();
     }
 
+    private Stream<MessageId> listMessages(MailboxPath mailboxPath, MailboxSession mailboxSession, GetMessageListRequest jmapRequest) {
+        return getMessages(mailboxPath, mailboxSession).stream()
+                .sorted(comparatorFor(jmapRequest))
+                .map(message -> new MessageId(mailboxSession.getUser(), mailboxPath, message.getUid()));
+    }
+    
     private long limit(Optional<Integer> limit) {
         return limit.orElse(maximumLimit);
     }
