@@ -18,7 +18,7 @@
  ****************************************************************/
 package org.apache.james.protocols.pop3;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,7 +35,7 @@ import org.apache.james.protocols.api.Protocol;
 import org.apache.james.protocols.api.ProtocolServer;
 import org.apache.james.protocols.api.handler.WiringException;
 import org.apache.james.protocols.api.utils.MockLogger;
-import org.apache.james.protocols.api.utils.TestUtils;
+import org.apache.james.protocols.api.utils.PortUtil;
 import org.apache.james.protocols.pop3.core.AbstractApopCmdHandler;
 import org.apache.james.protocols.pop3.core.AbstractPassCmdHandler;
 import org.apache.james.protocols.pop3.mailbox.Mailbox;
@@ -61,7 +61,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testInvalidAuth() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -84,7 +84,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testEmptyInbox() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -116,7 +116,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testInboxWithMessages() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -173,7 +173,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testRetr() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -216,7 +216,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testTop() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -262,7 +262,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testDele() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -315,7 +315,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testNoop() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -343,7 +343,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testRset() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -378,7 +378,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testStat() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -407,7 +407,7 @@ public abstract class AbstractPOP3ServerTest {
     }
     @Test
     public void testDifferentStates() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -458,7 +458,7 @@ public abstract class AbstractPOP3ServerTest {
     
     @Test
     public void testAPop() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {

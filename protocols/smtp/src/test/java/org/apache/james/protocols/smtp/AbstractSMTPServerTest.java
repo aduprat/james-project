@@ -18,6 +18,10 @@
  ****************************************************************/
 package org.apache.james.protocols.smtp;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +43,7 @@ import org.apache.james.protocols.api.handler.DisconnectHandler;
 import org.apache.james.protocols.api.handler.ProtocolHandler;
 import org.apache.james.protocols.api.handler.WiringException;
 import org.apache.james.protocols.api.utils.MockLogger;
-import org.apache.james.protocols.api.utils.TestUtils;
+import org.apache.james.protocols.api.utils.PortUtil;
 import org.apache.james.protocols.smtp.hook.HeloHook;
 import org.apache.james.protocols.smtp.hook.HookResult;
 import org.apache.james.protocols.smtp.hook.HookReturnCode;
@@ -48,7 +52,6 @@ import org.apache.james.protocols.smtp.hook.MessageHook;
 import org.apache.james.protocols.smtp.hook.RcptHook;
 import org.apache.james.protocols.smtp.utils.TestMessageHook;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 public abstract class AbstractSMTPServerTest {
     
@@ -61,7 +64,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testSimpleDelivery() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -109,7 +112,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testStartTlsNotSupported() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -142,7 +145,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testUnknownCommand() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -175,7 +178,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testNoop() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -209,7 +212,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testMailWithoutBrackets() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
 
         
         ProtocolServer server = null;
@@ -252,7 +255,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testInvalidHelo() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -286,7 +289,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testRcptWithoutBrackets() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -328,7 +331,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testInvalidNoBracketsEnformance() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -371,7 +374,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testHeloEnforcement() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -406,7 +409,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testHeloEnforcementDisabled() throws Exception {
         TestMessageHook hook = new TestMessageHook();
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -459,7 +462,7 @@ public abstract class AbstractSMTPServerTest {
             }
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -508,7 +511,7 @@ public abstract class AbstractSMTPServerTest {
             }
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -556,7 +559,7 @@ public abstract class AbstractSMTPServerTest {
             }
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -607,7 +610,7 @@ public abstract class AbstractSMTPServerTest {
             }
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -664,7 +667,7 @@ public abstract class AbstractSMTPServerTest {
 
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -729,7 +732,7 @@ public abstract class AbstractSMTPServerTest {
 
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -771,7 +774,7 @@ public abstract class AbstractSMTPServerTest {
     @Test
     public void testNullSender() throws Exception {
 
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -828,7 +831,7 @@ public abstract class AbstractSMTPServerTest {
 
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -892,7 +895,7 @@ public abstract class AbstractSMTPServerTest {
 
         };
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -954,7 +957,7 @@ public abstract class AbstractSMTPServerTest {
         };
         
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -998,7 +1001,7 @@ public abstract class AbstractSMTPServerTest {
         };
         
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {
@@ -1042,7 +1045,7 @@ public abstract class AbstractSMTPServerTest {
         };
         
         
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         ProtocolServer server = null;
         try {

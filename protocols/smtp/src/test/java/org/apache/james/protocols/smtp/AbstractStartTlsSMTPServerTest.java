@@ -45,7 +45,7 @@ import org.apache.james.protocols.api.utils.BogusSSLSocketFactory;
 import org.apache.james.protocols.api.utils.BogusSslContextFactory;
 import org.apache.james.protocols.api.utils.BogusTrustManagerFactory;
 import org.apache.james.protocols.api.utils.MockLogger;
-import org.apache.james.protocols.api.utils.TestUtils;
+import org.apache.james.protocols.api.utils.PortUtil;
 import org.apache.james.protocols.smtp.utils.TestMessageHook;
 import org.junit.Test;
 
@@ -70,7 +70,7 @@ public abstract class AbstractStartTlsSMTPServerTest {
 
     @Test
     public void testStartTLS() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;
@@ -115,7 +115,7 @@ public abstract class AbstractStartTlsSMTPServerTest {
     
     @Test
     public void testStartTLSWithJavamail() throws Exception {
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", TestUtils.getFreePort());
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", PortUtil.getNonPrivilegedPort());
         
         
         ProtocolServer server = null;

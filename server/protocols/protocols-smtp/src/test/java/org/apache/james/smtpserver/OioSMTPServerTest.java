@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.james.smtpserver;
 
+import org.apache.james.protocols.lib.PortUtil;
 import org.apache.james.smtpserver.netty.OioSMTPServer;
 import org.apache.james.smtpserver.netty.SMTPServer;
 
@@ -26,5 +27,13 @@ public class OioSMTPServerTest extends SMTPServerTest {
     @Override
     protected SMTPServer createSMTPServer() {
         return new OioSMTPServer();
+    }
+    
+    private static class RandomPortOioSMTPServer extends OioSMTPServer {
+
+        @Override
+        protected int getDefaultPort() {
+            return PortUtil.getNonPrivilegedPort();
+        }
     }
 }
