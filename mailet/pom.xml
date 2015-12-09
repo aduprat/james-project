@@ -38,7 +38,7 @@
     <inceptionYear>2008</inceptionYear>
 
     <properties>
-        <target.jdk>1.6</target.jdk>
+        <target.jdk>1.8</target.jdk>
         <!-- Override the source descriptor -->
         <sourceReleaseAssemblyDescriptor>project</sourceReleaseAssemblyDescriptor>
         <plugin.mailetdocs.version>0.1</plugin.mailetdocs.version>

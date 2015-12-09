@@ -90,7 +90,7 @@
         <james.mpt.www>${james.www}/mpt/</james.mpt.www>
         <!-- Overridding this value allows single set of loopback settings to be maintained -->
         <james.www.id>mpt-website</james.www.id>
-        <target.jdk>1.5</target.jdk>
+        <target.jdk>1.8</target.jdk>
 
         <commons-io.version>2.4</commons-io.version>
         <commons-lang.version>2.6</commons-lang.version>
@@ -446,8 +446,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>${target.jdk}</source>
+                    <target>${target.jdk}</target>
                 </configuration>
             </plugin>
         </plugins>

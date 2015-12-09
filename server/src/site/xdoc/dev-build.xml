@@ -65,7 +65,7 @@
 
     <p>To run the build you need two third-party tools.</p>
     <ol>
-      <li>Java Development Kit - You must have a JDK of Java version 1.6 or higher installed to build the
+      <li>Java Development Kit - You must have a JDK of Java version 1.8 or higher installed to build the
           James distribution.  The exact JDKs available depend on the platform.  A JDK must be downloaded and
           installed before the build can run.</li>
       <li>Maven 3.0.2 - This is a Java-tailored, XML-configured, extensible build or make system. You need maven (3.0.2+) in order

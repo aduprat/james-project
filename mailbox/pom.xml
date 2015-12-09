@@ -89,7 +89,7 @@
         <javax.activation.artifactId>activation</javax.activation.artifactId>
         <javax.mail.groupId>javax.mail</javax.mail.groupId>
         <javax.mail.artifactId>mail</javax.mail.artifactId>
-        <openjpa.version>2.2.1</openjpa.version>
+        <openjpa.version>2.4.0</openjpa.version>
         <javax.persistence.version>1.0.2</javax.persistence.version>
         <javax.inject.version>1</javax.inject.version>
         <apache-mime4j.version>0.8.0-SNAPSHOT</apache-mime4j.version>
@@ -610,27 +610,6 @@
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
                 <extensions>true</extensions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>animal-sniffer-maven-plugin</artifactId>
-                <version>1.14</version>
-                <configuration>
-                    <signature>
-                        <groupId>org.codehaus.mojo.signature</groupId>
-                        <artifactId>java16</artifactId>
-                        <version>1.0</version>
-                    </signature>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>check_java_6</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

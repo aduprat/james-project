@@ -36,6 +36,9 @@
 
    <subsection name='2015'>
 
+     <a name="20151209"><h4>Dec 2015 - Java 8</h4></a>
+     <p>Java 1.8 mandatory</p>
+
      <a name="20151026"><h4>Oct 2015 - Guice injection for Cassandra backend</h4></a>
      <p>Guice injection is now available in a new <a href="https://github.com/apache/james-project/tree/trunk/server/container/cassandra-guice/">Java project</a>. Feel free to try it!</p>
 
