@@ -36,7 +36,6 @@ import com.google.common.base.Throwables;
 
 public final class CassandraCluster {
     private static final String CLUSTER_IP = "localhost";
-    private static final int CLUSTER_PORT_TEST = 9142;
     private static final String KEYSPACE_NAME = "apache_james";
     private static final int REPLICATION_FACTOR = 1;
 
@@ -54,7 +53,7 @@ public final class CassandraCluster {
     private CassandraCluster(CassandraModule module) throws RuntimeException {
         this.module = module;
         try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra(20000L);
+            EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, 20000L);
 
             session = new FunctionRunnerWithRetry(MAX_RETRY)
                 .executeAndRetrieveObject(CassandraCluster.this::tryInitializeSession);
@@ -88,7 +87,7 @@ public final class CassandraCluster {
     }
 
     public Cluster getCluster() {
-        return ClusterFactory.createTestingCluster(CLUSTER_IP, CLUSTER_PORT_TEST);
+        return ClusterFactory.createTestingCluster(CLUSTER_IP, EmbeddedCassandraServerHelper.getRpcPort());
     }
 
     private void sleep(long sleepMs) {
