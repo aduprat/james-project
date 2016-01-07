@@ -33,9 +33,10 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.common.base.Throwables;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxException;
+
+import com.google.common.base.Throwables;
 
 public class AuthenticationFilter implements Filter {
 
@@ -65,6 +66,11 @@ public class AuthenticationFilter implements Filter {
 //                        h -> m.createMailboxSession(authHeader)))
 
         boolean isAuthorized = false;
+        if ("OPTIONS".equals(httpRequest.getMethod())) {
+            httpResponse.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
+
         for (AuthenticationStrategy<Optional<String>> authMethod: authMethods) {
             if (authMethod.checkAuthorizationHeader(authHeader)) {
                 isAuthorized = true;
