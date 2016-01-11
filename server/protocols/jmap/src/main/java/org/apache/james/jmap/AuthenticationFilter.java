@@ -18,9 +18,7 @@
  ****************************************************************/
 package org.apache.james.jmap;
 
-import com.google.common.base.Throwables;
 import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
 
@@ -29,20 +27,19 @@ import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Optional;
-import java.util.function.Function;
+import java.util.*;
+import java.util.stream.Stream;
 
 public class AuthenticationFilter implements Filter {
 
     public static final String MAILBOX_SESSION = "mailboxSession";
     private static final Logger LOG = Log.getLogger(AuthenticationFilter.class);
+    public static final String AUTHORIZATION_HEADERS = "Authorization";
 
-    private final List<AuthenticationStrategy<Optional<String>>> authMethods;
+    private final List<AuthenticationStrategy<Stream<String>>> authMethods;
 
     @Inject
-    public AuthenticationFilter(List<AuthenticationStrategy<Optional<String>>> authMethods) {
+    public AuthenticationFilter(List<AuthenticationStrategy<Stream<String>>> authMethods) {
         this.authMethods = authMethods;
     }
 
@@ -55,32 +52,15 @@ public class AuthenticationFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        Optional<String> authHeader = Optional.ofNullable(httpRequest.getHeader("Authorization"));
-
-        LOG.info("AuthenticationFilter.doFilter crossed ...");
-
         // Bypass auth pipeline for request with method/verb OPTIONS
         boolean isAuthorized = "options".equals(httpRequest.getMethod().trim().toLowerCase());
 
-        ListIterator<AuthenticationStrategy<Optional<String>>> authenticationMethodsIterator = authMethods.listIterator();
-        while(!isAuthorized && authenticationMethodsIterator.hasNext())
-        {
-            AuthenticationStrategy<Optional<String>> authMethod = authenticationMethodsIterator.next();
+        Optional<HttpServletRequest> sessionSetInRequest = authMethods.stream()
+                .filter(auth -> auth.checkAuthorizationHeader(getAuthHeaders(httpRequest)))
+                .findFirst()
+                .map(auth -> addSessionToRequest(httpRequest, createSession(auth, getAuthHeaders(httpRequest))));
 
-            if (authMethod.checkAuthorizationHeader(authHeader)) {
-                isAuthorized = true;
-                LOG.debug("request was authorized via " + authMethod.getClass().getCanonicalName());
-
-                addSessionToRequest(httpRequest, authHeader, h -> {
-                    MailboxSession result = null;
-                    try { result = authMethod.createMailboxSession(h); }
-                    catch (MailboxException e) { Throwables.propagate(e); }
-                    return result;
-                });
-            }
-        }
-
-        if (! isAuthorized) {
+        if (!isAuthorized && !sessionSetInRequest.isPresent()) {
             httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
@@ -88,10 +68,38 @@ public class AuthenticationFilter implements Filter {
         chain.doFilter(httpRequest, response);
     }
 
-    private void addSessionToRequest(HttpServletRequest httpRequest, Optional<String> authHeader,
-                                     Function<Optional<String>, MailboxSession> sessionCreator) {
-        MailboxSession mailboxSession = sessionCreator.apply(authHeader);
-        httpRequest.setAttribute(MAILBOX_SESSION, mailboxSession);
+    private Stream<String> getAuthHeaders(HttpServletRequest httpRequest) {
+        Enumeration<String> authHeadersIterator = httpRequest.getHeaders(AUTHORIZATION_HEADERS);
+
+        return authHeadersIterator != null && authHeadersIterator.hasMoreElements() ? Collections.list(authHeadersIterator).stream() : Stream.of();
+    }
+
+    private HttpServletRequest addSessionToRequest(HttpServletRequest httpRequest, Optional<MailboxSession> mailboxSession) {
+        if (mailboxSession.isPresent()) {
+
+            httpRequest.setAttribute(MAILBOX_SESSION, mailboxSession.get());
+        }
+        return httpRequest;
+    }
+
+    private Optional<MailboxSession> createSession(AuthenticationStrategy<Stream<String>> authenticationMethod,
+                                                   Stream<String> authorizationHeaders) {
+
+        return authenticationMethod.createMailboxSession(authorizationHeaders);
+    }
+
+    private AuthenticationStrategy<Optional<String>> noAuthentication() {
+        return new AuthenticationStrategy<Optional<String>>() {
+            @Override
+            public Optional<MailboxSession> createMailboxSession(Optional<String> requestHeaders) {
+                return Optional.empty();
+            }
+
+            @Override
+            public boolean checkAuthorizationHeader(Optional<String> requestHeaders) {
+                return false;
+            }
+        };
     }
 
     @Override
