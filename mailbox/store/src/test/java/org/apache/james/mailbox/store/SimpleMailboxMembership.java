@@ -35,7 +35,6 @@ import java.util.Map.Entry;
 
 import javax.mail.Flags;
 
-import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 
@@ -271,10 +270,4 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     public InputStream getFullContent() throws IOException {
         return new SequenceInputStream(getHeaderContent(), getBodyContent());
     }
-
-    @Override
-    public DefaultMessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
-    }
-    
 }
