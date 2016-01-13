@@ -37,10 +37,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.hbase.HBaseId;
 import org.apache.james.mailbox.hbase.io.ChunkInputStream;
-import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.FlagsBuilder;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
-import org.apache.james.mailbox.store.mail.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageUidComparator;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
@@ -246,11 +244,6 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     @Override
     public long getFullContentOctets() {
         return contentOctets;
-    }
-
-    @Override
-    public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
     }
 
     @Override

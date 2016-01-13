@@ -46,10 +46,8 @@ import org.apache.james.mailbox.jpa.mail.model.JPAMailbox;
 import org.apache.james.mailbox.jpa.mail.model.JPAProperty;
 import org.apache.james.mailbox.jpa.mail.model.JPAUserFlag;
 import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
-import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.FlagsBuilder;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
-import org.apache.james.mailbox.store.mail.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageUidComparator;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
@@ -547,11 +545,6 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage<JPAId>
     @Override
     public long getBodyOctets() {
         return getFullContentOctets() - getBodyStartOctet();
-    }
-
-    @Override
-    public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), uid);
     }
 
     @Override
