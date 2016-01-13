@@ -38,6 +38,8 @@ import javax.mail.Flags;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 
+import com.google.common.collect.ImmutableList;
+
 public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     
     private static final String TOSTRING_SEPARATOR = " ";
@@ -75,8 +77,8 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
         return internalDate;
     }
 
-    public TestId getMailboxId() {
-        return mailboxId;
+    public List<TestId> getMailboxIds() {
+        return ImmutableList.of(mailboxId);
     }
     
     public long getUid() {
@@ -163,7 +165,7 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
         if (getClass() != obj.getClass())
             return false;
         final MailboxMessage<TestId> other = (MailboxMessage<TestId>) obj;
-        if (mailboxId.id != other.getMailboxId().id)
+        if (mailboxId.id != other.getMailboxIds().get(0).id)
             return false;
         if (uid != other.getUid())
             return false;
