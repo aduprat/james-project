@@ -17,7 +17,7 @@ RESULTING_BRANCH=$2
 
 APACHE_REPO=`git remote show | grep apache || true`
 if [ -z "$APACHE_REPO" ]; then
-    git remote add apache https://github.com/apache/james-project.git
+    git remote add apache https://github.com/aduprat/james-project.git
 fi 
 git fetch apache
 git checkout apache/trunk -b trunk
