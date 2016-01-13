@@ -57,6 +57,8 @@ import org.apache.openjpa.persistence.jdbc.ElementJoinColumn;
 import org.apache.openjpa.persistence.jdbc.ElementJoinColumns;
 import org.apache.openjpa.persistence.jdbc.Index;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Abstract base class for JPA based implementations of {@link DelegatingMailboxMessage}
  */
@@ -325,11 +327,11 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage<JPAId>
         if (getClass() != obj.getClass())
             return false;
         final AbstractJPAMailboxMessage other = (AbstractJPAMailboxMessage) obj;
-        if (getMailboxId() != null) {
-            if (!getMailboxId().equals(other.getMailboxId()))
+        if (getMailboxIds() != null) {
+            if (!getMailboxIds().equals(other.getMailboxIds()))
             return false;
         } else {
-            if (other.getMailboxId() != null)
+            if (other.getMailboxIds() != null)
             return false;
         }
         if (uid != other.uid)
@@ -408,9 +410,13 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage<JPAId>
     }
 
     /**
-     * @see MailboxMessage#getMailboxId()
+     * @see MailboxMessage#getMailboxIds()
      */
-    public JPAId getMailboxId() {
+    public List<JPAId> getMailboxIds() {
+        return ImmutableList.of(getMailboxId());
+    }
+
+    private JPAId getMailboxId() {
         return getMailbox().getMailboxId();
     }
 

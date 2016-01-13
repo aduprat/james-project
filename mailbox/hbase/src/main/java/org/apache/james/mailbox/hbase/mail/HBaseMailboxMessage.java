@@ -45,6 +45,8 @@ import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageUidComparator;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Concrete HBaseMailboxMessage implementation. This implementation does not store any
  * message content. The message content is retrieved using a ChunkedInputStream
@@ -168,12 +170,12 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
             return false;
         }
         final HBaseMailboxMessage other = (HBaseMailboxMessage) obj;
-        if (getMailboxId() != null) {
-            if (!getMailboxId().equals(other.getMailboxId())) {
+        if (getMailboxIds() != null) {
+            if (!getMailboxIds().equals(other.getMailboxIds())) {
                 return false;
             }
         } else {
-            if (other.getMailboxId() != null) {
+            if (other.getMailboxIds() != null) {
                 return false;
             }
         }
@@ -259,8 +261,8 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     }
 
     @Override
-    public HBaseId getMailboxId() {
-        return mailboxId;
+    public List<HBaseId> getMailboxIds() {
+        return ImmutableList.of(mailboxId);
     }
 
     @Override
@@ -335,7 +337,7 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     @Override
     public String toString() {
         return "message("
-        + "mailboxId = " + this.getMailboxId() + TOSTRING_SEPARATOR
+        + "mailboxId = " + this.getMailboxIds() + TOSTRING_SEPARATOR
         + "uid = " + this.uid + TOSTRING_SEPARATOR
         + "internalDate = " + this.internalDate + TOSTRING_SEPARATOR
         + "answered = " + this.answered + TOSTRING_SEPARATOR
