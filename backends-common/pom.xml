@@ -39,6 +39,7 @@
 
     <modules>
         <module>cassandra</module>
+        <module>cassandra-test</module>
     </modules>
 
     <dependencyManagement>
