@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.jmap.methods.GetMessagesMethod;
 import org.apache.james.jmap.methods.JmapResponseWriterImpl;
@@ -36,7 +35,9 @@ import org.apache.james.jmap.model.message.EMailer;
 import org.apache.james.jmap.model.message.IndexableMessage;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
+import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.annotations.VisibleForTesting;
@@ -45,7 +46,6 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
-import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
 @JsonDeserialize(builder = Message.Builder.class)
 @JsonFilter(JmapResponseWriterImpl.PROPERTIES_FILTER)
@@ -70,7 +70,9 @@ public class Message {
                 .id(messageId)
                 .blobId(String.valueOf(im.getId()))
                 .threadId(messageId.serialize())
-                .mailboxIds(ImmutableList.of(im.getMailboxId()))
+                .mailboxIds(im.getMailboxIds().stream()
+                        .map(MailboxId::serialize)
+                        .collect(org.apache.james.util.streams.Collectors.toImmutableList()))
                 .inReplyToMessageId(getHeaderAsSingleValue(im, "in-reply-to"))
                 .isUnread(im.isUnRead())
                 .isFlagged(im.isFlagged())
@@ -160,7 +162,7 @@ public class Message {
         private MessageId id;
         private String blobId;
         private String threadId;
-        private ImmutableList<String> mailboxIds;
+        private List<String> mailboxIds;
         private String inReplyToMessageId;
         private boolean isUnread;
         private boolean isFlagged;
@@ -206,7 +208,7 @@ public class Message {
             return this;
         }
 
-        public Builder mailboxIds(ImmutableList<String> mailboxIds) {
+        public Builder mailboxIds(List<String> mailboxIds) {
             this.mailboxIds = mailboxIds;
             return this;
         }
@@ -339,7 +341,7 @@ public class Message {
     private final MessageId id;
     private final String blobId;
     private final String threadId;
-    private final ImmutableList<String> mailboxIds;
+    private final List<String> mailboxIds;
     private final Optional<String> inReplyToMessageId;
     private final boolean isUnread;
     private final boolean isFlagged;
@@ -362,7 +364,7 @@ public class Message {
     private final ImmutableList<Attachment> attachments;
     private final ImmutableMap<String, SubMessage> attachedMessages;
 
-    @VisibleForTesting Message(MessageId id, String blobId, String threadId, ImmutableList<String> mailboxIds, Optional<String> inReplyToMessageId, boolean isUnread, boolean isFlagged, boolean isAnswered, boolean isDraft, boolean hasAttachment, ImmutableMap<String, String> headers, Optional<Emailer> from,
+    @VisibleForTesting Message(MessageId id, String blobId, String threadId, List<String> mailboxIds, Optional<String> inReplyToMessageId, boolean isUnread, boolean isFlagged, boolean isAnswered, boolean isDraft, boolean hasAttachment, ImmutableMap<String, String> headers, Optional<Emailer> from,
             ImmutableList<Emailer> to, ImmutableList<Emailer> cc, ImmutableList<Emailer> bcc, ImmutableList<Emailer> replyTo, String subject, ZonedDateTime date, long size, String preview, Optional<String> textBody, Optional<String> htmlBody, ImmutableList<Attachment> attachments,
             ImmutableMap<String, SubMessage> attachedMessages) {
         this.id = id;
@@ -403,7 +405,7 @@ public class Message {
         return threadId;
     }
 
-    public ImmutableList<String> getMailboxIds() {
+    public List<String> getMailboxIds() {
         return mailboxIds;
     }
 
