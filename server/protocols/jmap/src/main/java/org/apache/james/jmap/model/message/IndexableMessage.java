@@ -74,7 +74,7 @@ public class IndexableMessage {
 
     private void copyMessageFields(MailboxMessage<? extends MailboxId> message, ZoneId zoneId) {
         this.id = message.getUid();
-        this.mailboxId = message.getMailboxIds().get(0).serialize();
+        this.mailboxIds = message.getMailboxIds();
         this.modSeq = message.getModSeq();
         this.size = message.getFullContentOctets();
         this.date = DateResolutionFormater.DATE_TIME_FOMATTER.format(getSanitizedInternalDate(message, zoneId));
@@ -100,7 +100,7 @@ public class IndexableMessage {
     }
 
     private Long id;
-    private String mailboxId;
+    private List<? extends MailboxId> mailboxIds;
     private long modSeq;
     private long size;
     private String date;
@@ -131,8 +131,8 @@ public class IndexableMessage {
     }
 
     @JsonProperty(JsonMessageConstants.MAILBOX_ID)
-    public String getMailboxId() {
-        return mailboxId;
+    public List<? extends MailboxId> getMailboxIds() {
+        return mailboxIds;
     }
 
     @JsonProperty(JsonMessageConstants.MODSEQ)
