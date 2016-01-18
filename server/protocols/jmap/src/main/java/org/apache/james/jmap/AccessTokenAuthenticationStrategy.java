@@ -51,7 +51,7 @@ public class AccessTokenAuthenticationStrategy implements AuthenticationStrategy
     }
 
     @Override
-    public MailboxSession createMailboxSession(Stream<String> authHeaders) {
+    public MailboxSession createMailboxSession(Stream<String> authHeaders) throws MailboxSessionCreationException, NoValidAuthHeaderException {
 
         Optional<String> username = authHeaders
             .map(AccessToken::fromString)

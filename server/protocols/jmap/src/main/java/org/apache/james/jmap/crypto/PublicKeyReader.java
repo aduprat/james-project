@@ -24,8 +24,12 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.Optional;
 
 import org.bouncycastle.openssl.PEMReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PublicKeyReader {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PublicKeyReader.class);
 
     Optional<RSAPublicKey> fromPEM(Optional<String> pemKey) {
 
@@ -43,6 +47,7 @@ public class PublicKeyReader {
             }
             return Optional.ofNullable(rsaPublicKey);
         } catch (IOException e) {
+            LOGGER.warn("Error when reading the PEM file", e);
             return Optional.empty();
         }
     }

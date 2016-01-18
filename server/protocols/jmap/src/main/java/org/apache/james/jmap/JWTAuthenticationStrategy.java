@@ -48,7 +48,7 @@ public class JWTAuthenticationStrategy implements AuthenticationStrategy {
     }
 
     @Override
-    public MailboxSession createMailboxSession(Stream<String> authHeaders) throws NoValidAuthHeaderException, MailboxSessionCreationException {
+    public MailboxSession createMailboxSession(Stream<String> authHeaders) throws MailboxSessionCreationException, NoValidAuthHeaderException {
 
         Stream<String> userLoginStream = extractTokensFromAuthHeaders(authHeaders)
                 .filter(tokenManager::verify)
