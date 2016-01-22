@@ -35,8 +35,10 @@ import org.apache.james.jmap.model.ClientId;
 import org.apache.james.jmap.model.GetMessagesRequest;
 import org.apache.james.jmap.model.GetMessagesResponse;
 import org.apache.james.jmap.model.Message;
+import org.apache.james.jmap.model.MessageHeaderProperty;
 import org.apache.james.jmap.model.MessageId;
 import org.apache.james.jmap.model.MessageProperty;
+import org.apache.james.jmap.model.Property;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
@@ -89,32 +91,39 @@ public class GetMessagesMethod<Id extends MailboxId> implements Method {
         Preconditions.checkNotNull(mailboxSession);
         Preconditions.checkArgument(request instanceof GetMessagesRequest);
         GetMessagesRequest getMessagesRequest = (GetMessagesRequest) request;
-        Optional<ImmutableSet<MessageProperty>> requestedProperties = getMessagesRequest.getProperties();
+        ImmutableSet<MessageProperty> requestedProperties = getMessagesRequest.getProperties();
+        ImmutableSet<MessageHeaderProperty> headerProperties = getMessagesRequest.getHeaderProperties();
         return Stream.of(JmapResponse.builder().clientId(clientId)
                             .response(getMessagesResponse(mailboxSession, getMessagesRequest, requestedProperties))
                             .responseName(RESPONSE_NAME)
-                            .properties(requestedProperties.map(this::handleSpecificProperties))
-                            .filterProvider(Optional.of(buildFilteringHeadersFilterProvider(requestedProperties)))
+                            .properties(handleSpecificProperties(requestedProperties, headerProperties))
+                            .filterProvider(Optional.of(buildFilteringHeadersFilterProvider(headerProperties)))
                             .build());
     }
 
-    private Set<MessageProperty> handleSpecificProperties(Set<MessageProperty> input) {
+    private Set<? extends Property> handleSpecificProperties(ImmutableSet<MessageProperty> requestedProperties, ImmutableSet<MessageHeaderProperty> headerProperties) {
         Set<MessageProperty> toAdd = Sets.newHashSet();
         Set<MessageProperty> toRemove = Sets.newHashSet();
-        ensureContainsMandatoryFields(input, toAdd);
-        handleBody(input, toAdd, toRemove);
-        handleHeadersProperties(input, toAdd, toRemove);
-        return Sets.union(Sets.difference(input, toRemove), toAdd).immutableCopy();
+        ensureContainsMandatoryFields(requestedProperties, toAdd);
+        handleBody(requestedProperties, toAdd, toRemove);
+        handleHeadersProperties(headerProperties, toAdd, toRemove);
+        return Sets.union(Sets.difference(requestedProperties, toRemove), toAdd).immutableCopy();
     }
-        
-    private void ensureContainsMandatoryFields(Set<MessageProperty> input, Set<MessageProperty> toAdd) {
+
+    private void handleHeadersProperties(ImmutableSet<MessageHeaderProperty> headerProperties, Set<MessageProperty> toAdd, Set<MessageProperty> toRemove) {
+        if (!headerProperties.isEmpty()) {
+            toAdd.add(MessageProperty.headers);
+        }
+    }
+
+    private void ensureContainsMandatoryFields(ImmutableSet<MessageProperty> requestedProperties, Set<MessageProperty> toAdd) {
         MessageProperty.MANDATORY_PROPERTIES.stream()
-            .map(mandatoryProperty -> propertyNoInSet(mandatoryProperty, toAdd))
+            .map(mandatoryProperty -> propertyNoInSet(mandatoryProperty, requestedProperties))
             .forEach(property -> addProperty(property, toAdd));
     }
 
-    private Optional<MessageProperty> propertyNoInSet(MessageProperty property, Set<MessageProperty> set) {
-        if (!set.contains(property)) {
+    private Optional<MessageProperty> propertyNoInSet(MessageProperty property, ImmutableSet<MessageProperty> requestedProperties) {
+        if (!requestedProperties.contains(property)) {
             return Optional.of(property);
         }
         return Optional.empty();
@@ -127,34 +136,20 @@ public class GetMessagesMethod<Id extends MailboxId> implements Method {
         return true;
     }
 
-    private void handleBody(Set<MessageProperty> input, Set<MessageProperty> toAdd, Set<MessageProperty> toRemove) {
-        if (input.contains(MessageProperty.body)) {
+    private void handleBody(ImmutableSet<MessageProperty> requestedProperties, Set<MessageProperty> toAdd, Set<MessageProperty> toRemove) {
+        if (requestedProperties.contains(MessageProperty.body)) {
             toAdd.add(MessageProperty.textBody);
             toRemove.add(MessageProperty.body);
         }
     }
-    
-    private void handleHeadersProperties(Set<MessageProperty> input, Set<MessageProperty> toAdd, Set<MessageProperty> toRemove) {
-        List<MessageProperty> headersProperties = input.stream()
-            .filter(MessageProperty::isHeaderProperty)
-            .collect(Collectors.toList());
-        if (!headersProperties.isEmpty()) {
-            toAdd.add(MessageProperty.headers);
-            toRemove.addAll(headersProperties);
-        }
-    }
-    
-    private SimpleFilterProvider buildFilteringHeadersFilterProvider(Optional<ImmutableSet<MessageProperty>> requestedProperties) {
-        Set<MessageProperty> selectedHeadersProperties = requestedProperties
-                .map(MessageProperty::selectHeadersProperties)
-                .orElse(ImmutableSet.of());
 
+    private SimpleFilterProvider buildFilteringHeadersFilterProvider(ImmutableSet<MessageHeaderProperty> headerProperties) {
         return new SimpleFilterProvider()
-                .addFilter(HEADERS_FILTER, buildPropertyFilter(selectedHeadersProperties))
+                .addFilter(HEADERS_FILTER, buildPropertyFilter(headerProperties))
                 .addFilter(JmapResponseWriterImpl.PROPERTIES_FILTER, SimpleBeanPropertyFilter.serializeAll());
     }
     
-    private SimpleBeanPropertyFilter buildPropertyFilter(Set<MessageProperty> propertiesToInclude) {
+    private SimpleBeanPropertyFilter buildPropertyFilter(Set<MessageHeaderProperty> propertiesToInclude) {
         if (propertiesToInclude.isEmpty()) {
             return SimpleBeanPropertyFilter.serializeAll();
         } else {
@@ -163,20 +158,20 @@ public class GetMessagesMethod<Id extends MailboxId> implements Method {
     }
     
     private static class IncludeMessagePropertyPropertyFilter extends SimpleBeanPropertyFilter {
-        private Set<MessageProperty> propertiesToInclude;
+        private Set<MessageHeaderProperty> propertiesToInclude;
 
-        public IncludeMessagePropertyPropertyFilter(Set<MessageProperty> propertiesToInclude) {
+        public IncludeMessagePropertyPropertyFilter(Set<MessageHeaderProperty> propertiesToInclude) {
             this.propertiesToInclude = propertiesToInclude;
         }
         
         @Override
         protected boolean include(PropertyWriter writer) {
             String currentProperty = writer.getName();
-            return propertiesToInclude.contains(MessageProperty.headerValueOf(currentProperty));
+            return propertiesToInclude.contains(MessageHeaderProperty.fromField(currentProperty));
         }
     }
     
-    private GetMessagesResponse getMessagesResponse(MailboxSession mailboxSession, GetMessagesRequest getMessagesRequest, Optional<ImmutableSet<MessageProperty>> requestedProperties) {
+    private GetMessagesResponse getMessagesResponse(MailboxSession mailboxSession, GetMessagesRequest getMessagesRequest, ImmutableSet<MessageProperty> requestedProperties) {
         getMessagesRequest.getAccountId().ifPresent(GetMessagesMethod::notImplemented);
         
         Function<MessageId, Stream<Pair<MailboxMessage<Id>, MailboxPath>>> loadMessages = loadMessage(mailboxSession);

@@ -19,14 +19,17 @@
 package org.apache.james.jmap.model;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.james.jmap.methods.JmapRequest;
+import org.apache.james.util.streams.Collectors;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 @JsonDeserialize(builder = GetMessagesRequest.Builder.class)
 public class GetMessagesRequest implements JmapRequest {
@@ -40,12 +43,12 @@ public class GetMessagesRequest implements JmapRequest {
         
         private Optional<String> accountId;
         private ImmutableList.Builder<MessageId> ids;
-        private Optional<ImmutableSet<MessageProperty>> properties;
+        private ImmutableSet.Builder<String> propertiesBuilder;
 
         private Builder() {
             accountId = Optional.empty();
             ids = ImmutableList.builder();
-            properties = Optional.empty();
+            propertiesBuilder = ImmutableSet.builder();
         }
         
         public Builder accountId(String accountId) {
@@ -58,24 +61,45 @@ public class GetMessagesRequest implements JmapRequest {
             return this;
         }
 
-        public Builder properties(MessageProperty... properties) {
-            this.properties = Optional.of(ImmutableSet.copyOf(properties));
+        public Builder properties(List<String> properties) {
+            this.propertiesBuilder.addAll(properties);
             return this;
         }
         
         public GetMessagesRequest build() {
-            return new GetMessagesRequest(accountId, ids.build(), properties);
+            ImmutableSet<String> properties = propertiesBuilder.build();
+            return new GetMessagesRequest(accountId, ids.build(), messageProperties(properties), messageHeaderProperties(properties));
+        }
+
+        private ImmutableSet<MessageProperty> messageProperties(Set<String> properties) {
+            return properties.stream()
+                    .filter(property -> !isHeaderProperty(property))
+                    .map(MessageProperty::valueOf)
+                    .collect(Collectors.toImmutableSet());
+        }
+
+        private ImmutableSet<MessageHeaderProperty> messageHeaderProperties(ImmutableSet<String> properties) {
+            return properties.stream()
+                    .filter(this::isHeaderProperty)
+                    .map(MessageHeaderProperty::valueOf)
+                    .collect(Collectors.toImmutableSet());
+        }
+
+        private boolean isHeaderProperty(String property) {
+            return property.startsWith(MessageHeaderProperty.HEADER_PROPERTY_PREFIX);
         }
     }
 
     private final Optional<String> accountId;
     private final ImmutableList<MessageId> ids;
-    private final Optional<ImmutableSet<MessageProperty>> properties;
+    private final ImmutableSet<MessageProperty> properties;
+    private final ImmutableSet<MessageHeaderProperty> headerProperties;
 
-    public GetMessagesRequest(Optional<String> accountId, ImmutableList<MessageId> ids, Optional<ImmutableSet<MessageProperty>> properties) {
+    public GetMessagesRequest(Optional<String> accountId, ImmutableList<MessageId> ids, ImmutableSet<MessageProperty> properties, ImmutableSet<MessageHeaderProperty> headerProperties) {
         this.accountId = accountId;
         this.ids = ids;
         this.properties = properties;
+        this.headerProperties = headerProperties;
     }
     
     public Optional<String> getAccountId() {
@@ -86,7 +110,11 @@ public class GetMessagesRequest implements JmapRequest {
         return ids;
     }
     
-    public Optional<ImmutableSet<MessageProperty>> getProperties() {
+    public ImmutableSet<MessageProperty> getProperties() {
         return properties;
+    }
+
+    public ImmutableSet<MessageHeaderProperty> getHeaderProperties() {
+        return headerProperties;
     }
 }

@@ -186,7 +186,7 @@ public class GetMessagesMethodTest {
         
         GetMessagesRequest request = GetMessagesRequest.builder()
                 .ids(new MessageId(ROBERT, inboxPath, message1Uid))
-                .properties(new MessageProperty[0])
+                .properties(ImmutableList.of())
                 .build();
 
         GetMessagesMethod<InMemoryId> testee = new GetMessagesMethod<>(mailboxSessionMapperFactory, mailboxSessionMapperFactory);
@@ -208,7 +208,7 @@ public class GetMessagesMethodTest {
         
         GetMessagesRequest request = GetMessagesRequest.builder()
                 .ids(new MessageId(ROBERT, inboxPath, message1Uid))
-                .properties(MessageProperty.subject)
+                .properties(ImmutableList.of(MessageProperty.subject.asFieldName()))
                 .build();
 
         Set<MessageProperty> expected = Sets.newHashSet(MessageProperty.MANDATORY_PROPERTIES);
@@ -233,7 +233,7 @@ public class GetMessagesMethodTest {
         
         GetMessagesRequest request = GetMessagesRequest.builder()
                 .ids(new MessageId(ROBERT, inboxPath, message1Uid))
-                .properties(MessageProperty.body)
+                .properties(ImmutableList.of(MessageProperty.body.asFieldName()))
                 .build();
 
         Set<MessageProperty> expected = Sets.newHashSet(MessageProperty.MANDATORY_PROPERTIES);
@@ -261,7 +261,7 @@ public class GetMessagesMethodTest {
         
         GetMessagesRequest request = GetMessagesRequest.builder()
                 .ids(new MessageId(ROBERT, inboxPath, message1Uid))
-                .properties(MessageProperty.valueOf("headers.from"), MessageProperty.valueOf("headers.heADER2"))
+                .properties(ImmutableList.of("headers.from", "headers.heADER2"))
                 .build();
 
         Set<MessageProperty> expected = Sets.newHashSet(MessageProperty.MANDATORY_PROPERTIES);
@@ -290,7 +290,7 @@ public class GetMessagesMethodTest {
         
         GetMessagesRequest request = GetMessagesRequest.builder()
                 .ids(new MessageId(ROBERT, inboxPath, message1Uid))
-                .properties(MessageProperty.valueOf("headers.from"), MessageProperty.valueOf("headers.heADER2"))
+                .properties(ImmutableList.of("headers.from", "headers.heADER2"))
                 .build();
 
         GetMessagesMethod<InMemoryId> testee = new GetMessagesMethod<>(mailboxSessionMapperFactory, mailboxSessionMapperFactory);
