@@ -20,5 +20,5 @@ RUN apt-get install -y --force-yes git="$GIT_VERSION"
 COPY compile.sh /root/compile.sh
 
 # Define the entrypoint
-WORKDIR /james-parent
+WORKDIR /james-project
 ENTRYPOINT ["/root/compile.sh"]
