@@ -36,16 +36,15 @@ import java.util.Map.Entry;
 import javax.mail.Flags;
 
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
-
-import com.google.common.collect.ImmutableList;
 
 public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     
     private static final String TOSTRING_SEPARATOR = " ";
     
-    public TestId mailboxId;
+    public MailboxIds<TestId> mailboxIds;
     public long uid;
     public Date internalDate;
     public boolean recent = false;
@@ -55,10 +54,10 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     public boolean flagged = false;
     public boolean seen = false;
 
-    public SimpleMailboxMembership(TestId mailboxId, long uid, long modSeq, Date internalDate, int size, 
+    public SimpleMailboxMembership(MailboxIds<TestId> mailboxIds, long uid, long modSeq, Date internalDate, int size, 
             Flags flags, byte[] body, final Map<String, String> headers) throws Exception {
         super();
-        this.mailboxId = mailboxId;
+        this.mailboxIds = mailboxIds;
         this.uid = uid;
         this.internalDate = internalDate;
         this.size = size;
@@ -77,8 +76,8 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
         return internalDate;
     }
 
-    public List<TestId> getMailboxIds() {
-        return ImmutableList.of(mailboxId);
+    public MailboxIds<TestId> getMailboxIds() {
+        return mailboxIds;
     }
     
     public long getUid() {
@@ -150,7 +149,7 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     public int hashCode() {
         final int PRIME = 31;
         int result = 1;
-        result = PRIME * result + (int) (mailboxId.id ^ (mailboxId.id >>> 32));
+        result = PRIME * result + (int) (mailboxIds.hashCode() ^ (mailboxIds.hashCode() >>> 32));
         result = PRIME * result + (int) (uid ^ (uid >>> 32));
         return result;
     }
@@ -165,7 +164,7 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
         if (getClass() != obj.getClass())
             return false;
         final MailboxMessage<TestId> other = (MailboxMessage<TestId>) obj;
-        if (mailboxId.id != other.getMailboxIds().get(0).id)
+        if (!mailboxIds.equals(other.getMailboxIds()))
             return false;
         if (uid != other.getUid())
             return false;
@@ -174,7 +173,7 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
 
     public String toString() {
         return "mailbox("
-        + "mailboxId = " + this.mailboxId + TOSTRING_SEPARATOR
+        + "mailboxId = " + this.mailboxIds + TOSTRING_SEPARATOR
         + "uid = " + this.uid + TOSTRING_SEPARATOR
         + "internalDate = " + this.internalDate + TOSTRING_SEPARATOR
         + "size = " + this.size + TOSTRING_SEPARATOR
@@ -270,8 +269,8 @@ public class SimpleMailboxMembership implements MailboxMessage<TestId> {
     }
 
     @Override
-    public DefaultMessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+    public DefaultMessageId<TestId> getMessageId() {
+        return new DefaultMessageId<TestId>(getMailboxIds(), getUid());
     }
     
 }

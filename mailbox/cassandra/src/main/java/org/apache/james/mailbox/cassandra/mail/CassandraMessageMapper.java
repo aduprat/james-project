@@ -37,7 +37,7 @@ import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.FUL
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.HEADER_CONTENT;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.IMAP_UID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.INTERNAL_DATE;
-import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.MAILBOX_ID;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.MAILBOX_IDS;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.MOD_SEQ;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.PROPERTIES;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageTable.TABLE_NAME;
@@ -90,6 +90,7 @@ import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
+import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxIds;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleProperty;
 
@@ -154,7 +155,7 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
         session.execute(
             QueryBuilder.delete()
                 .from(TABLE_NAME)
-                .where(eq(MAILBOX_ID, mailbox.getMailboxId().asUuid()))
+                .where(eq(MAILBOX_IDS, mailbox.getMailboxId().asUuid()))
                 .and(eq(IMAP_UID, message.getUid())));
         decrementCount(mailbox);
         if (!message.isSeen()) {
@@ -285,7 +286,7 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
                 new SharedByteArrayInputStream(getFullContent(row)),
                 getFlags(row),
                 getPropertyBuilder(row),
-                CassandraId.of(row.getUUID(MAILBOX_ID)));
+                new SimpleMailboxIds<>(row.getSet(MAILBOX_IDS, CassandraId.class)));
         message.setUid(row.getLong(IMAP_UID));
         message.setModSeq(row.getLong(MOD_SEQ));
         return message;
@@ -324,7 +325,7 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
     private MessageMetaData save(Mailbox<CassandraId> mailbox, MailboxMessage<CassandraId> message) throws MailboxException {
         try {
             Insert query = insertInto(TABLE_NAME)
-                .value(MAILBOX_ID, mailbox.getMailboxId().asUuid())
+                .value(MAILBOX_IDS, mailbox.getMailboxId().asUuid())
                 .value(IMAP_UID, message.getUid())
                 .value(MOD_SEQ, message.getModSeq())
                 .value(INTERNAL_DATE, message.getInternalDate())
@@ -426,7 +427,7 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
                 .and(set(USER_FLAGS, userFlagsSet(message)))
                 .and(set(MOD_SEQ, message.getModSeq()))
                 .where(eq(IMAP_UID, message.getUid()))
-                .and(eq(MAILBOX_ID, message.getMailboxIds().get(0).asUuid()))
+                .and(eq(MAILBOX_IDS, message.getMailboxIds()))
                 .onlyIf(eq(MOD_SEQ, oldModSeq)));
         return resultSet.one().getBool(CassandraConstants.LIGHTWEIGHT_TRANSACTION_APPLIED);
     }
@@ -453,20 +454,20 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
     private Where selectAll(Mailbox<CassandraId> mailbox) {
         return select(FIELDS)
             .from(TABLE_NAME)
-            .where(eq(MAILBOX_ID, mailbox.getMailboxId().asUuid()));
+            .where(eq(MAILBOX_IDS, mailbox.getMailboxId().asUuid()));
     }
 
     private Where selectFrom(Mailbox<CassandraId> mailbox, long uid) {
         return select(FIELDS)
             .from(TABLE_NAME)
-            .where(eq(MAILBOX_ID, mailbox.getMailboxId().asUuid()))
+            .where(eq(MAILBOX_IDS, mailbox.getMailboxId().asUuid()))
             .and(gte(IMAP_UID, uid));
     }
 
     private Where selectRange(Mailbox<CassandraId> mailbox, long from, long to) {
         return select(FIELDS)
             .from(TABLE_NAME)
-            .where(eq(MAILBOX_ID, mailbox.getMailboxId().asUuid()))
+            .where(eq(MAILBOX_IDS, mailbox.getMailboxId().asUuid()))
             .and(gte(IMAP_UID, from))
             .and(lte(IMAP_UID, to));
     }
@@ -474,7 +475,7 @@ public class CassandraMessageMapper implements MessageMapper<CassandraId> {
     private Where selectMessage(Mailbox<CassandraId> mailbox, long uid) {
         return select(FIELDS)
             .from(TABLE_NAME)
-            .where(eq(MAILBOX_ID, mailbox.getMailboxId().asUuid()))
+            .where(eq(MAILBOX_IDS, mailbox.getMailboxId().asUuid()))
             .and(eq(IMAP_UID, uid));
     }
 

@@ -26,7 +26,7 @@ import com.google.common.collect.ImmutableMap;
 public interface CassandraMessageTable {
 
     String TABLE_NAME = "message";
-    String MAILBOX_ID = "mailboxId";
+    String MAILBOX_IDS = "mailboxIds";
     String IMAP_UID = "uid";
     String INTERNAL_DATE = "internalDate";
     String BODY_START_OCTET = "bodyStartOctet";
@@ -37,7 +37,7 @@ public interface CassandraMessageTable {
     String BODY_CONTENT = "bodyContent";
     String HEADER_CONTENT = "headerContent";
     String PROPERTIES = "properties";
-    String[] FIELDS = { MAILBOX_ID, IMAP_UID, INTERNAL_DATE, MOD_SEQ, BODY_START_OCTET, FULL_CONTENT_OCTETS, BODY_OCTECTS, Flag.ANSWERED, Flag.DELETED, Flag.DRAFT, Flag.FLAGGED, Flag.RECENT, Flag.SEEN, Flag.USER, Flag.USER_FLAGS, BODY_CONTENT, HEADER_CONTENT, TEXTUAL_LINE_COUNT, PROPERTIES };
+    String[] FIELDS = { MAILBOX_IDS, IMAP_UID, INTERNAL_DATE, MOD_SEQ, BODY_START_OCTET, FULL_CONTENT_OCTETS, BODY_OCTECTS, Flag.ANSWERED, Flag.DELETED, Flag.DRAFT, Flag.FLAGGED, Flag.RECENT, Flag.SEEN, Flag.USER, Flag.USER_FLAGS, BODY_CONTENT, HEADER_CONTENT, TEXTUAL_LINE_COUNT, PROPERTIES };
 
     interface Flag {
         String ANSWERED = "flagAnswered";
@@ -65,5 +65,9 @@ public interface CassandraMessageTable {
         String NAMESPACE = "namespace";
         String NAME = "name";
         String VALUE = "value";
+    }
+
+    interface MailboxIds {
+        String ID = "id";
     }
 }

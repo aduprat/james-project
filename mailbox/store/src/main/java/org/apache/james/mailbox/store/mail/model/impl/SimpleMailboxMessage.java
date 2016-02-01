@@ -21,7 +21,6 @@ package org.apache.james.mailbox.store.mail.model.impl;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.List;
 
 import javax.mail.Flags;
 import javax.mail.internet.SharedInputStream;
@@ -31,10 +30,10 @@ import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
 
 public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailboxMessage<Id> {
@@ -46,7 +45,7 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
         SharedByteArrayInputStream content = copyFullContent(original);
         int bodyStartOctet = Ints.checkedCast(original.getFullContentOctets() - original.getBodyOctets());
         PropertyBuilder pBuilder = new PropertyBuilder(original.getProperties());
-        return new SimpleMailboxMessage<Id>(internalDate, size, bodyStartOctet, content, flags, pBuilder, mailboxId);
+        return new SimpleMailboxMessage<Id>(internalDate, size, bodyStartOctet, content, flags, pBuilder, original.getMailboxIds().add(mailboxId));
     }
 
     private static <Id extends MailboxId> SharedByteArrayInputStream copyFullContent(MailboxMessage<Id> original) throws MailboxException {
@@ -58,7 +57,7 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
     }
 
     private long uid;
-    private final Id mailboxId;
+    private final MailboxIds<Id> mailboxIds;
     private boolean answered;
     private boolean deleted;
     private boolean draft;
@@ -70,7 +69,7 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
 
     public SimpleMailboxMessage(Date internalDate, long size, int bodyStartOctet,
                                 SharedInputStream content, Flags flags,
-                                PropertyBuilder propertyBuilder, final Id mailboxId) {
+                                PropertyBuilder propertyBuilder, final MailboxIds<Id> mailboxIds) {
         super(new SimpleMessage(
             content, size, internalDate, propertyBuilder.getSubType(),
             propertyBuilder.getMediaType(),
@@ -80,7 +79,7 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
             ));
 
         setFlags(flags);
-        this.mailboxId = mailboxId;
+        this.mailboxIds = mailboxIds;
         this.userFlags = flags.getUserFlags();
     }
 
@@ -89,8 +88,8 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
         return userFlags.clone();
     }
 
-    public List<Id> getMailboxIds() {
-        return ImmutableList.of(mailboxId);
+    public MailboxIds<Id> getMailboxIds() {
+        return mailboxIds;
     }
 
     public long getUid() {
@@ -169,7 +168,7 @@ public class SimpleMailboxMessage<Id extends MailboxId> extends DelegatingMailbo
     public String toString() {
         return Objects.toStringHelper(this)
             .add("uid", this.uid)
-            .add("mailboxId", this.mailboxId)
+            .add("mailboxId", this.mailboxIds)
             .add("answered", this.answered)
             .add("deleted", this.deleted)
             .add("draft", this.draft)

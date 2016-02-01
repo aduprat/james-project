@@ -19,17 +19,6 @@
 
 package org.apache.james.mailbox.cassandra.modules;
 
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
-import org.apache.james.backends.cassandra.components.CassandraIndex;
-import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.components.CassandraTable;
-import org.apache.james.backends.cassandra.components.CassandraType;
-import org.apache.james.mailbox.cassandra.table.CassandraMessageTable;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import static com.datastax.driver.core.DataType.bigint;
 import static com.datastax.driver.core.DataType.blob;
 import static com.datastax.driver.core.DataType.cboolean;
@@ -38,6 +27,18 @@ import static com.datastax.driver.core.DataType.set;
 import static com.datastax.driver.core.DataType.text;
 import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.timeuuid;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.apache.james.backends.cassandra.components.CassandraIndex;
+import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraTable;
+import org.apache.james.backends.cassandra.components.CassandraType;
+import org.apache.james.mailbox.cassandra.table.CassandraMessageTable;
+
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
 public class CassandraMessageModule implements CassandraModule {
 
@@ -50,8 +51,8 @@ public class CassandraMessageModule implements CassandraModule {
             new CassandraTable(CassandraMessageTable.TABLE_NAME,
                 SchemaBuilder.createTable(CassandraMessageTable.TABLE_NAME)
                     .ifNotExists()
-                    .addPartitionKey(CassandraMessageTable.MAILBOX_ID, timeuuid())
-                    .addClusteringColumn(CassandraMessageTable.IMAP_UID, bigint())
+                    .addPartitionKey(CassandraMessageTable.IMAP_UID, bigint())
+                    .addUDTColumn(CassandraMessageTable.MAILBOX_IDS, SchemaBuilder.frozen(CassandraMessageTable.MAILBOX_IDS))
                     .addColumn(CassandraMessageTable.INTERNAL_DATE, timestamp())
                     .addColumn(CassandraMessageTable.BODY_START_OCTET, cint())
                     .addColumn(CassandraMessageTable.BODY_OCTECTS, cint())
@@ -85,13 +86,17 @@ public class CassandraMessageModule implements CassandraModule {
                     .ifNotExists()
                     .onTable(CassandraMessageTable.TABLE_NAME)
                     .andColumn(CassandraMessageTable.Flag.DELETED)));
-        types = Collections.singletonList(
+        types = Arrays.asList(
             new CassandraType(CassandraMessageTable.PROPERTIES,
                 SchemaBuilder.createType(CassandraMessageTable.PROPERTIES)
                     .ifNotExists()
                     .addColumn(CassandraMessageTable.Properties.NAMESPACE, text())
                     .addColumn(CassandraMessageTable.Properties.NAME, text())
-                    .addColumn(CassandraMessageTable.Properties.VALUE, text())));
+                    .addColumn(CassandraMessageTable.Properties.VALUE, text())),
+            new CassandraType(CassandraMessageTable.MAILBOX_IDS,
+                SchemaBuilder.createType(CassandraMessageTable.MAILBOX_IDS)
+                    .ifNotExists()
+                    .addColumn(CassandraMessageTable.MailboxIds.ID, timeuuid())));
     }
 
     @Override

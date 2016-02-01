@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.james.mailbox.store.mail.model;
 
-import java.util.List;
-
 import javax.mail.Flags;
 
 /**
@@ -34,7 +32,7 @@ public interface MailboxMessage<Id extends MailboxId> extends Message, Comparabl
      * 
      * @return mailboxId
      */
-    List<Id> getMailboxIds();
+    MailboxIds<Id> getMailboxIds();
 
     /**
      * Return the uid

@@ -16,41 +16,16 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
+
 package org.apache.james.mailbox.store.mail.model;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
+import java.util.Set;
 
-public class DefaultMessageId<Id extends MailboxId> implements MessageId {
+public interface MailboxIds<Id extends MailboxId> {
 
-    private final MailboxIds<Id> mailboxIds;
-    private final long messageUid;
+    Set<Id> mailboxIds();
 
-    public DefaultMessageId(MailboxIds<Id> mailboxIds, long messageUid) {
-        Preconditions.checkNotNull(mailboxIds);
-        this.mailboxIds = mailboxIds;
-        this.messageUid = messageUid;
-    }
-    
-    @Override
-    public String serialize() {
-        return String.format("%s-%d", mailboxIds.serialize(), messageUid);
-    }
-    
-    @Override
-    @SuppressWarnings("unchecked")
-    public final boolean equals(Object obj) {
-        if (obj instanceof DefaultMessageId) {
-            DefaultMessageId<Id> other = (DefaultMessageId<Id>) obj;
-            return Objects.equal(mailboxIds, other.mailboxIds) &&
-                    Objects.equal(messageUid, other.messageUid);
-            
-        }
-        return false;
-    }
-    
-    @Override
-    public final int hashCode() {
-        return Objects.hashCode(mailboxIds, messageUid);
-    }
+    MailboxIds<Id> add(Id id);
+
+    String serialize();
 }

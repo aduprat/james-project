@@ -43,6 +43,7 @@ import org.apache.james.mailbox.jcr.JCRImapConstants;
 import org.apache.james.mailbox.jcr.Persistent;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.FlagsBuilder;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.Property;
@@ -50,7 +51,7 @@ import org.apache.james.mailbox.store.mail.model.impl.MessageUidComparator;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.slf4j.Logger;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 public class JCRMailboxMessage implements MailboxMessage<JCRId>, JCRImapConstants, Persistent {
 
@@ -395,8 +396,8 @@ public class JCRMailboxMessage implements MailboxMessage<JCRId>, JCRImapConstant
     }
 
     @Override
-    public List<JCRId> getMailboxIds() {
-        return ImmutableList.of(getMailboxId());
+    public MailboxIds<JCRId> getMailboxIds() {
+        return ImmutableSet.of(getMailboxId());
     }
 
     private JCRId getMailboxId() {

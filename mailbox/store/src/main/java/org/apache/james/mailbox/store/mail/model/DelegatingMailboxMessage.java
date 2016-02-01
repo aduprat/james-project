@@ -108,8 +108,8 @@ public abstract class DelegatingMailboxMessage<Id extends MailboxId> implements 
     }
 
     @Override
-    public DefaultMessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+    public DefaultMessageId<Id> getMessageId() {
+        return new DefaultMessageId<Id>(getMailboxIds(), getUid());
     }
 
     public Message getMessage() {

@@ -39,13 +39,12 @@ import org.apache.james.mailbox.hbase.HBaseId;
 import org.apache.james.mailbox.hbase.io.ChunkInputStream;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.FlagsBuilder;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageUidComparator;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * Concrete HBaseMailboxMessage implementation. This implementation does not store any
@@ -59,7 +58,7 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     /** Configuration for the HBase cluster */
     private final Configuration conf;
     /** The value for the mailboxId field */
-    private final HBaseId mailboxId;
+    private final MailboxIds<HBaseId> mailboxIds;
     /** The value for the uid field */
     private long uid;
     /** The value for the modSeq field */
@@ -96,9 +95,9 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
      * Create a copy of the given message.
      * All properties are cloned except mailbox and UID.
      */
-    public HBaseMailboxMessage(Configuration conf, HBaseId mailboxId, long uid, long modSeq, MailboxMessage<?> original) throws MailboxException {
+    public HBaseMailboxMessage(Configuration conf, MailboxIds<HBaseId> mailboxIds, long uid, long modSeq, MailboxMessage<?> original) throws MailboxException {
         this.conf = conf;
-        this.mailboxId = mailboxId;
+        this.mailboxIds = mailboxIds;
         this.uid = uid;
         this.modSeq = modSeq;
         this.userFlags = new ArrayList<String>();
@@ -118,10 +117,10 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
         this.properties = original.getProperties();
     }
 
-    public HBaseMailboxMessage(Configuration conf, HBaseId mailboxId, Date internalDate, Flags flags, long contentOctets, int bodyStartOctet, PropertyBuilder propertyBuilder) {
+    public HBaseMailboxMessage(Configuration conf, MailboxIds<HBaseId> mailboxIds, Date internalDate, Flags flags, long contentOctets, int bodyStartOctet, PropertyBuilder propertyBuilder) {
         super();
         this.conf = conf;
-        this.mailboxId = mailboxId;
+        this.mailboxIds = mailboxIds;
         this.internalDate = internalDate;
         userFlags = new ArrayList<String>();
 
@@ -153,7 +152,7 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     public int hashCode() {
         final int PRIME = 31;
         int result = 1;
-        result = PRIME * result + mailboxId.hashCode();
+        result = PRIME * result + mailboxIds.hashCode();
         result = PRIME * result + (int) (uid ^ (uid >>> 32));
         return result;
     }
@@ -252,7 +251,7 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
 
     @Override
     public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+        return new DefaultMessageId<HBaseId>(getMailboxIds(), getUid());
     }
 
     @Override
@@ -261,8 +260,8 @@ public class HBaseMailboxMessage implements MailboxMessage<HBaseId> {
     }
 
     @Override
-    public List<HBaseId> getMailboxIds() {
-        return ImmutableList.of(mailboxId);
+    public MailboxIds<HBaseId> getMailboxIds() {
+        return mailboxIds;
     }
 
     @Override

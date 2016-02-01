@@ -45,9 +45,10 @@ import org.apache.james.mailbox.jpa.JPAId;
 import org.apache.james.mailbox.jpa.mail.model.JPAMailbox;
 import org.apache.james.mailbox.jpa.mail.model.JPAProperty;
 import org.apache.james.mailbox.jpa.mail.model.JPAUserFlag;
-import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
+import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.FlagsBuilder;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.Property;
@@ -57,7 +58,7 @@ import org.apache.openjpa.persistence.jdbc.ElementJoinColumn;
 import org.apache.openjpa.persistence.jdbc.ElementJoinColumns;
 import org.apache.openjpa.persistence.jdbc.Index;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Abstract base class for JPA based implementations of {@link DelegatingMailboxMessage}
@@ -412,8 +413,8 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage<JPAId>
     /**
      * @see MailboxMessage#getMailboxIds()
      */
-    public List<JPAId> getMailboxIds() {
-        return ImmutableList.of(getMailboxId());
+    public MailboxIds<JPAId> getMailboxIds() {
+        return ImmutableSet.of(getMailboxId());
     }
 
     private JPAId getMailboxId() {

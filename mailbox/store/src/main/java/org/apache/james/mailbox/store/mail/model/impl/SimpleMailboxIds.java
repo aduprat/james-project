@@ -16,41 +16,63 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.mailbox.store.mail.model;
 
-import com.google.common.base.Objects;
+package org.apache.james.mailbox.store.mail.model.impl;
+
+import java.util.Set;
+
+import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.apache.james.mailbox.store.mail.model.MailboxIds;
+
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
-public class DefaultMessageId<Id extends MailboxId> implements MessageId {
+public class SimpleMailboxIds<Id extends MailboxId> implements MailboxIds<Id> {
 
-    private final MailboxIds<Id> mailboxIds;
-    private final long messageUid;
+    private final Set<Id> mailboxIds;
 
-    public DefaultMessageId(MailboxIds<Id> mailboxIds, long messageUid) {
-        Preconditions.checkNotNull(mailboxIds);
+    public SimpleMailboxIds(Set<Id> mailboxIds) {
+        Preconditions.checkNotNull(mailboxIds, "'mailboxIds' is mandatory");
         this.mailboxIds = mailboxIds;
-        this.messageUid = messageUid;
     }
-    
+
+    @Override
+    public Set<Id> mailboxIds() {
+        return mailboxIds;
+    }
+
+    @Override
+    public MailboxIds<Id> add(Id id) {
+        return new SimpleMailboxIds<Id>(ImmutableSet.<Id> builder()
+                .addAll(mailboxIds)
+                .add(id)
+                .build());
+    }
+
     @Override
     public String serialize() {
-        return String.format("%s-%d", mailboxIds.serialize(), messageUid);
+        return "(" + Joiner.on(", ").join(mailboxIds) + ")";
     }
-    
+
     @Override
     @SuppressWarnings("unchecked")
-    public final boolean equals(Object obj) {
-        if (obj instanceof DefaultMessageId) {
-            DefaultMessageId<Id> other = (DefaultMessageId<Id>) obj;
-            return Objects.equal(mailboxIds, other.mailboxIds) &&
-                    Objects.equal(messageUid, other.messageUid);
-            
+    public boolean equals(Object obj) {
+        if (obj instanceof SimpleMailboxIds) {
+            SimpleMailboxIds<Id> other = (SimpleMailboxIds<Id>) obj;
+            return Sets.symmetricDifference(this.mailboxIds, other.mailboxIds).isEmpty();
         }
         return false;
     }
-    
+
     @Override
-    public final int hashCode() {
-        return Objects.hashCode(mailboxIds, messageUid);
+    public int hashCode() {
+        return mailboxIds.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return serialize();
     }
 }
