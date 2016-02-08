@@ -112,12 +112,9 @@ public class SetMessagesMethod<Id extends MailboxId> implements Method {
                         .getMailboxMapper(mailboxSession)
                         .findMailboxByPath(messageId.getMailboxPath(mailboxSession));
 
-                Iterator<MailboxMessage<Id>> mailboxMessage = messageMapper.findInMailbox(mailbox, MessageRange.one(messageId.getUid()), FetchType.Metadata, LIMIT_BY_ONE);
-                if (!mailboxMessage.hasNext()) {
-                    throw new MessageNotFoundException();
-                }
+                MailboxMessage<Id> mailboxMessage = getMailboxMessage(messageMapper, messageId, mailbox);
 
-                messageMapper.delete(mailbox, mailboxMessage.next());
+                messageMapper.delete(mailbox, mailboxMessage);
                 responseBuilder.destroyed(messageId);
             } catch (MessageNotFoundException e) {
                 responseBuilder.notDestroyed(messageId,
@@ -134,5 +131,15 @@ public class SetMessagesMethod<Id extends MailboxId> implements Method {
                         .build());
             }
         };
+    }
+
+    private MailboxMessage<Id> getMailboxMessage(MessageMapper<Id> messageMapper, MessageId messageId, Mailbox<Id> mailbox) 
+            throws MailboxException, MessageNotFoundException {
+
+        Iterator<MailboxMessage<Id>> mailboxMessage = messageMapper.findInMailbox(mailbox, MessageRange.one(messageId.getUid()), FetchType.Metadata, LIMIT_BY_ONE);
+        if (!mailboxMessage.hasNext()) {
+            throw new MessageNotFoundException();
+        }
+        return mailboxMessage.next();
     }
 }
