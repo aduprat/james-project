@@ -19,7 +19,16 @@
 
 package org.apache.james.utils;
 
-import com.google.inject.Inject;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
+
+import javax.inject.Singleton;
+
 import org.apache.commons.configuration.CombinedConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.DefaultConfigurationBuilder;
@@ -28,27 +37,21 @@ import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.lifecycle.api.LogEnabled;
 import org.apache.james.mailrepository.api.MailRepository;
 import org.apache.james.mailrepository.api.MailRepositoryStore;
+import org.apache.james.mailrepository.file.FileMailRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Singleton;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
+import com.google.inject.Inject;
 
 @Singleton
 public class InMemoryMailRepositoryStore implements MailRepositoryStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryMailRepositoryStore.class);
 
-    private final Set<MailRepositoryProvider> mailRepositories;
-    private final ConcurrentMap<String, MailRepository> destinationToRepositoryAssociations;
-    private final Map<String, MailRepositoryProvider> protocolToRepositoryProvider;
-    private final Map<String, HierarchicalConfiguration> perProtocolMailRepositoryDefaultConfiguration;
+    private Set<MailRepositoryProvider> mailRepositories;
+    private ConcurrentMap<String, MailRepository> destinationToRepositoryAssociations;
+    private Map<String, MailRepositoryProvider> protocolToRepositoryProvider;
+    private Map<String, HierarchicalConfiguration> perProtocolMailRepositoryDefaultConfiguration;
     private HierarchicalConfiguration configuration;
 
     @Inject
@@ -132,6 +135,9 @@ public class InMemoryMailRepositoryStore implements MailRepositoryStore {
             }
             if (mailRepository instanceof Configurable) {
                 ((Configurable) mailRepository).configure(config);
+            }
+            if (mailRepository instanceof FileMailRepository) {
+                ((FileMailRepository)mailRepository).init();
             }
             return mailRepository;
         } catch (Exception e) {
