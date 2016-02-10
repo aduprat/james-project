@@ -44,7 +44,8 @@ public class SMTPJamesServerMain {
             new SMTPServerModule(),
             new ActiveMQQueueModule(),
             new MailStoreRepositoryModule(),
-            new CamelMailetContainerModule());
+            new CamelMailetContainerModule(),
+            new PostConstructModule());
 
     public static void main(String[] args) throws Exception {
         SMTPJamesServer server = new SMTPJamesServer(Modules.combine(

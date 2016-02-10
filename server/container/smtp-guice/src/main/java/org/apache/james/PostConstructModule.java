@@ -17,23 +17,28 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.mpt.imapmailbox.inmemory.host;
+package org.apache.james;
 
-import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mpt.host.JamesSmtpHostSystem;
+import java.util.Set;
 
-public class SmtpHostSystem extends JamesSmtpHostSystem {
+import javax.annotation.PostConstruct;
 
-    @Override
-    public boolean addUser(String user, String password) throws Exception {
-        return false;
-    }
+import org.apache.james.utils.ConfigurationPerformer;
 
-    @Override
-    protected void resetData() throws Exception {
-    }
+import com.google.inject.Binder;
+import com.google.inject.Module;
+
+public class PostConstructModule implements Module {
 
     @Override
-    public void createMailbox(MailboxPath mailboxPath) throws Exception {
+    public void configure(Binder binder) {
+        // TODO Auto-generated method stub
+
     }
+
+    @PostConstruct
+    public void postConstruct(Set<ConfigurationPerformer> configs) {
+        
+    }
+    
 }

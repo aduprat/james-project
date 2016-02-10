@@ -19,10 +19,6 @@
 
 package org.apache.james.mpt.host;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import org.apache.james.mailbox.MailboxSession.User;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mpt.api.SmtpHostSystem;
 import org.apache.james.mpt.monitor.SystemLoggingMonitor;
@@ -30,11 +26,8 @@ import org.apache.james.mpt.session.ExternalSessionFactory;
 
 public abstract class JamesSmtpHostSystem extends ExternalSessionFactory implements SmtpHostSystem {
 
-    private final Set<User> users;
-
     public JamesSmtpHostSystem() {
         super("localhost", 1025, new SystemLoggingMonitor(), "220 mydomain.tld smtp");
-        users = new HashSet<User>();
     }
 
     public void configure() {
@@ -44,7 +37,6 @@ public abstract class JamesSmtpHostSystem extends ExternalSessionFactory impleme
     }
     
     public void afterTest() throws Exception {
-        users.clear();
         resetData();
     }
     
@@ -60,5 +52,4 @@ public abstract class JamesSmtpHostSystem extends ExternalSessionFactory impleme
     public void beforeTests() throws Exception {
         // default do nothing
     }
-    
 }
