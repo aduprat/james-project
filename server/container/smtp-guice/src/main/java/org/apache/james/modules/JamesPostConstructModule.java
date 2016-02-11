@@ -16,30 +16,42 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james;
 
-import org.apache.onami.lifecycle.jsr250.PreDestroyModule;
+package org.apache.james.modules;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
+import java.util.Set;
 
-public class SMTPJamesServer {
+import javax.inject.Singleton;
 
-    private final Module serverModule;
-    private PreDestroyModule preDestroyModule;
+import org.apache.james.utils.ConfigurationPerformer;
+import org.apache.onami.lifecycle.jsr250.PostConstructModule;
 
-    public SMTPJamesServer(Module serverModule) {
-        this.serverModule = serverModule;
+import com.github.fge.lambdas.Throwing;
+import com.google.inject.Inject;
+
+public class JamesPostConstructModule extends PostConstructModule {
+
+    @Override
+    public void configure() {
+        super.configure();
+        System.out.println("in post construct module");
+        bind(PostConstructImpl.class).in(Singleton.class);
     }
 
-    public void start() throws Exception {
-        Injector injector = Guice.createInjector(serverModule);
-        preDestroyModule = injector.getInstance(PreDestroyModule.class);
-    }
+    public static class PostConstructImpl {
 
-    public void stop() {
-        preDestroyModule.getStager().stage();
-    }
+        private final Set<ConfigurationPerformer> configurationPerformers;
 
+        @Inject
+        private PostConstructImpl(Set<ConfigurationPerformer> configurationPerformers) {
+            this.configurationPerformers = configurationPerformers;
+        }
+
+        @javax.annotation.PostConstruct
+        public void init() {
+            System.out.println("in post construct method");
+            configurationPerformers.stream()
+                .forEach(Throwing.consumer(ConfigurationPerformer::initModule));
+        }
+    }
 }

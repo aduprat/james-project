@@ -48,7 +48,7 @@ public class ForwardSmtpTest extends AbstractSimpleScriptedTestProtocol {
     @Inject
     private static SmtpHostSystem hostSystem;
 
-    @Inject 
+    @Inject
     private static InMemoryDNSService dnsService;
 
     public ForwardSmtpTest() throws Exception {

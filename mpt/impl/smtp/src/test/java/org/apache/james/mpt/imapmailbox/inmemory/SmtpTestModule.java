@@ -19,55 +19,74 @@
 package org.apache.james.mpt.imapmailbox.inmemory;
 
 import java.io.IOException;
+import java.util.Iterator;
 
-import org.apache.james.SMTPJamesServerMain;
+import org.apache.james.CassandraJamesServerMain;
+import org.apache.james.backends.cassandra.CassandraCluster;
+import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.domainlist.cassandra.CassandraDomainListModule;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
-import org.apache.james.mpt.api.Continuation;
-import org.apache.james.mpt.api.Session;
 import org.apache.james.mpt.api.SmtpHostSystem;
+import org.apache.james.mpt.monitor.SystemLoggingMonitor;
+import org.apache.james.mpt.session.ExternalSessionFactory;
+import org.apache.james.rrt.api.RecipientRewriteTable;
+import org.apache.james.rrt.cassandra.CassandraRRTModule;
 import org.apache.james.user.api.UsersRepository;
-import org.apache.james.user.api.model.JamesUser;
-import org.apache.mailet.MailAddress;
+import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 import org.junit.rules.TemporaryFolder;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
 
 public class SmtpTestModule extends AbstractModule {
 
     private final TemporaryFolder folder = new TemporaryFolder();
     private final String rootDirectory;
+    private final CassandraCluster cassandraClusterSingleton;
 
     public SmtpTestModule() throws IOException {
         folder.create();
         rootDirectory = folder.newFolder().getAbsolutePath();
+        CassandraModuleComposite cassandraModuleComposite = new CassandraModuleComposite(
+                new CassandraDomainListModule(),
+                new CassandraUsersRepositoryModule(),
+                new CassandraRRTModule());
+        cassandraClusterSingleton = CassandraCluster.create(cassandraModuleComposite);
     }
 
     @Override
     protected void configure() {
-        install(Modules.override(SMTPJamesServerMain.defaultModule)
-                    .with(new MyModule(rootDirectory, folder)));
+        install(Modules.override(CassandraJamesServerMain.defaultModule)
+                    .with(new MyModule(rootDirectory, cassandraClusterSingleton.getConf())));
     }
 
     private static class MyModule extends AbstractModule {
         
         private final String rootDirectory;
-        private final TemporaryFolder folder;
+        private final com.datastax.driver.core.Session session;
 
-        public MyModule(String rootDirectory, TemporaryFolder folder) {
+        public MyModule(String rootDirectory, com.datastax.driver.core.Session session) {
             this.rootDirectory = rootDirectory;
-            this.folder = folder;
+            this.session = session;
+        }
+
+        @Provides
+        public com.datastax.driver.core.Session cassandraSession() {
+            return session;
         }
 
         @Override
         protected void configure() {
             bind(InMemoryDNSService.class).in(Scopes.SINGLETON);
             bind(DNSService.class).to(InMemoryDNSService.class);
-            bind(TemporaryFolder.class).toInstance(folder);
-            bind(SmtpHostSystem.class).to(JamesSmtpHostSystem.class);
             bind(JamesDirectoriesProvider.class).toInstance(new MyJamesDirectoriesProvider(rootDirectory));
         }
     }
@@ -101,32 +120,41 @@ public class SmtpTestModule extends AbstractModule {
         }
     }
 
-//    @Provides
-//    @Singleton
-//    public SmtpHostSystem provideHostSystem(UsersRepository usersRepository, ConfigurationsPerformer configurationsPerformer) throws Exception {
-////        configurationsPerformer.initModules();
+    @Provides
+    @Singleton
+    public SmtpHostSystem provideHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable) throws Exception {
+        return new JamesSmtpHostSystem(domainList, usersRepository, recipientRewriteTable);
+    }
 
-    private static class JamesSmtpHostSystem implements SmtpHostSystem {
+    private static class JamesSmtpHostSystem extends ExternalSessionFactory implements SmtpHostSystem {
 
+        private final DomainList domainList;
         private final UsersRepository usersRepository;
+        private final RecipientRewriteTable recipientRewriteTable;
 
         @Inject
-        private JamesSmtpHostSystem(UsersRepository usersRepository) {
+        private JamesSmtpHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable) {
+            super("localhost", 1025, new SystemLoggingMonitor(), "220 mydomain.tld smtp");
+            this.domainList = domainList;
             this.usersRepository = usersRepository;
+            this.recipientRewriteTable = recipientRewriteTable;
         }
 
         @Override
-        public boolean addUser(String user, String password) throws Exception {
-            usersRepository.addUser(user, password);
-            JamesUser jamesUser = (JamesUser) usersRepository.getUserByName(user);
-            jamesUser.setForwarding(true);
-            jamesUser.setForwardingDestination(new MailAddress("ray@yopmail.com"));
+        public boolean addUser(String userAtDomain, String password) throws Exception {
+            Preconditions.checkArgument(userAtDomain.contains("@"), "The 'user' should contains the 'domain'");
+            Iterator<String> split = Splitter.on("@").split(userAtDomain).iterator();
+            String user = split.next();
+            String domain = split.next();
+
+            domainList.addDomain(domain);
+            usersRepository.addUser(userAtDomain, password);
+
+//            DefaultUser jamesUser = (DefaultUser) usersRepository.getUserByName(userAtDomain);
+            recipientRewriteTable.addAddressMapping(user, domain, "ray@yopmail.com");
+//            jamesUser.setForwarding(true);
+//            jamesUser.setForwardingDestination(new MailAddress("ray@yopmail.com"));
             return true;
-        }
-
-        @Override
-        public Session newSession(Continuation continuation) throws Exception {
-            return null;
         }
 
         @Override

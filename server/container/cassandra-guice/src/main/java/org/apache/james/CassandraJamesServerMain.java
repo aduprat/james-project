@@ -20,6 +20,7 @@
 package org.apache.james;
 
 import org.apache.james.modules.CommonServicesModule;
+import org.apache.james.modules.JamesPostConstructModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
@@ -42,6 +43,7 @@ import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.MailStoreRepositoryModule;
 import org.apache.james.modules.server.QuotaModule;
 import org.apache.james.modules.server.SieveModule;
+import org.apache.onami.lifecycle.jsr250.PreDestroyModule;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
@@ -70,7 +72,9 @@ public class CassandraJamesServerMain {
             new CamelMailetContainerModule(),
             new QuotaModule(),
             new ConfigurationProviderModule(),
-            new JMAPServerModule());
+            new JMAPServerModule(),
+            new PreDestroyModule(),
+            new JamesPostConstructModule());
 
     public static void main(String[] args) throws Exception {
         CassandraJamesServer server = new CassandraJamesServer(Modules.combine(

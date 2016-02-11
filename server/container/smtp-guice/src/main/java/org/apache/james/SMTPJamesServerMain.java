@@ -20,6 +20,7 @@
 package org.apache.james;
 
 import org.apache.james.modules.CommonServicesModule;
+import org.apache.james.modules.JamesPostConstructModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.server.ActiveMQQueueModule;
@@ -29,6 +30,7 @@ import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.FilesystemDataModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.MailStoreRepositoryModule;
+import org.apache.onami.lifecycle.jsr250.PreDestroyModule;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
@@ -45,7 +47,8 @@ public class SMTPJamesServerMain {
             new ActiveMQQueueModule(),
             new MailStoreRepositoryModule(),
             new CamelMailetContainerModule(),
-            new PostConstructModule());
+            new PreDestroyModule(),
+            new JamesPostConstructModule());
 
     public static void main(String[] args) throws Exception {
         SMTPJamesServer server = new SMTPJamesServer(Modules.combine(

@@ -17,28 +17,41 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james;
+package org.apache.james.modules;
 
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
+import javax.inject.Singleton;
 
 import org.apache.james.utils.ConfigurationPerformer;
+import org.apache.onami.lifecycle.jsr250.PostConstructModule;
 
-import com.google.inject.Binder;
-import com.google.inject.Module;
+import com.github.fge.lambdas.Throwing;
+import com.google.inject.Inject;
 
-public class PostConstructModule implements Module {
+public class JamesPostConstructModule extends PostConstructModule {
 
     @Override
-    public void configure(Binder binder) {
-        // TODO Auto-generated method stub
-
+    public void configure() {
+        super.configure();
+        System.out.println("in post construct module");
+        bind(PostConstructImpl.class).in(Singleton.class);
     }
 
-    @PostConstruct
-    public void postConstruct(Set<ConfigurationPerformer> configs) {
-        
+    public static class PostConstructImpl {
+
+        private final Set<ConfigurationPerformer> configurationPerformers;
+
+        @Inject
+        private PostConstructImpl(Set<ConfigurationPerformer> configurationPerformers) {
+            this.configurationPerformers = configurationPerformers;
+        }
+
+        @javax.annotation.PostConstruct
+        public void init() {
+            System.out.println("in post construct method");
+            configurationPerformers.stream()
+                .forEach(Throwing.consumer(ConfigurationPerformer::initModule));
+        }
     }
-    
 }
