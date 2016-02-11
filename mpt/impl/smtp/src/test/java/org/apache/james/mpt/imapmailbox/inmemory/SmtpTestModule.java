@@ -28,6 +28,7 @@ import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.cassandra.CassandraDomainListModule;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
+import org.apache.james.modules.JamesPostConstructModule.PostConstructImpl;
 import org.apache.james.mpt.api.SmtpHostSystem;
 import org.apache.james.mpt.monitor.SystemLoggingMonitor;
 import org.apache.james.mpt.session.ExternalSessionFactory;
@@ -122,8 +123,8 @@ public class SmtpTestModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public SmtpHostSystem provideHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable) throws Exception {
-        return new JamesSmtpHostSystem(domainList, usersRepository, recipientRewriteTable);
+    public SmtpHostSystem provideHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable, PostConstructImpl postConstructImpl) throws Exception {
+        return new JamesSmtpHostSystem(domainList, usersRepository, recipientRewriteTable, postConstructImpl);
     }
 
     private static class JamesSmtpHostSystem extends ExternalSessionFactory implements SmtpHostSystem {
@@ -131,13 +132,15 @@ public class SmtpTestModule extends AbstractModule {
         private final DomainList domainList;
         private final UsersRepository usersRepository;
         private final RecipientRewriteTable recipientRewriteTable;
+        private final PostConstructImpl postConstructImpl;
 
         @Inject
-        private JamesSmtpHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable) {
+        private JamesSmtpHostSystem(DomainList domainList, UsersRepository usersRepository, RecipientRewriteTable recipientRewriteTable, PostConstructImpl postConstructImpl) {
             super("localhost", 1025, new SystemLoggingMonitor(), "220 mydomain.tld smtp");
             this.domainList = domainList;
             this.usersRepository = usersRepository;
             this.recipientRewriteTable = recipientRewriteTable;
+            this.postConstructImpl = postConstructImpl;
         }
 
         @Override
