@@ -112,10 +112,10 @@
         <hbase.includes>empty</hbase.includes>
         <inmemory.includes>empty</inmemory.includes>
         <jcr.includes>empty</jcr.includes>
-        <jpa.includes>none</jpa.includes>
-        <maildir.includes>none</maildir.includes>
-        <cyrus.includes>none</cyrus.includes>
-        <elasticsearch.includes>none</elasticsearch.includes>
+        <jpa.includes>empty</jpa.includes>
+        <maildir.includes>empty</maildir.includes>
+        <cyrus.includes>empty</cyrus.includes>
+        <elasticsearch.includes>empty</elasticsearch.includes>
     </properties>
 
     <profiles>
