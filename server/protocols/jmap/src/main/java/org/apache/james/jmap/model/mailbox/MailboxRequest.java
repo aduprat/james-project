@@ -40,12 +40,13 @@ public class MailboxRequest {
 
         private Optional<String> id;
         private String name;
-        private String parentId;
+        private Optional<String> parentId;
         private Optional<Role> role;
         private Optional<SortOrder> sortOrder;
 
         private Builder() {
             id = Optional.empty();
+            parentId = Optional.empty();
             role = Optional.empty();
             sortOrder = Optional.empty();
         }
@@ -63,7 +64,7 @@ public class MailboxRequest {
         }
 
         public Builder parentId(String parentId) {
-            this.parentId = parentId;
+            this.parentId = Optional.of(parentId);
             return this;
         }
 
@@ -80,7 +81,7 @@ public class MailboxRequest {
 
         public MailboxRequest build() {
             Preconditions.checkState(!Strings.isNullOrEmpty(name), "'name' is mandatory");
-            return new MailboxRequest(id, name, Optional.ofNullable(parentId), role, sortOrder);
+            return new MailboxRequest(id, name, parentId, role, sortOrder);
         }
     }
 

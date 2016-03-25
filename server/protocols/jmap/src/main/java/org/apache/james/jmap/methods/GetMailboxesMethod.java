@@ -34,6 +34,7 @@ import org.apache.james.jmap.model.MailboxProperty;
 import org.apache.james.jmap.model.mailbox.Mailbox;
 import org.apache.james.jmap.model.mailbox.Role;
 import org.apache.james.jmap.model.mailbox.SortOrder;
+import org.apache.james.jmap.utils.MailboxUtils;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
@@ -56,18 +57,18 @@ import com.google.common.collect.Sets;
 
 public class GetMailboxesMethod<Id extends MailboxId> implements Method {
 
-    private static final boolean DONT_RESET_RECENT = false;
-    private static final Logger LOGGER = LoggerFactory.getLogger(GetMailboxesMethod.class);
     private static final Method.Request.Name METHOD_NAME = Method.Request.name("getMailboxes");
     private static final Method.Response.Name RESPONSE_NAME = Method.Response.name("mailboxes");
 
     private final MailboxManager mailboxManager; 
     private final MailboxMapperFactory<Id> mailboxMapperFactory;
+    private final MailboxUtils<Id> mailboxUtils;
 
     @Inject
-    @VisibleForTesting public GetMailboxesMethod(MailboxManager mailboxManager, MailboxMapperFactory<Id> mailboxMapperFactory) {
+    @VisibleForTesting public GetMailboxesMethod(MailboxManager mailboxManager, MailboxMapperFactory<Id> mailboxMapperFactory, MailboxUtils<Id> mailboxUtils) {
         this.mailboxManager = mailboxManager;
         this.mailboxMapperFactory = mailboxMapperFactory;
+        this.mailboxUtils = mailboxUtils;
     }
 
     @Override
@@ -101,7 +102,7 @@ public class GetMailboxesMethod<Id extends MailboxId> implements Method {
             retrieveUserMailboxes(mailboxSession)
                 .stream()
                 .map(MailboxMetaData::getPath)
-                .map(mailboxPath -> mailboxFromMailboxPath(mailboxPath, mailboxSession))
+                .map(mailboxPath -> mailboxUtils.mailboxFromMailboxPath(mailboxPath, mailboxSession))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .filter(filterMailboxesById(mailboxesRequest.getIds()))
@@ -121,36 +122,6 @@ public class GetMailboxesMethod<Id extends MailboxId> implements Method {
         return mailboxManager.search(
                 MailboxQuery.builder(session).privateUserMailboxes().build(),
                 session);
-    }
-
-    private Optional<Mailbox> mailboxFromMailboxPath(MailboxPath mailboxPath, MailboxSession mailboxSession) {
-        try {
-            Optional<Role> role = Role.from(mailboxPath.getName());
-            MessageManager.MetaData mailboxMetaData = getMailboxMetaData(mailboxPath, mailboxSession);
-            return Optional.ofNullable(Mailbox.builder()
-                    .id(getMailboxId(mailboxPath, mailboxSession))
-                    .name(mailboxPath.getName())
-                    .role(role)
-                    .unreadMessages(mailboxMetaData.getUnseenCount())
-                    .totalMessages(mailboxMetaData.getMessageCount())
-                    .sortOrder(SortOrder.getSortOrder(role))
-                    .build());
-        } catch (MailboxException e) {
-            LOGGER.warn("Cannot find mailbox for :" + mailboxPath.getName(), e);
-            return Optional.empty();
-        }
-    }
-
-    private String getMailboxId(MailboxPath mailboxPath, MailboxSession mailboxSession) throws MailboxException {
-        return mailboxMapperFactory.getMailboxMapper(mailboxSession)
-                .findMailboxByPath(mailboxPath)
-                .getMailboxId()
-                .serialize();
-    }
-
-    private MessageManager.MetaData getMailboxMetaData(MailboxPath mailboxPath, MailboxSession mailboxSession) throws MailboxException {
-        return mailboxManager.getMailbox(mailboxPath, mailboxSession)
-                .getMetaData(DONT_RESET_RECENT, mailboxSession, FetchGroup.UNSEEN_COUNT);
     }
 
 }

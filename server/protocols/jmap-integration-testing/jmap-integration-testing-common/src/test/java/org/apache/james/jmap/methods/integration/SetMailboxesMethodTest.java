@@ -19,11 +19,13 @@
 
 package org.apache.james.jmap.methods.integration;
 
-import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.*;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasSize;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.JmapAuthentication;
@@ -73,7 +75,7 @@ public abstract class SetMailboxesMethodTest {
     }
     
     @Test
-    public void setMailboxesShouldCreateMailbox() throws Exception {
+    public void setMailboxesShouldReturnCreatedMailbox() throws Exception {
         String requestBody =
             "[" +
                 "  [ \"setMailboxes\"," +
@@ -99,5 +101,91 @@ public abstract class SetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(ARGUMENTS + ".created", hasKey("create-id01"));
+    }
+
+    @Test
+    public void setMailboxesShouldCreateMailbox() throws Exception {
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"create\": {" +
+                "        \"create-id01\" : {" +
+                "          \"name\" : \"foo\"" +
+                "        }" +
+                "      }" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        with()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+            .then()
+            .post("/jmap");
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body("[[\"getMailboxes\", {}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxes"))
+            .body(ARGUMENTS + ".list", hasSize(2))
+            .body(ARGUMENTS + ".list.name", hasItems("foo"));
+    }
+
+    @Test
+    public void setMailboxesShouldCreateChildOfInboxMailbox() throws Exception {
+        String inboxId =
+            with()
+                .accept(ContentType.JSON)
+                .contentType(ContentType.JSON)
+                .header("Authorization", this.accessToken.serialize())
+                .body("[[\"getMailboxes\", {}, \"#0\"]]")
+            .when()
+                .post("/jmap")
+            .then()
+                .extract()
+                .jsonPath()
+                .getString(ARGUMENTS + ".list[0].id");
+
+
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"create\": {" +
+                "        \"create-id01\" : {" +
+                "          \"name\" : \"foo\"," +
+                "          \"parentId\" : \"" + inboxId + "\"" +
+                "        }" +
+                "      }" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+            .log().all()
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxes"))
+            .body(ARGUMENTS + ".created", hasKey("create-id01"))
+            .body(ARGUMENTS + ".created.parentId", equalTo(inboxId))
+            .body(ARGUMENTS + ".created.name", equalTo("foo"));
     }
 }

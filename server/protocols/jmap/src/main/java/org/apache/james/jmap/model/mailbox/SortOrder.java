@@ -27,7 +27,7 @@ import com.google.common.collect.ImmutableMap;
 
 public class SortOrder implements Comparable<SortOrder> {
 
-    private static final SortOrder DEFAULT_SORT_ORDER = SortOrder.of(1000);
+    public static final SortOrder DEFAULT_SORT_ORDER = SortOrder.of(1000);
     private static final ImmutableMap<Role, SortOrder> defaultSortOrders =
             ImmutableMap.<Role, SortOrder>builder()
                 .put(Role.INBOX, SortOrder.of(10))

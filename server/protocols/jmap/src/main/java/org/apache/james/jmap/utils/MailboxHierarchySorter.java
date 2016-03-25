@@ -19,8 +19,10 @@
 
 package org.apache.james.jmap.utils;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,22 +30,31 @@ import org.apache.james.jmap.model.mailbox.Mailbox;
 
 import com.google.common.collect.Lists;
 
-public class MailboxHierarchySorter {
+public class MailboxHierarchySorter<T, Id> {
 
-    public List<Mailbox> sortFromRootToLeaf(List<Mailbox> mailboxes) {
+    private final Function<T, Id> index;
+    private final Function<T, Optional<Id>> parentId;
 
-        Map<String, Mailbox> mapOfMailboxesById = mailboxes.stream()
-                .collect(Collectors.toMap(Mailbox::getId, Function.identity()));
+    public MailboxHierarchySorter(Function<T, Id> index,
+                                  Function<T, Optional<Id>> parentId) {
+        this.index = index;
+        this.parentId = parentId;
+    }
 
-        DependencyGraph<Mailbox> graph = new DependencyGraph<>(m ->
-                m.getParentId().map(mapOfMailboxesById::get));
+    public List<T> sortFromRootToLeaf(Collection<T> mailboxes) {
+
+        Map<Id, T> mapOfMailboxesById = mailboxes.stream()
+                .collect(Collectors.toMap(index, Function.identity()));
+
+        DependencyGraph<T> graph = new DependencyGraph<>(m ->
+                parentId.apply(m).map(mapOfMailboxesById::get));
 
         mailboxes.stream().forEach(graph::registerItem);
 
         return graph.getBuildChain().collect(Collectors.toList());
     }
 
-    public List<Mailbox> sortFromLeafToRoot(List<Mailbox> mailboxes) {
+    public List<T> sortFromLeafToRoot(Collection<T> mailboxes) {
         return Lists.reverse(sortFromRootToLeaf(mailboxes));
     }
 }
