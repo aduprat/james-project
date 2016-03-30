@@ -28,12 +28,12 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 
-public class MailboxHierarchySorter<T, Id> {
+public class CollectionHierarchySorter<T, Id> {
 
     private final Function<T, Id> index;
     private final Function<T, Optional<Id>> parentId;
 
-    public MailboxHierarchySorter(Function<T, Id> index,
+    public CollectionHierarchySorter(Function<T, Id> index,
                                   Function<T, Optional<Id>> parentId) {
         this.index = index;
         this.parentId = parentId;

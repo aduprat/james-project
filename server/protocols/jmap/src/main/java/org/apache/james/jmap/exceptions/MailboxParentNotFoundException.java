@@ -21,4 +21,14 @@ package org.apache.james.jmap.exceptions;
 
 public class MailboxParentNotFoundException extends RuntimeException {
 
+    private final String parentId;
+
+    public MailboxParentNotFoundException(String parentId) {
+        super(String.format("The parent mailbox '%s' was not found.", parentId));
+        this.parentId = parentId;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
 }

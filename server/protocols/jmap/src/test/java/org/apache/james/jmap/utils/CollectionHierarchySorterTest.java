@@ -30,13 +30,13 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 
-public class MailboxHierarchySorterTest {
+public class CollectionHierarchySorterTest {
 
-    private MailboxHierarchySorter<Mailbox, String> sut;
+    private CollectionHierarchySorter<Mailbox, String> sut;
 
     @Before
     public void setup() {
-        sut = new MailboxHierarchySorter<>(Mailbox::getId, Mailbox::getParentId);
+        sut = new CollectionHierarchySorter<>(Mailbox::getId, Mailbox::getParentId);
     }
 
     @Test

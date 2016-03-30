@@ -87,7 +87,7 @@ public class MailboxUtils<Id extends MailboxId> {
                 .getMetaData(DONT_RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.UNSEEN_COUNT);
     }
 
-    private String getName(MailboxPath mailboxPath, MailboxSession mailboxSession) {
+    @VisibleForTesting String getName(MailboxPath mailboxPath, MailboxSession mailboxSession) {
         String name = mailboxPath.getName();
         if (name.contains(String.valueOf(mailboxSession.getPathDelimiter()))) {
             List<String> levels = Splitter.on(mailboxSession.getPathDelimiter()).splitToList(name);
@@ -108,7 +108,7 @@ public class MailboxUtils<Id extends MailboxId> {
                 .findFirst();
     }
 
-    private String getParentIdFromMailboxPath(MailboxPath mailboxPath, MailboxSession mailboxSession) throws MailboxException {
+    @VisibleForTesting String getParentIdFromMailboxPath(MailboxPath mailboxPath, MailboxSession mailboxSession) throws MailboxException {
         List<MailboxPath> levels = mailboxPath.getHierarchyLevels(mailboxSession.getPathDelimiter());
         if (levels.size() <= 1) {
             return null;
