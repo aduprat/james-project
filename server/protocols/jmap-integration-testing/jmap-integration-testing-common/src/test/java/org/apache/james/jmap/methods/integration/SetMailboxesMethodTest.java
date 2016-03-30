@@ -342,7 +342,7 @@ public abstract class SetMailboxesMethodTest {
             .body(ARGUMENTS + ".notCreated", aMapWithSize(1))
             .body(ARGUMENTS + ".notCreated", hasEntry(equalTo("create-id01"), Matchers.allOf(
                     hasEntry(equalTo("type"), equalTo("invalidArguments")),
-                    hasEntry(equalTo("description"), equalTo("The parent mailbox was not found.")))));
+                    hasEntry(equalTo("description"), equalTo("The parent mailbox '123' was not found.")))));
     }
 
     @Test
