@@ -95,7 +95,7 @@ public class SetMailboxesCreationProcessor<Id extends MailboxId> implements SetM
                     .build());
         } catch (MailboxException e) {
             String message = String.format("An error occurred when creating the mailbox '%s'", mailboxCreationId.getCreationId());
-            LOGGER.error(message);
+            LOGGER.error(message, e);
             builder.notCreated(mailboxCreationId, SetError.builder()
                     .type("anErrorOccurred")
                     .description(message)
@@ -107,10 +107,10 @@ public class SetMailboxesCreationProcessor<Id extends MailboxId> implements SetM
         if (mailboxRequest.getParentId().isPresent()) {
             String parentId = mailboxRequest.getParentId().get();
             String parentName = mailboxUtils.getMailboxNameFromId(parentId, mailboxSession)
-                    .orElseGet(Throwing.supplier(() -> {
-                        return mailboxUtils.getMailboxNameFromId(creationIdsToCreatedMailboxId.get(MailboxCreationId.of(parentId)), mailboxSession)
-                            .orElseThrow(() -> new MailboxParentNotFoundException(parentId));
-                    }));
+                    .orElseGet(Throwing.supplier(() ->
+                        mailboxUtils.getMailboxNameFromId(creationIdsToCreatedMailboxId.get(MailboxCreationId.of(parentId)), mailboxSession)
+                            .orElseThrow(() -> new MailboxParentNotFoundException(parentId))
+                    ));
 
             return new MailboxPath(mailboxSession.getPersonalSpace(), mailboxSession.getUser().getUserName(), 
                     parentName + mailboxSession.getPathDelimiter() + mailboxRequest.getName());

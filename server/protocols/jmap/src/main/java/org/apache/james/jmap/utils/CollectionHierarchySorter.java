@@ -39,24 +39,24 @@ public class CollectionHierarchySorter<T, Id> {
         this.parentId = parentId;
     }
 
-    public List<T> sortFromRootToLeaf(Collection<T> mailboxes) {
+    public List<T> sortFromRootToLeaf(Collection<T> elements) {
 
-        Map<Id, T> mapOfMailboxesById = indexMailboxesById(mailboxes);
+        Map<Id, T> mapOfElementsById = indexElementsById(elements);
 
         DependencyGraph<T> graph = new DependencyGraph<>(m ->
-                parentId.apply(m).map(mapOfMailboxesById::get));
+                parentId.apply(m).map(mapOfElementsById::get));
 
-        mailboxes.stream().forEach(graph::registerItem);
+        elements.stream().forEach(graph::registerItem);
 
         return graph.getBuildChain().collect(Collectors.toList());
     }
 
-    private Map<Id, T> indexMailboxesById(Collection<T> mailboxes) {
-        return mailboxes.stream()
+    private Map<Id, T> indexElementsById(Collection<T> elements) {
+        return elements.stream()
                 .collect(Collectors.toMap(index, Function.identity()));
     }
 
-    public List<T> sortFromLeafToRoot(Collection<T> mailboxes) {
-        return Lists.reverse(sortFromRootToLeaf(mailboxes));
+    public List<T> sortFromLeafToRoot(Collection<T> elements) {
+        return Lists.reverse(sortFromRootToLeaf(elements));
     }
 }
