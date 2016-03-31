@@ -116,4 +116,36 @@ public class MailboxUtils<Id extends MailboxId> {
         MailboxPath parent = levels.get(levels.size() - 2);
         return getMailboxId(parent, mailboxSession);
     }
+
+    public Optional<Mailbox> mailboxFromMailboxId(String mailboxId, MailboxSession mailboxSession) {
+        try {
+            return getMailboxFromId(mailboxId, mailboxSession)
+                .flatMap(jamesMailbox ->
+                    mailboxFromMailboxPath(new MailboxPath(jamesMailbox.getNamespace(), mailboxSession.getUser().getUserName(), jamesMailbox.getName()), 
+                            mailboxSession)
+                );
+        } catch (MailboxException e) {
+            return Optional.empty();
+        }
+    }
+
+    public MailboxPath getMailboxPath(Mailbox mailbox, MailboxSession mailboxSession) {
+        return new MailboxPath(mailboxSession.getPersonalSpace(), mailboxSession.getUser().getUserName(), getMailboxName(mailbox, mailboxSession));
+    }
+
+    private String getMailboxName(Mailbox mailbox, MailboxSession mailboxSession) {
+        if (mailbox.getParentId().isPresent()) {
+            return getMailboxName(mailboxFromMailboxId(mailbox.getParentId().get(), mailboxSession).get(), mailboxSession) +
+                    mailboxSession.getPathDelimiter() + mailbox.getName();
+        }
+        return mailbox.getName();
+    }
+
+    public boolean hasChildren(String mailboxId, MailboxSession mailboxSession) throws MailboxException {
+        Optional<org.apache.james.mailbox.store.mail.model.Mailbox<Id>> mailbox = getMailboxFromId(mailboxId, mailboxSession);
+        if (mailbox.isPresent()) {
+            return mailboxMapperFactory.getMailboxMapper(mailboxSession).hasChildren(mailbox.get(), mailboxSession.getPathDelimiter());
+        }
+        return false;
+    }
 }
