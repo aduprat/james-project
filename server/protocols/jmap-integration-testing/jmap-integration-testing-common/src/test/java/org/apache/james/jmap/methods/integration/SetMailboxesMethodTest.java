@@ -23,6 +23,7 @@ import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.with;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItems;
@@ -35,6 +36,7 @@ import static org.hamcrest.collection.IsMapWithSize.aMapWithSize;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.JmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
+import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
@@ -500,5 +502,165 @@ public abstract class SetMailboxesMethodTest {
                             hasEntry(equalTo("type"), equalTo("invalidArguments")),
                             hasEntry(equalTo("description"), equalTo("The created mailboxes introduce a cycle."))))
                     ));
+    }
+
+    @Test
+    public void setMailboxesShouldReturnDestroyedMailbox() throws Exception {
+        jmapServer.serverProbe().createMailbox("#private", username, "myBox");
+        Mailbox<?> mailbox = jmapServer.serverProbe().getMailbox("#private", username, "myBox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + mailboxId + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".destroyed", contains(mailboxId));
+    }
+
+    @Test
+    public void setMailboxesShouldDestroyMailbox() throws Exception {
+        jmapServer.serverProbe().createMailbox("#private", username, "myBox");
+        Mailbox<?> mailbox = jmapServer.serverProbe().getMailbox("#private", username, "myBox");
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + mailbox.getMailboxId().serialize() + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200);
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body("[[\"getMailboxes\", {}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxes"))
+            .body(ARGUMENTS + ".list", hasSize(1)); // Inbox
+    }
+
+    @Test
+    public void setMailboxesShouldReturnNotDestroyedWhenMailboxDoesntExist() throws Exception {
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"123\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".notDestroyed", aMapWithSize(1))
+            .body(ARGUMENTS + ".notDestroyed", hasEntry(equalTo("123"), Matchers.allOf(
+                    hasEntry(equalTo("type"), equalTo("notFound")),
+                    hasEntry(equalTo("description"), equalTo("The mailbox '123' was not found.")))));
+    }
+
+    @Test
+    public void setMailboxesShouldReturnNotDestroyedWhenMailboxHasChild() throws Exception {
+        jmapServer.serverProbe().createMailbox("#private", username, "myBox");
+        jmapServer.serverProbe().createMailbox("#private", username, "myBox.child");
+        Mailbox<?> mailbox = jmapServer.serverProbe().getMailbox("#private", username, "myBox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + mailboxId + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".notDestroyed", aMapWithSize(1))
+            .body(ARGUMENTS + ".notDestroyed", hasEntry(equalTo(mailboxId), Matchers.allOf(
+                    hasEntry(equalTo("type"), equalTo("mailboxHasChild")),
+                    hasEntry(equalTo("description"), equalTo("The mailbox '" + mailboxId + "' has a child.")))));
+    }
+
+    @Test
+    public void setMailboxesShouldReturnNotDestroyedWhenSystemMailbox() throws Exception {
+        Mailbox<?> mailbox = jmapServer.serverProbe().getMailbox("#private", username, "inbox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + mailboxId + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".notDestroyed", aMapWithSize(1))
+            .body(ARGUMENTS + ".notDestroyed", hasEntry(equalTo(mailboxId), Matchers.allOf(
+                    hasEntry(equalTo("type"), equalTo("invalidArguments")),
+                    hasEntry(equalTo("description"), equalTo("The mailbox '" + mailboxId + "' is a system mailbox.")))));
     }
 }
