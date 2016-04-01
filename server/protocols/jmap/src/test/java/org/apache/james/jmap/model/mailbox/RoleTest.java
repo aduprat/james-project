@@ -59,47 +59,47 @@ public class RoleTest {
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenInbox() {
+    public void isSystemRoleShouldBeTrueWhenInbox() {
         assertThat(Role.INBOX.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenArchive() {
+    public void isSystemRoleShouldBeTrueWhenArchive() {
         assertThat(Role.ARCHIVE.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenDrafts() {
+    public void isSystemRoleShouldBeTrueWhenDrafts() {
         assertThat(Role.DRAFTS.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenOutbox() {
+    public void isSystemRoleShouldBeTrueWhenOutbox() {
         assertThat(Role.OUTBOX.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenSent() {
+    public void isSystemRoleShouldBeTrueWhenSent() {
         assertThat(Role.SENT.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenTrash() {
+    public void isSystemRoleShouldBeTrueWhenTrash() {
         assertThat(Role.TRASH.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenSpam() {
+    public void isSystemRoleShouldBeTrueWhenSpam() {
         assertThat(Role.SPAM.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldTrueWhenTemplates() {
+    public void isSystemRoleShouldBeTrueWhenTemplates() {
         assertThat(Role.TEMPLATES.isSystemRole()).isTrue();
     }
 
     @Test
-    public void isSystemRoleShouldFalsWhenUserDefinedRole() {
+    public void isSystemRoleShouldBeFalseWhenUserDefinedRole() {
         Role userRole = Role.from(Role.USER_DEFINED_ROLE_PREFIX + "myRole").get();
         assertThat(userRole.isSystemRole()).isFalse();
     }
