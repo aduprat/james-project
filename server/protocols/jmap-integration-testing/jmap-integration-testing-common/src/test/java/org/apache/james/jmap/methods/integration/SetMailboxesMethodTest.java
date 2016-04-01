@@ -24,6 +24,7 @@ import static com.jayway.restassured.RestAssured.with;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItems;
@@ -662,5 +663,69 @@ public abstract class SetMailboxesMethodTest {
             .body(ARGUMENTS + ".notDestroyed", hasEntry(equalTo(mailboxId), Matchers.allOf(
                     hasEntry(equalTo("type"), equalTo("invalidArguments")),
                     hasEntry(equalTo("description"), equalTo("The mailbox '" + mailboxId + "' is a system mailbox.")))));
+    }
+
+    @Test
+    public void setMailboxesShouldReturnDestroyedWhenParentThenChildMailboxes() throws Exception {
+        jmapServer.serverProbe().createMailbox("#private", username, "parent");
+        Mailbox<?> parentMailbox = jmapServer.serverProbe().getMailbox("#private", username, "parent");
+        String parentMailboxId = parentMailbox.getMailboxId().serialize();
+        jmapServer.serverProbe().createMailbox("#private", username, "parent.child");
+        Mailbox<?> childMailbox = jmapServer.serverProbe().getMailbox("#private", username, "parent.child");
+        String childMailboxId = childMailbox.getMailboxId().serialize();
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + parentMailboxId + "\",\"" + childMailboxId + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".destroyed", containsInAnyOrder(parentMailboxId, childMailboxId));
+    }
+
+    @Test
+    public void setMailboxesShouldReturnDestroyedWhenChildThenParentMailboxes() throws Exception {
+        jmapServer.serverProbe().createMailbox("#private", username, "parent");
+        Mailbox<?> parentMailbox = jmapServer.serverProbe().getMailbox("#private", username, "parent");
+        String parentMailboxId = parentMailbox.getMailboxId().serialize();
+        jmapServer.serverProbe().createMailbox("#private", username, "parent.child");
+        Mailbox<?> childMailbox = jmapServer.serverProbe().getMailbox("#private", username, "parent.child");
+        String childMailboxId = childMailbox.getMailboxId().serialize();
+        String requestBody =
+            "[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"destroy\": [\"" + childMailboxId + "\",\"" + parentMailboxId + "\"]" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", this.accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap")
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxesSet"))
+            .body(ARGUMENTS + ".destroyed", containsInAnyOrder(parentMailboxId, childMailboxId));
     }
 }
