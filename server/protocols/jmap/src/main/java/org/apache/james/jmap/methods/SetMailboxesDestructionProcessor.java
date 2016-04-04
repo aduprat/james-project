@@ -130,7 +130,7 @@ public class SetMailboxesDestructionProcessor<Id extends MailboxId> implements S
     }
 
     private void checkRole(Optional<Role> role) throws SystemMailboxException {
-        if (role.isPresent() && role.get().isSystemRole()) {
+        if (role.map(Role::isSystemRole).orElse(false)) {
             throw new SystemMailboxException();
         }
     }
