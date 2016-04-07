@@ -23,7 +23,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public abstract class MixInMessageUpdateJson {
 
-
     @JsonProperty(JsonMessageConstants.IS_ANSWERED) abstract boolean isAnswered();
     @JsonProperty(JsonMessageConstants.IS_DELETED) abstract boolean isDeleted();
     @JsonProperty(JsonMessageConstants.IS_DRAFT) abstract boolean isDraft();
