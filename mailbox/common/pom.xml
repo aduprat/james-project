@@ -27,9 +27,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>apache-james-mailbox-elasticsearch</artifactId>
-    <description>Apache James Mailbox IMAP search implementation using ElasticSearch</description>
-    <name>Apache James :: Mailbox :: ElasticSearch</name>
+    <artifactId>apache-james-mailbox-common</artifactId>
+    <description>Apache James Mailbox Common</description>
+    <name>Apache James :: Mailbox :: Common</name>
 
     <properties>
         <javax.mail.groupId>javax.mail</javax.mail.groupId>
@@ -158,41 +158,37 @@
 
             </build>
 	        <dependencies>
-                <dependency>
-                    <groupId>${project.groupId}</groupId>
-                    <artifactId>apache-james-mailbox-api</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>apache-james-mailbox-common</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.james</groupId>
-                    <artifactId>apache-james-mailbox-store</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>${project.groupId}</groupId>
-                    <artifactId>apache-james-mailbox-store</artifactId>
-                    <type>test-jar</type>
-                    <scope>test</scope>
-                </dependency>
+<!--                 <dependency> -->
+<!--                     <groupId>${project.groupId}</groupId> -->
+<!--                     <artifactId>apache-james-mailbox-api</artifactId> -->
+<!--                 </dependency> -->
+<!--                 <dependency> -->
+<!--                     <groupId>org.apache.james</groupId> -->
+<!--                     <artifactId>apache-james-mailbox-store</artifactId> -->
+<!--                 </dependency> -->
+<!--                 <dependency> -->
+<!--                     <groupId>${project.groupId}</groupId> -->
+<!--                     <artifactId>apache-james-mailbox-store</artifactId> -->
+<!--                     <type>test-jar</type> -->
+<!--                     <scope>test</scope> -->
+<!--                 </dependency> -->
                 <dependency>
                     <groupId>org.apache.james</groupId>
                     <artifactId>apache-james-mailbox-tika</artifactId>
                     <scope>test</scope>
                 </dependency>
-                <dependency>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>com.fasterxml.jackson.datatype</groupId>
-                    <artifactId>jackson-datatype-guava</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>com.fasterxml.jackson.datatype</groupId>
-                    <artifactId>jackson-datatype-jdk8</artifactId>
-                </dependency>
+<!--                 <dependency> -->
+<!--                     <groupId>com.fasterxml.jackson.core</groupId> -->
+<!--                     <artifactId>jackson-databind</artifactId> -->
+<!--                 </dependency> -->
+<!--                 <dependency> -->
+<!--                     <groupId>com.fasterxml.jackson.datatype</groupId> -->
+<!--                     <artifactId>jackson-datatype-guava</artifactId> -->
+<!--                 </dependency> -->
+<!--                 <dependency> -->
+<!--                     <groupId>com.fasterxml.jackson.datatype</groupId> -->
+<!--                     <artifactId>jackson-datatype-jdk8</artifactId> -->
+<!--                 </dependency> -->
                 <dependency>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
@@ -239,18 +235,18 @@
                     <version>3.3.1</version>
                     <scope>test</scope>
                 </dependency>
-                <dependency>
-                    <groupId>org.elasticsearch</groupId>
-                    <artifactId>elasticsearch</artifactId>
-                    <version>2.2.1</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.elasticsearch</groupId>
-                    <artifactId>elasticsearch</artifactId>
-                    <version>2.2.1</version>
-                    <scope>test</scope>
-                    <type>test-jar</type>
-                </dependency>
+<!--                 <dependency> -->
+<!--                     <groupId>org.elasticsearch</groupId> -->
+<!--                     <artifactId>elasticsearch</artifactId> -->
+<!--                     <version>2.2.1</version> -->
+<!--                 </dependency> -->
+<!--                 <dependency> -->
+<!--                     <groupId>org.elasticsearch</groupId> -->
+<!--                     <artifactId>elasticsearch</artifactId> -->
+<!--                     <version>2.2.1</version> -->
+<!--                     <scope>test</scope> -->
+<!--                     <type>test-jar</type> -->
+<!--                 </dependency> -->
                 <dependency>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
