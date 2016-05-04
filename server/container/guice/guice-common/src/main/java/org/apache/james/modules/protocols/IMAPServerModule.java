@@ -82,7 +82,7 @@ public class IMAPServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class IMAPModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class IMAPModuleConfigurationPerformer implements ConfigurationPerformer<IMAPServerFactory> {
 
         private final ConfigurationProvider configurationProvider;
         private final IMAPServerFactory imapServerFactory;
@@ -98,6 +98,11 @@ public class IMAPServerModule extends AbstractModule {
             imapServerFactory.setLog(LOGGER);
             imapServerFactory.configure(configurationProvider.getConfiguration("imapserver"));
             imapServerFactory.init();
+        }
+
+        @Override
+        public Class<IMAPServerFactory> forClass() {
+            return IMAPServerFactory.class;
         }
     }
 }

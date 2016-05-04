@@ -40,7 +40,7 @@ public class POP3ServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class POP3ModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class POP3ModuleConfigurationPerformer implements ConfigurationPerformer<POP3ServerFactory> {
 
         private final ConfigurationProvider configurationProvider;
         private final POP3ServerFactory pop3ServerFactory;
@@ -56,6 +56,11 @@ public class POP3ServerModule extends AbstractModule {
             pop3ServerFactory.setLog(LOGGER);
             pop3ServerFactory.configure(configurationProvider.getConfiguration("pop3server"));
             pop3ServerFactory.init();
+        }
+
+        @Override
+        public Class<POP3ServerFactory> forClass() {
+            return POP3ServerFactory.class;
         }
     }
 

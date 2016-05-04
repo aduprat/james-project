@@ -47,7 +47,7 @@ public class CassandraRecipientRewriteTableModule extends AbstractModule {
     }
 
     @Singleton
-    public static class CassandraRecipientRewriteTablePerformer implements ConfigurationPerformer {
+    public static class CassandraRecipientRewriteTablePerformer implements ConfigurationPerformer<CassandraRecipientRewriteTable> {
 
         private final ConfigurationProvider configurationProvider;
         private final CassandraRecipientRewriteTable recipientRewriteTable;
@@ -62,6 +62,11 @@ public class CassandraRecipientRewriteTableModule extends AbstractModule {
         public void initModule() throws Exception {
             recipientRewriteTable.setLog(LOGGER);
             recipientRewriteTable.configure(configurationProvider.getConfiguration("recipientrewritetable"));
+        }
+
+        @Override
+        public Class<CassandraRecipientRewriteTable> forClass() {
+            return CassandraRecipientRewriteTable.class;
         }
     }
 

@@ -47,7 +47,7 @@ public class CassandraUsersRepositoryModule extends AbstractModule {
     }
 
     @Singleton
-    public static class CassandraUsersRepositoryConfigurationPerformer implements ConfigurationPerformer {
+    public static class CassandraUsersRepositoryConfigurationPerformer implements ConfigurationPerformer<CassandraUsersRepository> {
 
         private final ConfigurationProvider configurationProvider;
         private final CassandraUsersRepository usersRepository;
@@ -62,6 +62,11 @@ public class CassandraUsersRepositoryModule extends AbstractModule {
         public void initModule() throws Exception {
             usersRepository.setLog(LOGGER);
             usersRepository.configure(configurationProvider.getConfiguration("usersrepository"));
+        }
+
+        @Override
+        public Class<CassandraUsersRepository> forClass() {
+            return CassandraUsersRepository.class;
         }
     }
 

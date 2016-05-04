@@ -42,7 +42,7 @@ public class ManageSieveServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class ManageSieveModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class ManageSieveModuleConfigurationPerformer implements ConfigurationPerformer<ManageSieveServerFactory> {
 
         private final ConfigurationProvider configurationProvider;
         private final ManageSieveServerFactory manageSieveServerFactory;
@@ -58,6 +58,11 @@ public class ManageSieveServerModule extends AbstractModule {
             manageSieveServerFactory.setLog(LOGGER);
             manageSieveServerFactory.configure(configurationProvider.getConfiguration("managesieveserver"));
             manageSieveServerFactory.init();
+        }
+
+        @Override
+        public Class<ManageSieveServerFactory> forClass() {
+            return ManageSieveServerFactory.class;
         }
     }
 }

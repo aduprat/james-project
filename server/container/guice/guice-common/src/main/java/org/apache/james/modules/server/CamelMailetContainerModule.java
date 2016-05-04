@@ -56,7 +56,9 @@ public class CamelMailetContainerModule extends AbstractModule {
         bind(MailSpoolerMBean.class).to(JamesMailSpooler.class);
         bind(MailetLoader.class).to(GuiceMailetLoader.class);
         bind(MatcherLoader.class).to(GuiceMatcherLoader.class);
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MailetModuleConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(CamelCompositeProcessorConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(JamesMailSpoolerConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(JamesMailetContextConfigurationPerformer.class);
     }
 
     @Provides
@@ -75,22 +77,16 @@ public class CamelMailetContainerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class MailetModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class CamelCompositeProcessorConfigurationPerformer implements ConfigurationPerformer<CamelCompositeProcessor> {
 
         private final ConfigurationProvider configurationProvider;
         private final CamelCompositeProcessor camelCompositeProcessor;
-        private final JamesMailSpooler jamesMailSpooler;
-        private final JamesMailetContext mailetContext;
 
         @Inject
-        public MailetModuleConfigurationPerformer(ConfigurationProvider configurationProvider,
-                                                CamelCompositeProcessor camelCompositeProcessor,
-                                                JamesMailSpooler jamesMailSpooler,
-                                                JamesMailetContext mailetContext) {
+        public CamelCompositeProcessorConfigurationPerformer(ConfigurationProvider configurationProvider,
+                                                CamelCompositeProcessor camelCompositeProcessor) {
             this.configurationProvider = configurationProvider;
             this.camelCompositeProcessor = camelCompositeProcessor;
-            this.jamesMailSpooler = jamesMailSpooler;
-            this.mailetContext = mailetContext;
         }
 
         @Override
@@ -99,13 +95,66 @@ public class CamelMailetContainerModule extends AbstractModule {
             camelCompositeProcessor.setCamelContext(new DefaultCamelContext());
             camelCompositeProcessor.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("processors"));
             camelCompositeProcessor.init();
+        }
+
+        @Override
+        public Class<CamelCompositeProcessor> forClass() {
+            return CamelCompositeProcessor.class;
+        }
+    }
+
+    @Singleton
+    public static class JamesMailSpoolerConfigurationPerformer implements ConfigurationPerformer<JamesMailSpooler> {
+
+        private final ConfigurationProvider configurationProvider;
+        private final JamesMailSpooler jamesMailSpooler;
+
+        @Inject
+        public JamesMailSpoolerConfigurationPerformer(ConfigurationProvider configurationProvider,
+                                                JamesMailSpooler jamesMailSpooler) {
+            this.configurationProvider = configurationProvider;
+            this.jamesMailSpooler = jamesMailSpooler;
+        }
+
+        @Override
+        public void initModule() throws Exception {
             jamesMailSpooler.setLog(SPOOLER_LOGGER);
             jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
             jamesMailSpooler.init();
+        }
+
+        @Override
+        public Class<JamesMailSpooler> forClass() {
+            return JamesMailSpooler.class;
+        }
+    }
+
+    @Singleton
+    public static class JamesMailetContextConfigurationPerformer implements ConfigurationPerformer<JamesMailetContext> {
+
+        private final ConfigurationProvider configurationProvider;
+        private final JamesMailetContext mailetContext;
+        private final CamelCompositeProcessor camelCompositeProcessor;
+
+        @Inject
+        public JamesMailetContextConfigurationPerformer(ConfigurationProvider configurationProvider,
+                                                JamesMailetContext mailetContext,
+                                                CamelCompositeProcessor camelCompositeProcessor) {
+            this.configurationProvider = configurationProvider;
+            this.mailetContext = mailetContext;
+            this.camelCompositeProcessor = camelCompositeProcessor;
+        }
+
+        @Override
+        public void initModule() throws Exception {
             mailetContext.setLog(MAILET_LOGGER);
             mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
             mailetContext.setMailProcessor(camelCompositeProcessor);
         }
-    }
 
+        @Override
+        public Class<JamesMailetContext> forClass() {
+            return JamesMailetContext.class;
+        }
+    }
 }

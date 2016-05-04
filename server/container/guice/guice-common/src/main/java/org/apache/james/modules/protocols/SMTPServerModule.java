@@ -41,7 +41,7 @@ public class SMTPServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class SMTPModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class SMTPModuleConfigurationPerformer implements ConfigurationPerformer<SMTPServerFactory> {
 
         private final ConfigurationProvider configurationProvider;
         private final SMTPServerFactory smtpServerFactory;
@@ -62,6 +62,11 @@ public class SMTPServerModule extends AbstractModule {
             smtpServerFactory.configure(configurationProvider.getConfiguration("smtpserver"));
             smtpServerFactory.init();
             sendMailHandler.init(null);
+        }
+
+        @Override
+        public Class<SMTPServerFactory> forClass() {
+            return SMTPServerFactory.class;
         }
     }
 

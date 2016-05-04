@@ -69,7 +69,7 @@ public class MailStoreRepositoryModule extends AbstractModule {
     }
 
     @Singleton
-    public static class MailRepositoryStoreModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class MailRepositoryStoreModuleConfigurationPerformer implements ConfigurationPerformer<InMemoryMailRepositoryStore> {
 
         private final ConfigurationProvider configurationProvider;
         private final InMemoryMailRepositoryStore javaMailRepositoryStore;
@@ -85,6 +85,11 @@ public class MailStoreRepositoryModule extends AbstractModule {
         public void initModule() throws Exception {
             javaMailRepositoryStore.configure(configurationProvider.getConfiguration("mailrepositorystore"));
             javaMailRepositoryStore.init();
+        }
+
+        @Override
+        public Class<InMemoryMailRepositoryStore> forClass() {
+            return InMemoryMailRepositoryStore.class;
         }
     }
 

@@ -19,6 +19,9 @@
 
 package org.apache.james.modules;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.io.Serializable;
 import java.util.Optional;
 
 import javax.inject.Named;
@@ -29,10 +32,12 @@ import org.apache.james.core.JamesServerResourceLoader;
 import org.apache.james.core.filesystem.FileSystemImpl;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.modules.server.AsyncTasksExecutorModule;
 import org.apache.james.modules.server.ConfigurationProviderModule;
 import org.apache.james.modules.server.DNSServiceModule;
+import org.apache.james.utils.Configurables;
 import org.apache.james.utils.ConfigurationProvider;
 import org.apache.james.utils.FileConfigurationProvider;
 import org.apache.james.utils.GuiceGenericType;
@@ -40,8 +45,12 @@ import org.apache.james.utils.GuiceServerProbe;
 import org.apache.onami.lifecycle.jsr250.PreDestroyModule;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.MembersInjector;
 import com.google.inject.Provides;
 import com.google.inject.TypeLiteral;
+import com.google.inject.matcher.AbstractMatcher;
+import com.google.inject.spi.TypeEncounter;
+import com.google.inject.spi.TypeListener;
 
 public class CommonServicesModule<Id extends MailboxId> extends AbstractModule {
     
@@ -54,6 +63,7 @@ public class CommonServicesModule<Id extends MailboxId> extends AbstractModule {
     
     @Override
     protected void configure() {
+        listenToConfigurables();
         install(new ConfigurationProviderModule());
         install(new PreDestroyModule());
         install(new DNSServiceModule());
@@ -63,6 +73,37 @@ public class CommonServicesModule<Id extends MailboxId> extends AbstractModule {
         bind(ConfigurationProvider.class).to(FileConfigurationProvider.class);
         TypeLiteral<GuiceServerProbe<Id>> serverProbe = guiceGenericType.newGenericType(GuiceServerProbe.class);
         bind(serverProbe).in(Singleton.class);
+    }
+
+    private void listenToConfigurables() {
+        Configurables configurables = new Configurables();
+        bind(Configurables.class).toInstance(configurables);
+
+        bindListener(new SubclassesOf(Configurable.class), new TypeListener() {
+
+            @Override
+            public <I> void hear(TypeLiteral<I> type, TypeEncounter<I> encounter) {
+                MembersInjector<? super I> membersInjector = x -> {
+                    Class<? super I> rawType = type.getRawType();
+                    configurables.add(rawType.asSubclass(Configurable.class));
+                };
+                encounter.register(membersInjector);
+            }
+        });
+    }
+
+    private static class SubclassesOf extends AbstractMatcher<TypeLiteral<?>> implements Serializable {
+
+        private final Class<?> superclass;
+
+        public SubclassesOf(Class<?> superclass) {
+            this.superclass = checkNotNull(superclass, "superclass");
+        }
+
+        @Override
+        public boolean matches(TypeLiteral<?> type) {
+            return superclass.isAssignableFrom(type.getRawType());
+        }
     }
 
     @Provides @Singleton @Named(CONFIGURATION_PATH)

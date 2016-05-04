@@ -56,29 +56,55 @@ public class MemoryDataModule extends AbstractModule {
         bind(SieveFileRepository.class).in(Scopes.SINGLETON);
         bind(SieveRepository.class).to(SieveFileRepository.class);
 
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryDataConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryDomainListConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryRecipientRewriteTableConfigurationPerformer.class);
     }
 
     @Singleton
-    public static class MemoryDataConfigurationPerformer implements ConfigurationPerformer {
+    public static class MemoryDomainListConfigurationPerformer implements ConfigurationPerformer<MemoryDomainList> {
 
         private final ConfigurationProvider configurationProvider;
         private final MemoryDomainList memoryDomainList;
-        private final MemoryRecipientRewriteTable memoryRecipientRewriteTable;
 
         @Inject
-        public MemoryDataConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryDomainList memoryDomainList, MemoryRecipientRewriteTable memoryRecipientRewriteTable) {
+        public MemoryDomainListConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryDomainList memoryDomainList) {
             this.configurationProvider = configurationProvider;
             this.memoryDomainList = memoryDomainList;
-            this.memoryRecipientRewriteTable = memoryRecipientRewriteTable;
         }
 
         @Override
         public void initModule() throws Exception {
             memoryDomainList.setLog(LOGGER);
             memoryDomainList.configure(configurationProvider.getConfiguration("domainlist"));
+        }
+
+        @Override
+        public Class<MemoryDomainList> forClass() {
+            return MemoryDomainList.class;
+        }
+    }
+
+    @Singleton
+    public static class MemoryRecipientRewriteTableConfigurationPerformer implements ConfigurationPerformer<MemoryRecipientRewriteTable> {
+
+        private final ConfigurationProvider configurationProvider;
+        private final MemoryRecipientRewriteTable memoryRecipientRewriteTable;
+
+        @Inject
+        public MemoryRecipientRewriteTableConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryRecipientRewriteTable memoryRecipientRewriteTable) {
+            this.configurationProvider = configurationProvider;
+            this.memoryRecipientRewriteTable = memoryRecipientRewriteTable;
+        }
+
+        @Override
+        public void initModule() throws Exception {
             memoryRecipientRewriteTable.setLog(LOGGER);
             memoryRecipientRewriteTable.configure(configurationProvider.getConfiguration("recipientrewritetable"));
+        }
+
+        @Override
+        public Class<MemoryRecipientRewriteTable> forClass() {
+            return MemoryRecipientRewriteTable.class;
         }
     }
 }

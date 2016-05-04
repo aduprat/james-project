@@ -19,20 +19,20 @@
 
 package org.apache.james.modules.protocols;
 
+import java.security.Security;
+
 import org.apache.james.jmap.JMAPModule;
 import org.apache.james.jmap.JMAPServer;
 import org.apache.james.jmap.crypto.JamesSignatureHandler;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.utils.ConfigurationPerformer;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import java.security.Security;
 
 public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
 
@@ -49,7 +49,7 @@ public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
     }
 
     @Singleton
-    public static class JMAPModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class JMAPModuleConfigurationPerformer implements ConfigurationPerformer<JMAPServer> {
 
         private final JMAPServer server;
         private final JamesSignatureHandler signatureHandler;
@@ -69,6 +69,11 @@ public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
 
         private void registerPEMWithSecurityProvider() {
             Security.addProvider(new BouncyCastleProvider());
+        }
+
+        @Override
+        public Class<JMAPServer> forClass() {
+            return JMAPServer.class;
         }
     }
 

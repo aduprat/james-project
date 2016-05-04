@@ -20,41 +20,26 @@
 package org.apache.james.utils;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.james.lifecycle.api.Configurable;
 
-import com.github.fge.lambdas.Throwing;
-import com.google.inject.Inject;
+import com.google.common.collect.Lists;
 
-@SuppressWarnings("rawtypes")
-public class ConfigurationsPerformer {
+public class Configurables {
 
-    private final Set<ConfigurationPerformer> configurationPerformers;
     private final List<Class<? extends Configurable>> configurables;
 
-    @Inject
-    public ConfigurationsPerformer(Set<ConfigurationPerformer> configurationPerformers, Configurables configurables) {
-        this.configurationPerformers = configurationPerformers;
-        this.configurables = configurables.get();
+    public Configurables() {
+        this.configurables = Lists.newArrayList();
     }
 
-    public void initModules() throws Exception {
-        
-        Set<ConfigurationPerformer> processed = configurables.stream()
-            .flatMap(configurable -> configurationPerformerFor(configurable, configurationPerformers))
-            .peek(Throwing.consumer(x -> x.initModule()))
-            .collect(Collectors.toSet());
-        
-        configurationPerformers.stream()
-            .filter(x -> !processed.contains(x))
-            .forEach(Throwing.consumer(x -> x.initModule()));
+    public void add(Class<? extends Configurable> configurable) {
+        if (!configurables.contains(configurable)) {
+            configurables.add(configurable);
+        }
     }
 
-    private Stream<ConfigurationPerformer> configurationPerformerFor(Class<? extends Configurable> configurable, Set<ConfigurationPerformer> configurationPerformers) {
-        return configurationPerformers.stream().filter(x -> x.forClass().equals(configurable));
+    public List<Class<? extends Configurable>> get() {
+        return configurables;
     }
-
 }

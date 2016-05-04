@@ -28,6 +28,7 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.jmap.methods.RequestHandler;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.utils.ConfigurationPerformer;
@@ -55,9 +56,8 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         install(new JMAPCommonModule());
         install(new MethodsModule<Id>(type));
         bind(RequestHandler.class).in(Singleton.class);
-        Multibinder<ConfigurationPerformer> preconditions = Multibinder.newSetBinder(binder(), ConfigurationPerformer.class);
-        preconditions.addBinding().to(MailetConfigurationPrecondition.class);
-        preconditions.addBinding().to(MoveCapabilityPrecondition.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MailetConfigurationPrecondition.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MoveCapabilityPrecondition.class);
     }
 
     @Provides
@@ -81,7 +81,7 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
     }
 
     @Singleton
-    public static class MailetConfigurationPrecondition implements ConfigurationPerformer {
+    public static class MailetConfigurationPrecondition implements ConfigurationPerformer<Configurable> {
 
         private final ConfigurationProvider configurationProvider;
 
@@ -106,10 +106,15 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
                 throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
             }
         }
+
+        @Override
+        public Class<Configurable> forClass() {
+            return Configurable.class;
+        }
     }
 
     @Singleton
-    public static class MoveCapabilityPrecondition implements ConfigurationPerformer {
+    public static class MoveCapabilityPrecondition implements ConfigurationPerformer<Configurable> {
 
         private final MailboxManager mailboxManager;
 
@@ -122,6 +127,11 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         public void initModule() throws Exception {
             Preconditions.checkArgument(mailboxManager.getSupportedCapabilities().contains(MailboxManager.Capabilities.Move),
                     "MOVE support in MailboxManager is required by JMAP Module");
+        }
+
+        @Override
+        public Class<Configurable> forClass() {
+            return Configurable.class;
         }
     }
 }

@@ -40,7 +40,7 @@ public class LMTPServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class LMTPModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class LMTPModuleConfigurationPerformer implements ConfigurationPerformer<LMTPServerFactory> {
 
         private final ConfigurationProvider configurationProvider;
         private final LMTPServerFactory lmtpServerFactory;
@@ -56,6 +56,11 @@ public class LMTPServerModule extends AbstractModule {
             lmtpServerFactory.setLog(LOGGER);
             lmtpServerFactory.configure(configurationProvider.getConfiguration("lmtpserver"));
             lmtpServerFactory.init();
+        }
+
+        @Override
+        public Class<LMTPServerFactory> forClass() {
+            return LMTPServerFactory.class;
         }
     }
 

@@ -26,6 +26,7 @@ import org.apache.james.adapter.mailbox.MailboxManagerManagementMBean;
 import org.apache.james.adapter.mailbox.MailboxManagerResolver;
 import org.apache.james.domainlist.api.DomainListManagementMBean;
 import org.apache.james.domainlist.lib.DomainListManagement;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailbox.copier.MailboxCopier;
 import org.apache.james.mailbox.copier.MailboxCopierImpl;
 import org.apache.james.mailetcontainer.api.jmx.MailSpoolerMBean;
@@ -65,7 +66,7 @@ public class JMXServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class JMXModuleConfigurationPerformer implements ConfigurationPerformer {
+    public static class JMXModuleConfigurationPerformer implements ConfigurationPerformer<Configurable> {
 
         private final JMXServer jmxServer;
         private final DomainListManagementMBean domainListManagementMBean;
@@ -97,6 +98,11 @@ public class JMXServerModule extends AbstractModule {
             jmxServer.register(JMX_COMPONENT_RECIPIENTREWRITETABLE, recipientRewriteTableManagementMBean);
             jmxServer.register(JMX_COMPONENT_NAME_MAILBOXMANAGERBEAN, mailboxManagerManagementMBean);
             jmxServer.register(JMX_COMPONENT_MAILBOXCOPIER, mailboxCopierManagementMBean);
+        }
+
+        @Override
+        public Class<Configurable> forClass() {
+            return Configurable.class;
         }
     }
 

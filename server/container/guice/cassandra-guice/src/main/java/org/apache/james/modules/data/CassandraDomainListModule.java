@@ -45,7 +45,7 @@ public class CassandraDomainListModule extends AbstractModule {
     }
     
     @Singleton
-    public static class CassandraDomainListConfigurationPerformer implements ConfigurationPerformer {
+    public static class CassandraDomainListConfigurationPerformer implements ConfigurationPerformer<CassandraDomainList> {
 
         private final ConfigurationProvider configurationProvider;
         private final CassandraDomainList cassandraDomainList;
@@ -60,6 +60,11 @@ public class CassandraDomainListModule extends AbstractModule {
         public void initModule() throws Exception {
             cassandraDomainList.setLog(LOGGER);
             cassandraDomainList.configure(configurationProvider.getConfiguration("domainlist"));
+        }
+
+        @Override
+        public Class<CassandraDomainList> forClass() {
+            return CassandraDomainList.class;
         }
     }
 }

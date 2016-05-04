@@ -19,12 +19,35 @@
 
 package org.apache.james.utils;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.james.lifecycle.api.Configurable;
+import org.junit.Before;
+import org.junit.Test;
 
-public interface ConfigurationPerformer<CONF extends Configurable> {
+public class ConfigurablesTest {
 
-    void initModule() throws Exception;
+    private Configurables sut;
 
-    Class<CONF> forClass();
+    @Before
+    public void setup() {
+        sut = new Configurables();
+    }
 
+    @Test
+    public void addShouldNotStoreTwoTimesWhenSameConfigurable() {
+        sut.add(MyConfigurable.class);
+        sut.add(MyConfigurable.class);
+
+        assertThat(sut.get()).hasSize(1);
+    }
+
+    private static class MyConfigurable implements Configurable {
+
+        @Override
+        public void configure(HierarchicalConfiguration config) throws ConfigurationException {
+        }
+    }
 }
