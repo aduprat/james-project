@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james;
+package org.apache.james.modules;
 
 import javax.inject.Inject;
 
@@ -29,20 +29,20 @@ public class A implements Configurable {
 
     @SuppressWarnings("unused")
     private final C c;
-    private String domain;
+    private boolean configured;
 
     @Inject
     private A(C c) {
         this.c = c;
+        this.configured = false;
     }
 
     @Override
     public void configure(HierarchicalConfiguration config) throws ConfigurationException {
-        System.out.println("Configure A");
-        domain = "configured";
+        configured = true;
     }
 
-    public String getDomain() {
-        return domain.toLowerCase();
+    public boolean isConfigured() {
+        return configured;
     }
 }
