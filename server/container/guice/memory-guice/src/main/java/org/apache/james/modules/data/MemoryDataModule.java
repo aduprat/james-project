@@ -19,8 +19,12 @@
 
 package org.apache.james.modules.data;
 
+import java.util.List;
+
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.rrt.api.RecipientRewriteTable;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.sieverepository.api.SieveRepository;
@@ -32,6 +36,8 @@ import org.apache.james.utils.ConfigurationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Scopes;
@@ -56,55 +62,38 @@ public class MemoryDataModule extends AbstractModule {
         bind(SieveFileRepository.class).in(Scopes.SINGLETON);
         bind(SieveRepository.class).to(SieveFileRepository.class);
 
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryDomainListConfigurationPerformer.class);
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryRecipientRewriteTableConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MemoryDataConfigurationPerformer.class);
     }
 
     @Singleton
-    public static class MemoryDomainListConfigurationPerformer implements ConfigurationPerformer<MemoryDomainList> {
+    public static class MemoryDataConfigurationPerformer implements ConfigurationPerformer {
 
         private final ConfigurationProvider configurationProvider;
         private final MemoryDomainList memoryDomainList;
-
-        @Inject
-        public MemoryDomainListConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryDomainList memoryDomainList) {
-            this.configurationProvider = configurationProvider;
-            this.memoryDomainList = memoryDomainList;
-        }
-
-        @Override
-        public void initModule() throws Exception {
-            memoryDomainList.setLog(LOGGER);
-            memoryDomainList.configure(configurationProvider.getConfiguration("domainlist"));
-        }
-
-        @Override
-        public Class<MemoryDomainList> forClass() {
-            return MemoryDomainList.class;
-        }
-    }
-
-    @Singleton
-    public static class MemoryRecipientRewriteTableConfigurationPerformer implements ConfigurationPerformer<MemoryRecipientRewriteTable> {
-
-        private final ConfigurationProvider configurationProvider;
         private final MemoryRecipientRewriteTable memoryRecipientRewriteTable;
 
         @Inject
-        public MemoryRecipientRewriteTableConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryRecipientRewriteTable memoryRecipientRewriteTable) {
+        public MemoryDataConfigurationPerformer(ConfigurationProvider configurationProvider, MemoryDomainList memoryDomainList, MemoryRecipientRewriteTable memoryRecipientRewriteTable) {
             this.configurationProvider = configurationProvider;
+            this.memoryDomainList = memoryDomainList;
             this.memoryRecipientRewriteTable = memoryRecipientRewriteTable;
         }
 
         @Override
-        public void initModule() throws Exception {
-            memoryRecipientRewriteTable.setLog(LOGGER);
-            memoryRecipientRewriteTable.configure(configurationProvider.getConfiguration("recipientrewritetable"));
+        public void initModule() {
+            try {
+                memoryDomainList.setLog(LOGGER);
+                memoryDomainList.configure(configurationProvider.getConfiguration("domainlist"));
+                memoryRecipientRewriteTable.setLog(LOGGER);
+                memoryRecipientRewriteTable.configure(configurationProvider.getConfiguration("recipientrewritetable"));
+            } catch (ConfigurationException e) {
+                Throwables.propagate(e);
+            }
         }
 
         @Override
-        public Class<MemoryRecipientRewriteTable> forClass() {
-            return MemoryRecipientRewriteTable.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of(MemoryDomainList.class, MemoryRecipientRewriteTable.class);
         }
     }
 }

@@ -19,18 +19,19 @@
 
 package org.apache.james.utils;
 
-import java.util.List;
+import java.util.Set;
 
 import org.apache.james.lifecycle.api.Configurable;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 public class Configurables {
 
-    private final List<Class<? extends Configurable>> configurables;
+    private final Set<Class<? extends Configurable>> configurables;
 
     public Configurables() {
-        this.configurables = Lists.newArrayList();
+        this.configurables = Sets.newLinkedHashSet();
     }
 
     public void add(Class<? extends Configurable> configurable) {
@@ -39,7 +40,7 @@ public class Configurables {
         }
     }
 
-    public List<Class<? extends Configurable>> get() {
-        return configurables;
+    public Set<Class<? extends Configurable>> get() {
+        return ImmutableSet.copyOf(configurables);
     }
 }

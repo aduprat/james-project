@@ -20,14 +20,18 @@
 package org.apache.james.modules.protocols;
 
 import java.security.Security;
+import java.util.List;
 
 import org.apache.james.jmap.JMAPModule;
 import org.apache.james.jmap.JMAPServer;
 import org.apache.james.jmap.crypto.JamesSignatureHandler;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -49,7 +53,7 @@ public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
     }
 
     @Singleton
-    public static class JMAPModuleConfigurationPerformer implements ConfigurationPerformer<JMAPServer> {
+    public static class JMAPModuleConfigurationPerformer implements ConfigurationPerformer {
 
         private final JMAPServer server;
         private final JamesSignatureHandler signatureHandler;
@@ -61,10 +65,14 @@ public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
         }
 
         @Override
-        public void initModule() throws Exception {
-            signatureHandler.init();
-            server.configure(null);
-            registerPEMWithSecurityProvider();
+        public void initModule() {
+            try {
+                signatureHandler.init();
+                server.configure(null);
+                registerPEMWithSecurityProvider();
+            } catch (Exception e) {
+                Throwables.propagate(e);
+            }
         }
 
         private void registerPEMWithSecurityProvider() {
@@ -72,8 +80,8 @@ public class JMAPServerModule<Id extends MailboxId> extends AbstractModule {
         }
 
         @Override
-        public Class<JMAPServer> forClass() {
-            return JMAPServer.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of(JMAPServer.class);
         }
     }
 

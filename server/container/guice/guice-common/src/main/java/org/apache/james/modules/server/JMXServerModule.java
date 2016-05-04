@@ -19,6 +19,8 @@
 
 package org.apache.james.modules.server;
 
+import java.util.List;
+
 import org.apache.james.adapter.mailbox.MailboxCopierManagement;
 import org.apache.james.adapter.mailbox.MailboxCopierManagementMBean;
 import org.apache.james.adapter.mailbox.MailboxManagerManagement;
@@ -38,6 +40,8 @@ import org.apache.james.user.lib.UsersRepositoryManagement;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.GuiceMailboxManagerResolver;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -66,7 +70,7 @@ public class JMXServerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class JMXModuleConfigurationPerformer implements ConfigurationPerformer<Configurable> {
+    public static class JMXModuleConfigurationPerformer implements ConfigurationPerformer {
 
         private final JMXServer jmxServer;
         private final DomainListManagementMBean domainListManagementMBean;
@@ -91,18 +95,22 @@ public class JMXServerModule extends AbstractModule {
         }
 
         @Override
-        public void initModule() throws Exception {
-            jmxServer.start();
-            jmxServer.register(JMX_COMPONENT_DOMAINLIST, domainListManagementMBean);
-            jmxServer.register(JMX_COMPONENT_USERS_REPOSITORY, usersRepositoryManagementMBean);
-            jmxServer.register(JMX_COMPONENT_RECIPIENTREWRITETABLE, recipientRewriteTableManagementMBean);
-            jmxServer.register(JMX_COMPONENT_NAME_MAILBOXMANAGERBEAN, mailboxManagerManagementMBean);
-            jmxServer.register(JMX_COMPONENT_MAILBOXCOPIER, mailboxCopierManagementMBean);
+        public void initModule() {
+            try {
+                jmxServer.start();
+                jmxServer.register(JMX_COMPONENT_DOMAINLIST, domainListManagementMBean);
+                jmxServer.register(JMX_COMPONENT_USERS_REPOSITORY, usersRepositoryManagementMBean);
+                jmxServer.register(JMX_COMPONENT_RECIPIENTREWRITETABLE, recipientRewriteTableManagementMBean);
+                jmxServer.register(JMX_COMPONENT_NAME_MAILBOXMANAGERBEAN, mailboxManagerManagementMBean);
+                jmxServer.register(JMX_COMPONENT_MAILBOXCOPIER, mailboxCopierManagementMBean);
+            } catch (Exception e) {
+                Throwables.propagate(e);
+            }
         }
 
         @Override
-        public Class<Configurable> forClass() {
-            return Configurable.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of();
         }
     }
 

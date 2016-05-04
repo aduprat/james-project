@@ -20,6 +20,7 @@ package org.apache.james.jmap;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration.ConfigurationException;
@@ -36,6 +37,8 @@ import org.apache.james.utils.ConfigurationProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -81,7 +84,7 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
     }
 
     @Singleton
-    public static class MailetConfigurationPrecondition implements ConfigurationPerformer<Configurable> {
+    public static class MailetConfigurationPrecondition implements ConfigurationPerformer {
 
         private final ConfigurationProvider configurationProvider;
 
@@ -91,30 +94,34 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         }
 
         @Override
-        public void initModule() throws Exception {
-            Optional<HierarchicalConfiguration> removeMimeHeaderMailet = configurationProvider.getConfiguration("mailetcontainer")
-                .configurationAt("processors")
-                .configurationsAt("processor")
-                .stream()
-                .filter(processor -> processor.getString("[@state]").equals("transport"))
-                .flatMap(transport -> transport.configurationsAt("mailet").stream())
-                .filter(mailet -> mailet.getString("[@class]").equals("RemoveMimeHeader"))
-                .filter(mailet -> mailet.getString("[@match]").equals("All"))
-                .filter(mailet -> mailet.getProperty("name").equals("bcc"))
-                .findAny();
-            if (!removeMimeHeaderMailet.isPresent()) {
-                throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
+        public void initModule() {
+            try {
+                Optional<HierarchicalConfiguration> removeMimeHeaderMailet = configurationProvider.getConfiguration("mailetcontainer")
+                    .configurationAt("processors")
+                    .configurationsAt("processor")
+                    .stream()
+                    .filter(processor -> processor.getString("[@state]").equals("transport"))
+                    .flatMap(transport -> transport.configurationsAt("mailet").stream())
+                    .filter(mailet -> mailet.getString("[@class]").equals("RemoveMimeHeader"))
+                    .filter(mailet -> mailet.getString("[@match]").equals("All"))
+                    .filter(mailet -> mailet.getProperty("name").equals("bcc"))
+                    .findAny();
+                if (!removeMimeHeaderMailet.isPresent()) {
+                    throw new ConfigurationException("Missing RemoveMimeHeader in mailets configuration (mailetcontainer -> processors -> transport). Should be configured to remove Bcc header");
+                }
+            } catch (ConfigurationException e) {
+                Throwables.propagate(e);
             }
         }
 
         @Override
-        public Class<Configurable> forClass() {
-            return Configurable.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of();
         }
     }
 
     @Singleton
-    public static class MoveCapabilityPrecondition implements ConfigurationPerformer<Configurable> {
+    public static class MoveCapabilityPrecondition implements ConfigurationPerformer {
 
         private final MailboxManager mailboxManager;
 
@@ -124,14 +131,14 @@ public class JMAPModule<Id extends MailboxId> extends AbstractModule {
         }
 
         @Override
-        public void initModule() throws Exception {
+        public void initModule() {
             Preconditions.checkArgument(mailboxManager.getSupportedCapabilities().contains(MailboxManager.Capabilities.Move),
                     "MOVE support in MailboxManager is required by JMAP Module");
         }
 
         @Override
-        public Class<Configurable> forClass() {
-            return Configurable.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of();
         }
     }
 }

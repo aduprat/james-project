@@ -44,6 +44,7 @@ import org.apache.james.utils.GuiceGenericType;
 import org.apache.james.utils.GuiceServerProbe;
 import org.apache.onami.lifecycle.jsr250.PreDestroyModule;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.MembersInjector;
 import com.google.inject.Provides;
@@ -75,7 +76,7 @@ public class CommonServicesModule<Id extends MailboxId> extends AbstractModule {
         bind(serverProbe).in(Singleton.class);
     }
 
-    private void listenToConfigurables() {
+    @VisibleForTesting void listenToConfigurables() {
         Configurables configurables = new Configurables();
         bind(Configurables.class).toInstance(configurables);
 

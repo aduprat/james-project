@@ -19,7 +19,10 @@
 
 package org.apache.james.modules.server;
 
+import java.util.List;
+
 import org.apache.james.filesystem.api.FileSystem;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailrepository.api.MailRepository;
 import org.apache.james.mailrepository.api.MailRepositoryStore;
 import org.apache.james.mailrepository.file.FileMailRepository;
@@ -29,6 +32,8 @@ import org.apache.james.utils.InMemoryMailRepositoryStore;
 import org.apache.james.utils.MailRepositoryProvider;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -69,7 +74,7 @@ public class MailStoreRepositoryModule extends AbstractModule {
     }
 
     @Singleton
-    public static class MailRepositoryStoreModuleConfigurationPerformer implements ConfigurationPerformer<InMemoryMailRepositoryStore> {
+    public static class MailRepositoryStoreModuleConfigurationPerformer implements ConfigurationPerformer {
 
         private final ConfigurationProvider configurationProvider;
         private final InMemoryMailRepositoryStore javaMailRepositoryStore;
@@ -82,14 +87,18 @@ public class MailStoreRepositoryModule extends AbstractModule {
         }
 
         @Override
-        public void initModule() throws Exception {
-            javaMailRepositoryStore.configure(configurationProvider.getConfiguration("mailrepositorystore"));
-            javaMailRepositoryStore.init();
+        public void initModule() {
+            try {
+                javaMailRepositoryStore.configure(configurationProvider.getConfiguration("mailrepositorystore"));
+                javaMailRepositoryStore.init();
+            } catch (Exception e) {
+                Throwables.propagate(e);
+            }
         }
 
         @Override
-        public Class<InMemoryMailRepositoryStore> forClass() {
-            return InMemoryMailRepositoryStore.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of(InMemoryMailRepositoryStore.class);
         }
     }
 

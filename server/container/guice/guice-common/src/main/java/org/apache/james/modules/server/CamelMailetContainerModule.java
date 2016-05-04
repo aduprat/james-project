@@ -19,9 +19,12 @@
 
 package org.apache.james.modules.server;
 
+import java.util.List;
+
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.lifecycle.api.Configurable;
 import org.apache.james.mailetcontainer.api.MailProcessor;
 import org.apache.james.mailetcontainer.api.MailetLoader;
 import org.apache.james.mailetcontainer.api.MatcherLoader;
@@ -38,6 +41,8 @@ import org.apache.mailet.MailetContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -56,9 +61,7 @@ public class CamelMailetContainerModule extends AbstractModule {
         bind(MailSpoolerMBean.class).to(JamesMailSpooler.class);
         bind(MailetLoader.class).to(GuiceMailetLoader.class);
         bind(MatcherLoader.class).to(GuiceMatcherLoader.class);
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(CamelCompositeProcessorConfigurationPerformer.class);
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(JamesMailSpoolerConfigurationPerformer.class);
-        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(JamesMailetContextConfigurationPerformer.class);
+        Multibinder.newSetBinder(binder(), ConfigurationPerformer.class).addBinding().to(MailetModuleConfigurationPerformer.class);
     }
 
     @Provides
@@ -77,84 +80,45 @@ public class CamelMailetContainerModule extends AbstractModule {
     }
 
     @Singleton
-    public static class CamelCompositeProcessorConfigurationPerformer implements ConfigurationPerformer<CamelCompositeProcessor> {
+    public static class MailetModuleConfigurationPerformer implements ConfigurationPerformer {
 
         private final ConfigurationProvider configurationProvider;
         private final CamelCompositeProcessor camelCompositeProcessor;
-
-        @Inject
-        public CamelCompositeProcessorConfigurationPerformer(ConfigurationProvider configurationProvider,
-                                                CamelCompositeProcessor camelCompositeProcessor) {
-            this.configurationProvider = configurationProvider;
-            this.camelCompositeProcessor = camelCompositeProcessor;
-        }
-
-        @Override
-        public void initModule() throws Exception {
-            camelCompositeProcessor.setLog(CAMEL_LOGGER);
-            camelCompositeProcessor.setCamelContext(new DefaultCamelContext());
-            camelCompositeProcessor.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("processors"));
-            camelCompositeProcessor.init();
-        }
-
-        @Override
-        public Class<CamelCompositeProcessor> forClass() {
-            return CamelCompositeProcessor.class;
-        }
-    }
-
-    @Singleton
-    public static class JamesMailSpoolerConfigurationPerformer implements ConfigurationPerformer<JamesMailSpooler> {
-
-        private final ConfigurationProvider configurationProvider;
         private final JamesMailSpooler jamesMailSpooler;
-
-        @Inject
-        public JamesMailSpoolerConfigurationPerformer(ConfigurationProvider configurationProvider,
-                                                JamesMailSpooler jamesMailSpooler) {
-            this.configurationProvider = configurationProvider;
-            this.jamesMailSpooler = jamesMailSpooler;
-        }
-
-        @Override
-        public void initModule() throws Exception {
-            jamesMailSpooler.setLog(SPOOLER_LOGGER);
-            jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
-            jamesMailSpooler.init();
-        }
-
-        @Override
-        public Class<JamesMailSpooler> forClass() {
-            return JamesMailSpooler.class;
-        }
-    }
-
-    @Singleton
-    public static class JamesMailetContextConfigurationPerformer implements ConfigurationPerformer<JamesMailetContext> {
-
-        private final ConfigurationProvider configurationProvider;
         private final JamesMailetContext mailetContext;
-        private final CamelCompositeProcessor camelCompositeProcessor;
 
         @Inject
-        public JamesMailetContextConfigurationPerformer(ConfigurationProvider configurationProvider,
-                                                JamesMailetContext mailetContext,
-                                                CamelCompositeProcessor camelCompositeProcessor) {
+        public MailetModuleConfigurationPerformer(ConfigurationProvider configurationProvider,
+                CamelCompositeProcessor camelCompositeProcessor, 
+                JamesMailSpooler jamesMailSpooler, 
+                JamesMailetContext mailetContext) {
             this.configurationProvider = configurationProvider;
-            this.mailetContext = mailetContext;
             this.camelCompositeProcessor = camelCompositeProcessor;
+            this.jamesMailSpooler = jamesMailSpooler;
+            this.mailetContext = mailetContext;
         }
 
         @Override
-        public void initModule() throws Exception {
-            mailetContext.setLog(MAILET_LOGGER);
-            mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
-            mailetContext.setMailProcessor(camelCompositeProcessor);
+        public void initModule() {
+            try {
+                camelCompositeProcessor.setLog(CAMEL_LOGGER);
+                camelCompositeProcessor.setCamelContext(new DefaultCamelContext());
+                camelCompositeProcessor.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("processors"));
+                camelCompositeProcessor.init();
+                jamesMailSpooler.setLog(SPOOLER_LOGGER);
+                jamesMailSpooler.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("spooler"));
+                jamesMailSpooler.init();
+                mailetContext.setLog(MAILET_LOGGER);
+                mailetContext.configure(configurationProvider.getConfiguration("mailetcontainer").configurationAt("context"));
+                mailetContext.setMailProcessor(camelCompositeProcessor);
+            } catch (Exception e) {
+                Throwables.propagate(e);
+            }
         }
 
         @Override
-        public Class<JamesMailetContext> forClass() {
-            return JamesMailetContext.class;
+        public List<Class<? extends Configurable>> forClasses() {
+            return ImmutableList.of(CamelCompositeProcessor.class, JamesMailSpooler.class, JamesMailetContext.class);
         }
     }
 }
