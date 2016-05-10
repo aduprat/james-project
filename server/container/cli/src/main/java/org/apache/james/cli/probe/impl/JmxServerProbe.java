@@ -168,6 +168,11 @@ public class JmxServerProbe implements ServerProbe {
     }
 
     @Override
+    public String getDefaultDomain() throws Exception {
+        return domainListProcxy.getDefaultDomain();
+    }
+
+    @Override
     public void addDomain(String domain) throws Exception {
         domainListProcxy.addDomain(domain);
     }
