@@ -124,7 +124,7 @@ public class GuiceServerProbe<Id extends MailboxId> implements ExtendedServerPro
     }
 
     @Override
-    public String[] listDomains() throws Exception {
+    public List<String> listDomains() throws Exception {
         return domainList.getDomains();
     }
 
