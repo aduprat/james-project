@@ -30,7 +30,7 @@ import org.apache.james.domainlist.api.DomainListException;
 public class SimpleDomainList implements DomainList {
 
     private final List<String> domains = new LinkedList<String>();
-    private String defaultDomain = "locahost";
+    private String defaultDomain = "localhost";
 
     @Override
     public boolean containsDomain(String domain) throws DomainListException {
