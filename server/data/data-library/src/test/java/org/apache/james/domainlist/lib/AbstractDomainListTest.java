@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.dnsservice.api.mock.MockDNSService;
 import org.apache.james.domainlist.api.DomainList;
@@ -135,6 +136,35 @@ public abstract class AbstractDomainListTest {
         domainList.addDomain(DOMAIN_UPPER_5);
         domainList.removeDomain(DOMAIN_5);
         assertThat(domainList.containsDomain(DOMAIN_UPPER_5)).isFalse();
+    }
+
+    @Test
+    public void createDefaultDomainShouldSetDefaultDomain() throws Exception {
+        String defaultDomain = "myDomain.org";
+        domainList.createDefaultDomain(defaultDomain);
+
+        assertThat(domainList.getDefaultDomain()).isEqualTo(defaultDomain);
+    }
+
+    @Test
+    public void createDefaultDomainShouldCreateDomain() throws Exception {
+        String defaultDomain = "myDomain.org";
+        domainList.createDefaultDomain(defaultDomain);
+
+        assertThat(domainList.containsDomain(defaultDomain)).isTrue();
+    }
+
+    @Test
+    public void defaultDomainShouldNotBeSetWhenDifferentFromLocalhost() throws Exception {
+        String defaultDomain = "myDomain.org";
+        domainList.createDefaultDomain(defaultDomain);
+
+        try {
+            domainList.createDefaultDomain("myOtherDomain.org");
+            fail("Default domain has been changed");
+        } catch (DomainListException e) {
+            assertThat(e.getMessage()).isEqualTo("Default domain already set.");
+        }
     }
 
     @Test(expected = DomainListException.class)

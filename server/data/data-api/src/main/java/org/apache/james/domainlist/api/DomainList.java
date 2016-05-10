@@ -71,4 +71,5 @@ public interface DomainList {
      */
     String getDefaultDomain() throws DomainListException;
 
+    void createDefaultDomain(String defaultDomain) throws DomainListException;
 }
