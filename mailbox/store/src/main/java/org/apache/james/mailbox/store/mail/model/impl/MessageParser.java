@@ -19,7 +19,6 @@
 
 package org.apache.james.mailbox.store.mail.model.impl;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,7 +67,7 @@ public class MessageParser {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         messageWriter.writeBody(body, out);
         body.dispose();
-        return new Attachment(new ByteArrayInputStream(out.toByteArray()));
+        return new Attachment(out.toByteArray());
     }
 
     private boolean isAttachmentEntity(Entity part) {

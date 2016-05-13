@@ -17,21 +17,36 @@
  * under the License.                                           *
  ****************************************************************/
 
+
 package org.apache.james.mailbox.store.mail.model;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.InputStream;
 
-public class Attachment {
+import org.apache.commons.io.IOUtils;
+import org.junit.Test;
 
-    private final byte[] bytes;
+public class AttachmentTest {
 
-    public Attachment(byte[] bytes) {
-        this.bytes = bytes;
+    @Test
+    public void streamShouldBeConsumedOneTime() throws Exception {
+        String input = "mystream";
+        Attachment attachment = new Attachment(input.getBytes());
+
+        InputStream stream = attachment.getStream();
+        assertThat(stream).isNotNull();
+        assertThat(IOUtils.toString(stream)).isEqualTo(input);
     }
 
-    public InputStream getStream() throws IOException {
-        return new ByteArrayInputStream(bytes);
+    @Test
+    public void streamShouldBeConsumedMoreThanOneTime() throws Exception {
+        String input = "mystream";
+        Attachment attachment = new Attachment(input.getBytes());
+
+        attachment.getStream();
+        InputStream stream = attachment.getStream();
+        assertThat(stream).isNotNull();
+        assertThat(IOUtils.toString(stream)).isEqualTo(input);
     }
 }
