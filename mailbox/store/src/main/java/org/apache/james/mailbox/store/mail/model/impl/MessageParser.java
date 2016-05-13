@@ -56,7 +56,7 @@ public class MessageParser {
             Multipart multipart = (Multipart) body;
             for (Entity entity : multipart.getBodyParts()) {
                 if (isAttachmentEntity(entity)) {
-                    attachments.add(createAttachment(entity.getBody(), messageWriter));
+                    attachments.add(createAttachment(entity.getBody()));
                 }
             }
             body.dispose();
@@ -64,7 +64,7 @@ public class MessageParser {
         return attachments.build();
     }
     
-    private Attachment createAttachment(Body body, MessageWriter messageWriter) throws IOException {
+    private Attachment createAttachment(Body body) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         messageWriter.writeBody(body, out);
         body.dispose();
