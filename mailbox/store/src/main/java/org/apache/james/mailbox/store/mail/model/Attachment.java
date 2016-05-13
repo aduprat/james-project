@@ -19,7 +19,11 @@
 
 package org.apache.james.mailbox.store.mail.model;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+
+import org.apache.commons.io.IOUtils;
 
 public class Attachment {
 
@@ -29,7 +33,7 @@ public class Attachment {
         this.stream = stream;
     }
 
-    public InputStream getStream() {
-        return stream;
+    public InputStream getStream() throws IOException {
+        return new ByteArrayInputStream(IOUtils.toByteArray(stream));
     }
 }
