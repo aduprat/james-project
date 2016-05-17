@@ -28,6 +28,8 @@ import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.domainlist.api.DomainListManagementMBean;
 
+import com.google.common.collect.ImmutableList;
+
 public class DomainListManagement extends StandardMBean implements DomainListManagementMBean {
 
     private DomainList domainList;
@@ -64,7 +66,7 @@ public class DomainListManagement extends StandardMBean implements DomainListMan
     @Override
     public List<String> getDomains() throws Exception {
         try {
-            return domainList.getDomains();
+            return ImmutableList.copyOf(domainList.getDomains());
         }
         catch (DomainListException e) {
             throw new Exception(e.getMessage());
