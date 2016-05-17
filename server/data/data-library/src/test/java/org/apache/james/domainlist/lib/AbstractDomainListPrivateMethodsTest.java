@@ -78,7 +78,7 @@ public class AbstractDomainListPrivateMethodsTest {
         when(configuration.getString("defaultDomain", AbstractDomainList.LOCALHOST))
             .thenReturn(expectedDefaultDomain);
 
-        domainList.setDefaultDomain(configuration);
+        domainList.configureDefaultDomain(configuration);
 
         assertThat(domainList.getDefaultDomain()).isEqualTo(expectedDefaultDomain);
     }
@@ -90,7 +90,7 @@ public class AbstractDomainListPrivateMethodsTest {
             .thenReturn(AbstractDomainList.LOCALHOST);
 
         String expectedDefaultDomain = InetAddress.getLocalHost().getHostName();
-        domainList.setDefaultDomain(configuration);
+        domainList.configureDefaultDomain(configuration);
 
         assertThat(domainList.getDefaultDomain()).isEqualTo(expectedDefaultDomain);
     }
@@ -102,7 +102,7 @@ public class AbstractDomainListPrivateMethodsTest {
             .thenReturn(AbstractDomainList.LOCALHOST);
 
         String expectedDefaultDomain = InetAddress.getLocalHost().getHostName();
-        domainList.setDefaultDomain(configuration);
+        domainList.configureDefaultDomain(configuration);
 
         assertThat(domainList.getDomainListInternal()).contains(expectedDefaultDomain);
     }
@@ -114,8 +114,8 @@ public class AbstractDomainListPrivateMethodsTest {
             .thenReturn(AbstractDomainList.LOCALHOST);
 
         String expectedDefaultDomain = InetAddress.getLocalHost().getHostName();
-        domainList.setDefaultDomain(configuration);
-        domainList.setDefaultDomain(configuration);
+        domainList.configureDefaultDomain(configuration);
+        domainList.configureDefaultDomain(configuration);
 
         assertThat(domainList.getDomainListInternal()).containsOnlyOnce(expectedDefaultDomain);
     }

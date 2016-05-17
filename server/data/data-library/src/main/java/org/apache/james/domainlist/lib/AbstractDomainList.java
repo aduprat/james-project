@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 
 /**
  * All implementations of the DomainList interface should extends this abstract
@@ -71,13 +71,13 @@ public abstract class AbstractDomainList implements DomainList, LogEnabled, Conf
 
     @Override
     public void configure(HierarchicalConfiguration config) throws ConfigurationException {
-        setDefaultDomain(config);
+        configureDefaultDomain(config);
 
         setAutoDetect(config.getBoolean("autodetect", true));
         setAutoDetectIP(config.getBoolean("autodetectIP", true));
     }
 
-    @VisibleForTesting void setDefaultDomain(HierarchicalConfiguration config) throws ConfigurationException {
+    @VisibleForTesting void configureDefaultDomain(HierarchicalConfiguration config) throws ConfigurationException {
         
         try {
             defaultDomain = config.getString("defaultDomain", LOCALHOST);
@@ -94,8 +94,7 @@ public abstract class AbstractDomainList implements DomainList, LogEnabled, Conf
     }
 
     private boolean mayChangeDefaultDomain() {
-        return !Strings.isNullOrEmpty(defaultDomain)
-                && LOCALHOST.equals(defaultDomain);
+        return LOCALHOST.equals(defaultDomain);
     }
 
     private void setDefaultDomain(String defaultDomain) throws DomainListException {
@@ -142,7 +141,7 @@ public abstract class AbstractDomainList implements DomainList, LogEnabled, Conf
                 }
             }
         }
-        return domains;
+        return ImmutableList.copyOf(domains);
     }
 
     /**
