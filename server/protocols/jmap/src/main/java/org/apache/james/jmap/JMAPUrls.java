@@ -23,5 +23,5 @@ public interface JMAPUrls {
 
     String JMAP = "/jmap";
     String AUTHENTICATION = "/authentication";
-    String DOWNLOAD = "/download/*";
+    String DOWNLOAD = "/download";
 }
