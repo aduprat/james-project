@@ -10,7 +10,7 @@ Feature: Download authentication
     When asking the download endpoint
     Then the user should be authorized
 
-  Scenario: An known user should access to the download endpoint
+  Scenario: An unknown user should not access to the download endpoint
     Given an unknown user with username "unknown@domain.tld" and password "secret"
     When asking the download endpoint
     Then the user should not be authorized
