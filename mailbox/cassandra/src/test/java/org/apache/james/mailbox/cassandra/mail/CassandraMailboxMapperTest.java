@@ -18,10 +18,73 @@
  ****************************************************************/
 package org.apache.james.mailbox.cassandra.mail;
 
-import org.apache.james.mailbox.store.mail.model.AbstractMailboxMapperTest;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-public class CassandraMailboxMapperTest extends AbstractMailboxMapperTest {
-    public CassandraMailboxMapperTest() {
-        super(new CassandraMapperProvider());
+import org.apache.james.backends.cassandra.CassandraCluster;
+import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
+import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
+import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraAttachmentModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraMailboxCounterModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraMailboxModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraMessageModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraModSeqModule;
+import org.apache.james.mailbox.cassandra.modules.CassandraUidModule;
+import org.apache.james.mailbox.store.AbstractMailboxManagerTest;
+import org.apache.james.mailbox.store.JVMMailboxPathLocker;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
+
+public class CassandraMailboxMapperTest extends AbstractMailboxManagerTest {
+    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
+            new CassandraAclModule(),
+            new CassandraMailboxModule(),
+            new CassandraMessageModule(),
+            new CassandraMailboxCounterModule(),
+            new CassandraModSeqModule(),
+            new CassandraUidModule(),
+            new CassandraAttachmentModule()));
+
+    private CassandraMailboxSessionMapperFactory mailboxSessionMapperFactory;
+    private CassandraMailboxManager mailboxManager;
+    private CassandraMailboxManager parseFailingMailboxManager;
+
+    public CassandraMailboxMapperTest() throws Exception {
+        mailboxSessionMapperFactory = new CassandraMailboxSessionMapperFactory(
+                new CassandraUidProvider(cassandra.getConf()),
+                new CassandraModSeqProvider(cassandra.getConf()),
+                cassandra.getConf(),
+                cassandra.getTypesProvider());
+        mailboxManager = new CassandraMailboxManager(mailboxSessionMapperFactory, null, new JVMMailboxPathLocker(), new MessageParser());
+        mailboxManager.init();
+        MessageParser failingMessageParser = mock(MessageParser.class);
+        when(failingMessageParser.retrieveAttachments(any()))
+            .thenThrow(new RuntimeException("Message parser set to fail"));
+        parseFailingMailboxManager = new CassandraMailboxManager(mailboxSessionMapperFactory, null, new JVMMailboxPathLocker(), failingMessageParser);
+        parseFailingMailboxManager.init();
+    }
+
+    @Override
+    protected MailboxManager getMailboxManager() {
+        return mailboxManager;
+    }
+
+    @Override
+    protected MailboxSessionMapperFactory getMailboxSessionMapperFactory() {
+        return mailboxSessionMapperFactory;
+    }
+
+    @Override
+    protected MailboxManager getParseFailingMailboxManager() {
+        return parseFailingMailboxManager;
+    }
+
+    @Override
+    protected void clean() {
+        cassandra.clearAllTables();
     }
 }
