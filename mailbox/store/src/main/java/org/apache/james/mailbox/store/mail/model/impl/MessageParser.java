@@ -35,7 +35,9 @@ import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.james.mime4j.stream.Field;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
@@ -64,19 +66,27 @@ public class MessageParser {
         MessageWriter messageWriter = new DefaultMessageWriter();
         for (Entity entity : multipart.getBodyParts()) {
             if (isAttachment(entity)) {
-                attachments.add(createAttachment(messageWriter, entity.getBody(), 
-                        contentType(entity.getHeader().getField(CONTENT_TYPE))));
+                Optional<String> contentType = contentType(entity.getHeader().getField(CONTENT_TYPE));
+                if (contentType.isPresent()) {
+                    attachments.add(createAttachment(messageWriter, entity.getBody(), contentType.get()));
+                }
             }
         }
         return attachments.build();
     }
 
-    private String contentType(Field contentType) {
-        String body = contentType.getBody();
-        if (body.contains(HEADER_SEPARATOR)) {
-            return Iterables.get(Splitter.on(HEADER_SEPARATOR).split(body), 0);
+    private Optional<String> contentType(Field contentType) {
+        if (contentType == null) {
+            return Optional.absent();
         }
-        return body;
+        String body = contentType.getBody();
+        if (Strings.isNullOrEmpty(body)) {
+            return Optional.absent();
+        }
+        if (body.contains(HEADER_SEPARATOR)) {
+            return Optional.of(Iterables.get(Splitter.on(HEADER_SEPARATOR).split(body), 0));
+        }
+        return Optional.of(body);
     }
 
     private boolean isAttachment(Entity part) {
