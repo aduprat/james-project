@@ -37,6 +37,7 @@ import javax.mail.Flags;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.JmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
+import org.apache.james.jmap.model.Attachment;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.junit.After;
@@ -330,5 +331,40 @@ public abstract class GetMessagesMethodTest {
             .body(ARGUMENTS + ".list", hasSize(1))
             .body(ARGUMENTS + ".list[0].id", equalTo("username@domain.tld|mailbox|1"))
             .body(ARGUMENTS + ".list[0].subject", equalTo("my test subject"));
+    }
+
+    @Test
+    public void getMessagesShouldReturnAttachmentsWhenSome() throws Exception {
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "inbox");
+
+        ZonedDateTime dateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z");
+        jmapServer.serverProbe().appendMessage(username, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "inbox"),
+                ClassLoader.getSystemResourceAsStream("twoAttachments.eml"), Date.from(dateTime.toInstant()), false, new Flags());
+        
+        await();
+        
+        given()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON)
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessages\", {\"ids\": [\"" + username + "|inbox|1\"]}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+        .log().all()
+            .statusCode(200)
+            .body(NAME, equalTo("messages"))
+            .body(ARGUMENTS + ".list", hasSize(1))
+            .body(ARGUMENTS + ".list[0].attachments", hasSize(2))
+            .body(ARGUMENTS + ".list[0].attachments[0]", equalTo(Attachment.builder()
+                    .blobId("223a76c0e8c1b1762487d8e0598bd88497d73ef2")
+                    .type("image/jpeg")
+                    .size(846)
+                    .build()))
+            .body(ARGUMENTS + ".list[0].attachments[0]", equalTo(Attachment.builder()
+                    .blobId("58aa22c2ec5770fb9e574ba19008dbfc647eba43")
+                    .type("image/jpeg")
+                    .size(597)
+                    .build()));
     }
 }

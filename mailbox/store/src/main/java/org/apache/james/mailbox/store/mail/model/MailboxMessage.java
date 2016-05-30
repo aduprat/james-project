@@ -124,5 +124,4 @@ public interface MailboxMessage extends Message, Comparable<MailboxMessage> {
      */
     Flags createFlags();
 
-
 }
