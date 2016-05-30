@@ -44,6 +44,7 @@ import com.google.common.collect.Iterables;
 public class MessageParser {
 
     private static final String CONTENT_TYPE = "Content-Type";
+    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
     private static final String HEADER_SEPARATOR = ";";
 
     public List<Attachment> retrieveAttachments(InputStream fullContent) throws MimeException, IOException {
@@ -67,9 +68,7 @@ public class MessageParser {
         for (Entity entity : multipart.getBodyParts()) {
             if (isAttachment(entity)) {
                 Optional<String> contentType = contentType(entity.getHeader().getField(CONTENT_TYPE));
-                if (contentType.isPresent()) {
-                    attachments.add(createAttachment(messageWriter, entity.getBody(), contentType.get()));
-                }
+                attachments.add(createAttachment(messageWriter, entity.getBody(), contentType.or(DEFAULT_CONTENT_TYPE)));
             }
         }
         return attachments.build();
