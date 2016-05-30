@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.memory.cucumber.download;
+package org.apache.james.jmap.cassandra.cucumber;
 
 import org.junit.runner.RunWith;
 
@@ -25,7 +25,7 @@ import cucumber.api.CucumberOptions;
 import cucumber.api.junit.Cucumber;
 
 @RunWith(Cucumber.class)
-@CucumberOptions(features="classpath:cucumber/DownloadAuthentication.feature",
-                glue={"org.apache.james.jmap.methods.integration", "org.apache.james.jmap.memory.cucumber.download"})
-public class MemoryDownloadCucumberTest {
+@CucumberOptions(features="classpath:cucumber/MailboxModification.feature",
+                glue={"org.apache.james.jmap.methods.integration", "org.apache.james.jmap.cassandra.cucumber"})
+public class CassandraSetMailboxesMethodCucumberTest {
 }

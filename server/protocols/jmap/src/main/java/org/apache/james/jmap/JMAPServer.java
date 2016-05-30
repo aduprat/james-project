@@ -35,7 +35,6 @@ import com.google.common.base.Throwables;
 
 public class JMAPServer implements Configurable {
 
-    private static final String DOWNLOAD_URL = JMAPUrls.DOWNLOAD + "/*";
     private final JettyHttpServer server;
 
     @Inject
@@ -56,9 +55,9 @@ public class JMAPServer implements Configurable {
                             .with(new AllowAllCrossOriginRequests(bypass(authenticationFilter).on("OPTIONS").only()))
                             .and(firstUserConnectionFilter)
                             .only()
-                        .serve(DOWNLOAD_URL)
+                        .serveAsOneLevelTemplate(JMAPUrls.DOWNLOAD)
                             .with(downloadServlet)
-                        .filter(DOWNLOAD_URL)
+                        .filterAsOneLevelTemplate(JMAPUrls.DOWNLOAD)
                             .with(new AllowAllCrossOriginRequests(bypass(authenticationFilter).on("OPTIONS").only()))
                             .only()
                         .build());

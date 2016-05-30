@@ -17,14 +17,16 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.memory.cucumber.download;
+package org.apache.james.jmap.cassandra.cucumber;
 
 import javax.inject.Inject;
 
+import org.apache.james.CassandraJamesServerMain;
 import org.apache.james.GuiceJamesServer;
-import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.backends.cassandra.EmbeddedCassandra;
 import org.apache.james.jmap.methods.integration.cucumber.MainStepdefs;
-import org.apache.james.jmap.servers.MemoryJmapServerModule;
+import org.apache.james.mailbox.elasticsearch.EmbeddedElasticSearch;
+import org.apache.james.modules.CassandraJmapServerModule;
 import org.junit.rules.TemporaryFolder;
 
 import cucumber.api.java.After;
@@ -32,29 +34,41 @@ import cucumber.api.java.Before;
 import cucumber.runtime.java.guice.ScenarioScoped;
 
 @ScenarioScoped
-public class MemoryDownloadStepdefs {
+public class CassandraStepdefs {
 
     private final MainStepdefs mainStepdefs;
-    private final TemporaryFolder temporaryFolder;
+    private TemporaryFolder temporaryFolder = new TemporaryFolder();
+    private EmbeddedElasticSearch embeddedElasticSearch = new EmbeddedElasticSearch(temporaryFolder);
+    private EmbeddedCassandra cassandra = EmbeddedCassandra.createStartServer();
 
     @Inject
-    private MemoryDownloadStepdefs(MainStepdefs mainStepdefs) {
+    private CassandraStepdefs(MainStepdefs mainStepdefs) {
         this.mainStepdefs = mainStepdefs;
-        this.temporaryFolder = new TemporaryFolder();
     }
 
     @Before
     public void init() throws Exception {
         temporaryFolder.create();
+        embeddedElasticSearch.before();
         mainStepdefs.jmapServer = new GuiceJamesServer()
-                .combineWith(MemoryJamesServerMain.inMemoryServerModule)
-                .overrideWith(new MemoryJmapServerModule(temporaryFolder));
+                .combineWith(CassandraJamesServerMain.cassandraServerModule)
+                .overrideWith(new CassandraJmapServerModule(temporaryFolder, embeddedElasticSearch, cassandra));
+        mainStepdefs.awaitMethod = () -> embeddedElasticSearch.awaitForElasticSearch();
         mainStepdefs.init();
     }
 
     @After
     public void tearDown() {
-        mainStepdefs.tearDown();
-        temporaryFolder.delete();
+        tearDown(() -> mainStepdefs.tearDown());
+        tearDown(() -> embeddedElasticSearch.after());
+        tearDown(() -> temporaryFolder.delete());
+    }
+
+    private void tearDown(Runnable cleaningFunction) {
+        try {
+            cleaningFunction.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

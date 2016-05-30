@@ -25,6 +25,7 @@ import javax.inject.Inject;
 
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
+import com.jayway.restassured.specification.RequestSpecification;
 
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
@@ -44,36 +45,38 @@ public class DownloadStepdefs {
         this.userStepdefs = userStepdefs;
     }
 
-    @Given("^an unknown user with username \"([^\"]*)\" and password \"([^\"]*)\"$")
+    @Given("^an unknown current user with username \"([^\"]*)\" and password \"([^\"]*)\"$")
     public void createUserWithPassword(String username, String password) throws Exception {
         mainStepdefs.jmapServer.serverProbe().addUser(username, password);
     }
 
-    @When("^asking the download endpoint$")
-    public void getDownload() throws Exception {
+    @When("^checking for the availability of the attachment endpoint$")
+    public void optionDownload() throws Throwable {
+        RequestSpecification requestSpecification = with()
+            .accept(ContentType.JSON)
+            .contentType(ContentType.JSON);
+
         if (userStepdefs.accessToken != null) {
-            response = getDownloadWithAuthorization();
-        } else {
-            response = getDownloadWithoutAuthorization();
+            requestSpecification.header("Authorization", userStepdefs.accessToken.serialize());
         }
+
+        response = requestSpecification.options("/download/myBlob");
     }
 
-    private Response getDownloadWithoutAuthorization() {
-        return with()
+    @When("^asking for an attachment$")
+    public void getDownload() throws Exception {
+        RequestSpecification requestSpecification = with()
             .accept(ContentType.JSON)
-            .contentType(ContentType.JSON)
-            .get("/download/myBlob");
+            .contentType(ContentType.JSON);
+
+        if (userStepdefs.accessToken != null) {
+            requestSpecification.header("Authorization", userStepdefs.accessToken.serialize());
+        }
+
+        response = requestSpecification.get("/download/myBlob");
     }
 
-    private Response getDownloadWithAuthorization() {
-        return with()
-            .accept(ContentType.JSON)
-            .contentType(ContentType.JSON)
-            .header("Authorization", userStepdefs.accessToken.serialize())
-            .get("/download/myBlob");
-    }
-
-    @When("^asking the download endpoint without blobId parameter$")
+    @When("^asking for an attachment without blobId parameter$")
     public void getDownloadWithoutBlobId() throws Throwable {
         response = with()
             .accept(ContentType.JSON)
