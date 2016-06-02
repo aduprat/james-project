@@ -52,7 +52,6 @@ import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.util.streams.Collectors;
 import org.javatuples.Pair;
-import org.javatuples.Triplet;
 
 import com.fasterxml.jackson.databind.ser.PropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
@@ -119,8 +118,8 @@ public class GetMessagesMethod implements Method {
     private GetMessagesResponse getMessagesResponse(MailboxSession mailboxSession, GetMessagesRequest getMessagesRequest) {
         getMessagesRequest.getAccountId().ifPresent(GetMessagesMethod::notImplemented);
         
-        Function<MessageId, Stream<Triplet<MailboxMessage, List<Attachment>, MailboxPath>>> loadMessages = loadMessage(mailboxSession);
-        Function<Triplet<MailboxMessage, List<Attachment>, MailboxPath>, Message> convertToJmapMessage = toJmapMessage(mailboxSession);
+        Function<MessageId, Stream<JamesMessage>> loadMessages = loadMessage(mailboxSession);
+        Function<JamesMessage, Message> convertToJmapMessage = toJmapMessage(mailboxSession);
         
         List<Message> result = getMessagesRequest.getIds().stream()
             .flatMap(loadMessages)
@@ -135,19 +134,12 @@ public class GetMessagesMethod implements Method {
     }
 
     
-    private Function<Triplet<MailboxMessage, List<Attachment>, MailboxPath>, Message> toJmapMessage(MailboxSession mailboxSession) {
-        return (value) -> {
-            MailboxMessage messageResult = value.getValue0();
-            List<Attachment> attachments = value.getValue1();
-            MailboxPath mailboxPath = value.getValue2();
-            return Message.fromMailboxMessage(messageResult, attachments, uid -> new MessageId(mailboxSession.getUser(), mailboxPath , uid));
-        };
+    private Function<JamesMessage, Message> toJmapMessage(MailboxSession mailboxSession) {
+        return (jamesMessage) -> Message.fromMailboxMessage(jamesMessage.mailboxMessage, jamesMessage.attachments, 
+                    uid -> new MessageId(mailboxSession.getUser(), jamesMessage.mailboxPath , uid));
     }
 
-    private Function<MessageId, Stream<
-                                    Triplet<MailboxMessage,
-                                        List<Attachment>,
-                                        MailboxPath>>> 
+    private Function<MessageId, Stream<JamesMessage>> 
                 loadMessage(MailboxSession mailboxSession) {
 
         return Throwing
@@ -160,22 +152,38 @@ public class GetMessagesMethod implements Method {
                              mailboxPath
                              );
                 })
-                .andThen(pair -> iteratorToStream(pair, mailboxSession));
+                .andThen(Throwing.function((pair) -> iteratorToStream(pair, mailboxSession)));
     }
     
-    private Stream<Triplet<MailboxMessage, List<Attachment>, MailboxPath>> iteratorToStream(Pair<Iterator<MailboxMessage>, MailboxPath> value, MailboxSession mailboxSession) {
+    private Stream<JamesMessage> iteratorToStream(Pair<Iterator<MailboxMessage>, MailboxPath> value, MailboxSession mailboxSession) throws MailboxException {
         Iterable<MailboxMessage> iterable = () -> value.getValue0();
         Stream<MailboxMessage> targetStream = StreamSupport.stream(iterable.spliterator(), false);
-        
+
+        Function<List<AttachmentId>, List<Attachment>> retrieveAttachments = retrieveAttachments(attachmentMapperFactory.getAttachmentMapper(mailboxSession));
+
         MailboxPath mailboxPath = value.getValue1();
         return targetStream.map(Throwing
-                .function((MailboxMessage message) -> Triplet.with(message, retrieveAttachments(message.getAttachmentsIds(), mailboxSession), mailboxPath)));
+                .function((MailboxMessage message) -> new JamesMessage(message, retrieveAttachments.apply(message.getAttachmentsIds()), mailboxPath)));
     }
 
-    private List<Attachment> retrieveAttachments(List<AttachmentId> attachmentsIds, MailboxSession mailboxSession) throws MailboxException {
-        AttachmentMapper attachmentMapper = attachmentMapperFactory.getAttachmentMapper(mailboxSession);
-        return attachmentsIds.stream()
-                .map(Throwing.function(id -> attachmentMapper.getAttachment(id)))
-                .collect(Collectors.toImmutableList());
+    private class JamesMessage {
+        
+        private final MailboxMessage mailboxMessage;
+        private final List<Attachment> attachments;
+        private final MailboxPath mailboxPath;
+
+        public JamesMessage(MailboxMessage mailboxMessage, List<Attachment> attachments, MailboxPath mailboxPath) {
+            this.mailboxMessage = mailboxMessage;
+            this.attachments = attachments;
+            this.mailboxPath = mailboxPath;
+        }
+    }
+
+    private Function<List<AttachmentId>, List<Attachment>> retrieveAttachments(AttachmentMapper attachmentMapper) throws MailboxException {
+        return (attachmentsIds) -> {
+            return attachmentsIds.stream()
+                    .map(Throwing.function(id -> attachmentMapper.getAttachment(id)))
+                    .collect(Collectors.toImmutableList());
+        };
     }
 }
