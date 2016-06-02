@@ -371,18 +371,15 @@ public class Message {
     }
 
     protected static boolean areAttachedMessagesKeysInAttachments(ImmutableList<Attachment> attachments, ImmutableMap<String, SubMessage> attachedMessages) {
-        return attachedMessages.keySet().stream()
-                .filter(notInAttachments(attachments))
-                .collect(Collectors.toList())
-                .isEmpty();
+        return attachedMessages.isEmpty() || attachedMessages.keySet().stream()
+                .anyMatch(inAttachments(attachments));
     }
 
-    private static Predicate<String> notInAttachments(ImmutableList<Attachment> attachments) {
+    private static Predicate<String> inAttachments(ImmutableList<Attachment> attachments) {
         return (key) -> {
-            return !attachments.stream()
+            return attachments.stream()
                 .map(Attachment::getBlobId)
-                .collect(Collectors.toList())
-                .contains(key);
+                .anyMatch(blobId -> blobId.equals(key));
         };
     }
 
