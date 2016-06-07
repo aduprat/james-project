@@ -19,12 +19,11 @@
 
 package org.apache.james.jmap.model.message;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
 import org.apache.commons.io.FilenameUtils;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.extractor.ParsedContent;
@@ -33,10 +32,12 @@ import org.apache.james.mime4j.stream.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 
 public class MimePart {
 
@@ -244,13 +245,11 @@ public class MimePart {
     }
 
     @JsonIgnore
-    public Optional<String> locateFirstTextualBody() {
+    public Optional<MimePart> locateFirstTextualBody() {
         return Stream.concat(
                     Stream.of(this),
                     attachments.stream())
-                .map((mimePart) -> mimePart.bodyTextContent)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                .filter((mimePart) -> mimePart.bodyTextContent.isPresent())
                 .findFirst();
     }
 
