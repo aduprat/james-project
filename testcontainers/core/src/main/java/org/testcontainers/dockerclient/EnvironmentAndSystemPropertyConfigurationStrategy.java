@@ -16,6 +16,7 @@ public class EnvironmentAndSystemPropertyConfigurationStrategy implements Docker
     public DockerClientConfig provideConfiguration() throws InvalidConfigurationException {
         // Try using environment variables
         DockerClientConfig candidateConfig = config;
+        System.out.println("config: " + config);
         DockerClient client = DockerClientBuilder.getInstance(candidateConfig).build();
 
         try {
