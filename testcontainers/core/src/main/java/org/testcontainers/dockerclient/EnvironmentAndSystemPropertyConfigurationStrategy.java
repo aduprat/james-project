@@ -22,6 +22,7 @@ public class EnvironmentAndSystemPropertyConfigurationStrategy implements Docker
         try {
             client.pingCmd().exec();
         } catch (Exception e) {
+            System.out.println("Exception: " + e);
             throw new InvalidConfigurationException("ping failed");
         }
 
