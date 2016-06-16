@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -35,7 +36,6 @@ import org.apache.james.protocols.api.Protocol;
 import org.apache.james.protocols.api.ProtocolServer;
 import org.apache.james.protocols.api.handler.WiringException;
 import org.apache.james.protocols.api.utils.MockLogger;
-import org.apache.james.protocols.api.utils.ProtocolServerUtils;
 import org.apache.james.protocols.pop3.core.AbstractApopCmdHandler;
 import org.apache.james.protocols.pop3.core.AbstractPassCmdHandler;
 import org.apache.james.protocols.pop3.mailbox.Mailbox;
@@ -43,6 +43,8 @@ import org.apache.james.protocols.pop3.utils.MockMailbox;
 import org.apache.james.protocols.pop3.utils.MockMailbox.Message;
 import org.apache.james.protocols.pop3.utils.TestPassCmdHandler;
 import org.junit.Test;
+
+import com.google.common.base.Preconditions;
 
 public abstract class AbstractPOP3ServerTest {
 
@@ -67,7 +69,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("invalid", "invalid")).isFalse();
@@ -79,6 +81,12 @@ public abstract class AbstractPOP3ServerTest {
             }
         }
         
+    }
+
+    private InetSocketAddress retrieveBindedAddress(ProtocolServer server) {
+        List<InetSocketAddress> listenAddresses = server.getListenAddresses();
+        Preconditions.checkState(listenAddresses.size() == 1, "Unexpected number of binded addresses");
+        return listenAddresses.get(0);
     }
 
     @Test
@@ -93,7 +101,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -124,7 +132,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -180,7 +188,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -222,7 +230,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -267,7 +275,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -319,7 +327,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -346,7 +354,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -380,7 +388,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             
             assertThat(client.login("valid", "valid")).isTrue();
@@ -409,7 +417,7 @@ public abstract class AbstractPOP3ServerTest {
             
             POP3Client client =  createClient();
             
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             assertThat(client.listMessages()).isNull();
             assertThat(client.listUniqueIdentifiers()).isNull();
@@ -455,7 +463,7 @@ public abstract class AbstractPOP3ServerTest {
             server.bind();
             
             POP3Client client =  createClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(server).retrieveBindedAddress();
+            InetSocketAddress bindedAddress = retrieveBindedAddress(server);
             client.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
             String welcomeMessage = client.getReplyString();
             
