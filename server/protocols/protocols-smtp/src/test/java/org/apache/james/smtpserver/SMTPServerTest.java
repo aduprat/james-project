@@ -77,6 +77,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
+
 @SuppressWarnings("deprecation")
 public class SMTPServerTest {
 
@@ -169,7 +171,6 @@ public class SMTPServerTest {
     private static final int MAX_ITERATIONS = 10;
     private static final Logger log = LoggerFactory.getLogger(SMTPServerTest.class.getName());
 
-    protected SMTPTestConfiguration smtpConfiguration;
     protected final InMemoryUsersRepository usersRepository = new InMemoryUsersRepository();
     protected AlterableDNSServer dnsServer;
     protected MockMailRepositoryStore store;
@@ -186,7 +187,6 @@ public class SMTPServerTest {
         setUpFakeLoader();
         // slf4j can't set programmatically any log level. It's just a facade
         // log.setLevel(SimpleLog.LOG_LEVEL_ALL);
-        smtpConfiguration = new SMTPTestConfiguration();
         setUpSMTPServer();
     }
 
@@ -326,11 +326,10 @@ public class SMTPServerTest {
 
     @Test
     public void testMaxLineLength() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < AbstractChannelPipelineFactory.MAX_LINE_LENGTH; i++) {
@@ -353,19 +352,20 @@ public class SMTPServerTest {
 
     @Test
     public void testConnectionLimit() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setConnectionLimit(2);
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        int port = retrieveBindedPort();
+        smtpProtocol.connect("127.0.0.1", port);
         SMTPClient smtpProtocol2 = new SMTPClient();
-        smtpProtocol2.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol2.connect("127.0.0.1", port);
 
         SMTPClient smtpProtocol3 = new SMTPClient();
 
         try {
-            smtpProtocol3.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+            smtpProtocol3.connect("127.0.0.1", port);
             Thread.sleep(3000);
             fail("Shold disconnect connection 3");
         } catch (Exception e) {
@@ -374,7 +374,7 @@ public class SMTPServerTest {
         ensureIsDisconnected(smtpProtocol);
         ensureIsDisconnected(smtpProtocol2);
 
-        smtpProtocol3.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol3.connect("127.0.0.1", port);
         Thread.sleep(3000);
 
     }
@@ -433,11 +433,10 @@ public class SMTPServerTest {
 
     @Test
     public void testSimpleMailSendWithEHLO() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         // no message there, yet
         assertThat(queue.getLastMail())
@@ -481,6 +480,7 @@ public class SMTPServerTest {
     @Test
     public void messageExceedingMessageSizeShouldBeDiscarded() throws Exception {
         // Given
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         init(smtpConfiguration);
         int maxSize = 1024;
         smtpServer.setMaximalMessageSize(maxSize);
@@ -516,6 +516,7 @@ public class SMTPServerTest {
     @Test
     public void messageExceedingMessageSizeShouldBeRespondedAsOverQuota() throws Exception {
         // Given
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         init(smtpConfiguration);
         int maxSize = 1024;
         smtpServer.setMaximalMessageSize(maxSize);
@@ -548,12 +549,12 @@ public class SMTPServerTest {
 
     @Test
     public void testStartTLSInEHLO() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setStartTLS();
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         // no message there, yet
         assertThat(queue.getLastMail())
@@ -582,6 +583,7 @@ public class SMTPServerTest {
 
     @Test
     public void startTlsCommandShouldWorkWhenAlone() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setStartTLS();
         init(smtpConfiguration);
 
@@ -603,6 +605,7 @@ public class SMTPServerTest {
 
     @Test
     public void startTlsCommandShouldFailWhenFollowedByInjectedCommand() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setStartTLS();
         init(smtpConfiguration);
 
@@ -624,8 +627,7 @@ public class SMTPServerTest {
 
     protected SMTPClient newSMTPClient() throws IOException {
         SMTPClient smtp = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtp.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtp.connect("127.0.0.1", retrieveBindedPort());
         if (log.isDebugEnabled()) {
             smtp.addProtocolCommandListener(new ProtocolCommandListener() {
 
@@ -645,7 +647,7 @@ public class SMTPServerTest {
 
     @Test
     public void testReceivedHeader() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtp = newSMTPClient();
 
@@ -671,7 +673,7 @@ public class SMTPServerTest {
     @Ignore
     @Test
     public void testEmptyMessageReceivedHeader() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtp = newSMTPClient();
 
@@ -696,11 +698,10 @@ public class SMTPServerTest {
 
     @Test
     public void testSimpleMailSendWithHELO() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         // no message there, yet
         assertThat(queue.getLastMail())
@@ -726,13 +727,13 @@ public class SMTPServerTest {
 
     @Test
     public void testTwoSimultaneousMails() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        int port = retrieveBindedPort();
+        smtpProtocol1.connect("127.0.0.1", port);
         SMTPClient smtpProtocol2 = new SMTPClient();
-        smtpProtocol2.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol2.connect("127.0.0.1", port);
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -774,11 +775,10 @@ public class SMTPServerTest {
 
     @Test
     public void testTwoMailsInSequence() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -813,6 +813,7 @@ public class SMTPServerTest {
 
     @Test
     public void testHeloResolv() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setHeloResolv();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1");
         init(smtpConfiguration);
@@ -822,8 +823,7 @@ public class SMTPServerTest {
 
     private void doTestHeloEhloResolv(String heloCommand) throws IOException {
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol.isConnected())
             .as("first connection taken")
@@ -865,11 +865,10 @@ public class SMTPServerTest {
 
     @Test
     public void testHeloResolvDefault() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol1.helo("abgsfe3rsf.de");
         // helo should not be checked. so this should give a 250 code
@@ -882,6 +881,7 @@ public class SMTPServerTest {
 
     @Test
     public void testReverseEqualsHelo() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setReverseEqualsHelo();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1");
         // temporary alter the loopback resolution
@@ -894,8 +894,7 @@ public class SMTPServerTest {
             init(smtpConfiguration);
 
             SMTPClient smtpProtocol1 = new SMTPClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-            smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+            smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
             assertThat(smtpProtocol1.isConnected())
                 .as("first connection taken")
@@ -938,13 +937,13 @@ public class SMTPServerTest {
 
     @Test
     public void testSenderDomainResolv() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setSenderDomainResolv();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1/32");
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -974,11 +973,10 @@ public class SMTPServerTest {
 
     @Test
     public void testSenderDomainResolvDefault() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol1.helo(InetAddress.getLocalHost().toString());
 
@@ -991,12 +989,12 @@ public class SMTPServerTest {
 
     @Test
     public void testSenderDomainResolvRelayClientDefault() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setSenderDomainResolv();
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -1020,13 +1018,13 @@ public class SMTPServerTest {
 
     @Test
     public void testSenderDomainResolvRelayClient() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setSenderDomainResolv();
         smtpConfiguration.setCheckAuthNetworks(true);
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -1055,12 +1053,12 @@ public class SMTPServerTest {
 
     @Test
     public void testMaxRcpt() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setMaxRcpt(1);
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -1102,11 +1100,10 @@ public class SMTPServerTest {
 
     @Test
     public void testMaxRcptDefault() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol1.helo(InetAddress.getLocalHost().toString());
 
@@ -1124,6 +1121,7 @@ public class SMTPServerTest {
 
     @Test
     public void testEhloResolv() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setEhloResolv();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1");
         init(smtpConfiguration);
@@ -1133,11 +1131,10 @@ public class SMTPServerTest {
 
     @Test
     public void testEhloResolvDefault() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol1.sendCommand("ehlo", "abgsfe3rsf.de");
         // ehlo should not be checked. so this should give a 250 code
@@ -1150,6 +1147,7 @@ public class SMTPServerTest {
 
     @Test
     public void testEhloResolvIgnoreClientDisabled() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setEhloResolv();
         smtpConfiguration.setCheckAuthNetworks(true);
         init(smtpConfiguration);
@@ -1159,6 +1157,7 @@ public class SMTPServerTest {
 
     @Test
     public void testReverseEqualsEhlo() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setReverseEqualsEhlo();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1");
         // temporary alter the loopback resolution
@@ -1173,8 +1172,7 @@ public class SMTPServerTest {
             init(smtpConfiguration);
 
             SMTPClient smtpProtocol1 = new SMTPClient();
-            InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-            smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+            smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
             assertThat(smtpProtocol1.isConnected())
                 .as("first connection taken")
@@ -1216,11 +1214,10 @@ public class SMTPServerTest {
 
     @Test
     public void testHeloEnforcement() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -1246,12 +1243,12 @@ public class SMTPServerTest {
 
     @Test
     public void testHeloEnforcementDisabled() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setHeloEhloEnforcement(false);
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol1 = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol1.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol1.connect("127.0.0.1", retrieveBindedPort());
 
         assertThat(smtpProtocol1.isConnected())
             .as("first connection taken")
@@ -1269,15 +1266,22 @@ public class SMTPServerTest {
         smtpProtocol1.quit();
     }
 
+    private int retrieveBindedPort() {
+        List<InetSocketAddress> listenAddresses = smtpServer.getListenAddresses();
+        Preconditions.checkState(listenAddresses.size() == 1, "Unexpected number of binded addresses");
+        InetSocketAddress inetSocketAddress = listenAddresses.get(0);
+        return inetSocketAddress.getPort();
+    }
+
     @Test
     public void testAuthCancel() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("127.0.0.1/8");
         smtpConfiguration.setAuthorizingAnnounce();
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
 
@@ -1300,13 +1304,13 @@ public class SMTPServerTest {
     // Test for JAMES-939
     @Test
     public void testAuth() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("128.0.0.1/8");
         smtpConfiguration.setAuthorizingAnnounce();
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
         String[] capabilityRes = smtpProtocol.getReplyStrings();
@@ -1381,13 +1385,13 @@ public class SMTPServerTest {
 
     @Test
     public void testAuthWithEmptySender() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("128.0.0.1/8");
         smtpConfiguration.setAuthorizingAnnounce();
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1412,11 +1416,10 @@ public class SMTPServerTest {
 
     @Test
     public void testNoRecepientSpecified() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1439,11 +1442,10 @@ public class SMTPServerTest {
 
     @Test
     public void testMultipleMailsAndRset() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1463,12 +1465,12 @@ public class SMTPServerTest {
 
     @Test
     public void testRelayingDenied() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("128.0.0.1/8");
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1482,12 +1484,12 @@ public class SMTPServerTest {
 
     @Test
     public void testHandleAnnouncedMessageSizeLimitExceeded() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setMaxMessageSize(1); // set message limit to 1kb
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1503,12 +1505,12 @@ public class SMTPServerTest {
     }
 
     public void testHandleMessageSizeLimitExceeded() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setMaxMessageSize(1); // set message limit to 1kb
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1543,12 +1545,12 @@ public class SMTPServerTest {
 
     @Test
     public void testHandleMessageSizeLimitRespected() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setMaxMessageSize(1); // set message limit to 1kb
         init(smtpConfiguration);
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo " + InetAddress.getLocalHost());
 
@@ -1582,6 +1584,7 @@ public class SMTPServerTest {
 
     @Test
     public void testDNSRBLNotRejectAuthUser() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1/32");
         smtpConfiguration.setAuthorizingAnnounce();
         smtpConfiguration.useRBL(true);
@@ -1590,8 +1593,7 @@ public class SMTPServerTest {
         dnsServer.setLocalhostByName(InetAddress.getByName("127.0.0.1"));
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
         String[] capabilityRes = smtpProtocol.getReplyStrings();
@@ -1637,6 +1639,7 @@ public class SMTPServerTest {
 
     @Test
     public void testDNSRBLRejectWorks() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("192.168.0.1/32");
         smtpConfiguration.useRBL(true);
         init(smtpConfiguration);
@@ -1644,8 +1647,7 @@ public class SMTPServerTest {
         dnsServer.setLocalhostByName(InetAddress.getByName("127.0.0.1"));
 
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
 
@@ -1670,11 +1672,12 @@ public class SMTPServerTest {
 
     @Test
     public void testAddressBracketsEnforcementDisabled() throws Exception {
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAddressBracketsEnforcement(false);
         init(smtpConfiguration);
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        int port = retrieveBindedPort();
+        smtpProtocol.connect("127.0.0.1", port);
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
 
@@ -1690,7 +1693,7 @@ public class SMTPServerTest {
 
         smtpProtocol.quit();
 
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", port);
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
 
@@ -1709,10 +1712,9 @@ public class SMTPServerTest {
 
     @Test
     public void testAddressBracketsEnforcementEnabled() throws Exception {
-        init(smtpConfiguration);
+        init(new SMTPTestConfiguration());
         SMTPClient smtpProtocol = new SMTPClient();
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        smtpProtocol.connect("127.0.0.1", retrieveBindedPort());
 
         smtpProtocol.sendCommand("ehlo", InetAddress.getLocalHost().toString());
 
@@ -1741,9 +1743,8 @@ public class SMTPServerTest {
     @Test
     public void testPipelining() throws Exception {
         StringBuilder buf = new StringBuilder();
-        init(smtpConfiguration);
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        Socket client = new Socket(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        init(new SMTPTestConfiguration());
+        Socket client = new Socket("127.0.0.1", retrieveBindedPort());
 
         buf.append("HELO TEST");
         buf.append("\r\n");
@@ -1797,12 +1798,12 @@ public class SMTPServerTest {
     // See http://www.ietf.org/rfc/rfc2920.txt 4: Examples
     @Test
     public void testRejectAllRCPTPipelining() throws Exception {
-        StringBuilder buf = new StringBuilder();
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("");
         init(smtpConfiguration);
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        Socket client = new Socket(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        Socket client = new Socket("127.0.0.1", retrieveBindedPort());
 
+        StringBuilder buf = new StringBuilder();
         buf.append("HELO TEST");
         buf.append("\r\n");
         buf.append("MAIL FROM: <test@localhost>");
@@ -1856,12 +1857,12 @@ public class SMTPServerTest {
 
     @Test
     public void testRejectOneRCPTPipelining() throws Exception {
-        StringBuilder buf = new StringBuilder();
+        SMTPTestConfiguration smtpConfiguration = new SMTPTestConfiguration();
         smtpConfiguration.setAuthorizedAddresses("");
         init(smtpConfiguration);
-        InetSocketAddress bindedAddress = new ProtocolServerUtils(smtpServer).retrieveBindedAddress();
-        Socket client = new Socket(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
+        Socket client = new Socket("127.0.0.1", retrieveBindedPort());
 
+        StringBuilder buf = new StringBuilder();
         buf.append("HELO TEST");
         buf.append("\r\n");
         buf.append("MAIL FROM: <test@localhost>");
