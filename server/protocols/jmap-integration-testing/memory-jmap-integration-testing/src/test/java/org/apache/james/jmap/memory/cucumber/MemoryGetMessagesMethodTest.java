@@ -17,29 +17,15 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.memory;
+package org.apache.james.jmap.memory.cucumber;
 
-import org.apache.james.GuiceJamesServer;
-import org.apache.james.MemoryJamesServerMain;
-import org.apache.james.jmap.methods.integration.GetMessagesMethodTest;
-import org.apache.james.jmap.servers.MemoryJmapServerModule;
-import org.junit.Rule;
-import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 
-public class MemoryGetMessagesMethodTest extends GetMessagesMethodTest {
+import cucumber.api.CucumberOptions;
+import cucumber.api.junit.Cucumber;
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-    @Override
-    protected GuiceJamesServer createJmapServer() {
-        return new GuiceJamesServer()
-                    .combineWith(MemoryJamesServerMain.inMemoryServerModule)
-                    .overrideWith(new MemoryJmapServerModule(temporaryFolder));
-    }
-    
-    @Override
-    protected void await() {
-
-    }
+@RunWith(Cucumber.class)
+@CucumberOptions(features="classpath:cucumber/GetMessages.feature",
+                glue={"org.apache.james.jmap.methods.integration", "org.apache.james.jmap.memory.cucumber"})
+public class MemoryGetMessagesMethodTest {
 }
