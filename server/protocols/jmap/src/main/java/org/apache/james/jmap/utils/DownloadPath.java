@@ -17,34 +17,43 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap;
+package org.apache.james.jmap.utils;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import java.util.List;
+import java.util.Optional;
 
-import javax.servlet.http.HttpServletResponse;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 
-import org.apache.james.jmap.utils.DownloadPath;
-import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
-import org.junit.Test;
+public class DownloadPath {
 
-public class DownloadServletTest {
+    public static DownloadPath from(String path) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(path), "'path' is mandatory");
 
-    @Test
-    public void downloadMayFailWhenUnableToCreateAttachmentMapper() throws Exception {
-        MailboxSession mailboxSession = mock(MailboxSession.class);
-        MailboxSessionMapperFactory mailboxSessionMapperFactory = mock(MailboxSessionMapperFactory.class);
-        when(mailboxSessionMapperFactory.createAttachmentMapper(mailboxSession))
-            .thenThrow(new MailboxException());
+        List<String> pathVariables = Splitter.on('/').omitEmptyStrings().splitToList(path);
+        Preconditions.checkArgument(pathVariables.size() >= 1, "'blobId' is mandatory");
 
-        DownloadServlet testee = new DownloadServlet(mailboxSessionMapperFactory);
+        return new DownloadPath(pathVariables.get(0), name(pathVariables));
+    }
 
-        HttpServletResponse resp = mock(HttpServletResponse.class);
-        testee.download(mailboxSession, DownloadPath.from("/blobId"), resp);
+    private static Optional<String> name(List<String> pathVariables) {
+        return pathVariables.size() >= 2 ? Optional.of(pathVariables.get(1)) : Optional.empty();
+    }
 
-        verify(resp).setStatus(500);
+    private final String blobId;
+    private final Optional<String> name;
+
+    private DownloadPath(String blobId, Optional<String> name) {
+        this.blobId = blobId;
+        this.name = name;
+    }
+
+    public String getBlobId() {
+        return blobId;
+    }
+
+    public Optional<String> getName() {
+        return name;
     }
 }
