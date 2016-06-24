@@ -20,24 +20,25 @@
 package org.apache.james.jmap.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.Test;
 
 public class DownloadPathTest {
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void fromShouldThrowWhenPathIsNull() {
-        DownloadPath.from(null);
+        assertThatThrownBy(()-> DownloadPath.from(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void fromShouldThrowWhenPathIsEmpty() {
-        DownloadPath.from("");
+        assertThatThrownBy(()-> DownloadPath.from("")).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void fromShouldThrowWhenNoBlobId() {
-        DownloadPath.from("/");
+        assertThatThrownBy(()-> DownloadPath.from("/")).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -67,11 +68,7 @@ public class DownloadPathTest {
     }
 
     @Test
-    public void fromShouldParseWhenExtraPathVariables() {
-        String expectedBlobId = "123456789";
-        String expectedName = "myName";
-        DownloadPath downloadPath = DownloadPath.from("/" + expectedBlobId + "/" + expectedName + "/132/456/789");
-        assertThat(downloadPath.getBlobId()).isEqualTo(expectedBlobId);
-        assertThat(downloadPath.getName()).hasValue(expectedName);
+    public void fromShouldThrowWhenExtraPathVariables() {
+        assertThatThrownBy(()-> DownloadPath.from("/123456789/myName/132/456/789")).isInstanceOf(IllegalArgumentException.class);
     }
 }

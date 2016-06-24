@@ -71,11 +71,12 @@ public class DownloadServlet extends HttpServlet {
     @VisibleForTesting void download(MailboxSession mailboxSession, DownloadPath downloadPath, HttpServletResponse resp) {
         String blobId = downloadPath.getBlobId();
         try {
+            addHeader(downloadPath.getName(), resp);
+
             AttachmentMapper attachmentMapper = mailboxSessionMapperFactory.createAttachmentMapper(mailboxSession);
             Attachment attachment = attachmentMapper.getAttachment(AttachmentId.from(blobId));
             IOUtils.copy(attachment.getStream(), resp.getOutputStream());
 
-            addHeader(downloadPath.getName(), resp);
             resp.setStatus(SC_OK);
         } catch (AttachmentNotFoundException e) {
             LOGGER.info(String.format("Attachment '%s' not found", blobId), e);

@@ -32,13 +32,17 @@ public class DownloadPath {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(path), "'path' is mandatory");
 
         List<String> pathVariables = Splitter.on('/').omitEmptyStrings().splitToList(path);
-        Preconditions.checkArgument(pathVariables.size() >= 1, "'blobId' is mandatory");
+        Preconditions.checkArgument(pathVariables.size() >= 1 && pathVariables.size() <= 2, "'blobId' is mandatory");
 
         return new DownloadPath(pathVariables.get(0), name(pathVariables));
     }
 
     private static Optional<String> name(List<String> pathVariables) {
-        return pathVariables.size() >= 2 ? Optional.of(pathVariables.get(1)) : Optional.empty();
+        try {
+            return Optional.of(pathVariables.get(1));
+        } catch (IndexOutOfBoundsException e) {
+            return Optional.empty();
+        }
     }
 
     private final String blobId;
