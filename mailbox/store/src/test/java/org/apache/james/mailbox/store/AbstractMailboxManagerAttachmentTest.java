@@ -113,12 +113,11 @@ public abstract class AbstractMailboxManagerAttachmentTest {
     public void appendMessageShouldStoreAttachmentNameWhenMailWithOneAttachment() throws Exception {
         InputStream mailInputStream = ClassLoader.getSystemResourceAsStream("eml/oneAttachmentAndSomeInlined.eml");
         inboxMessageManager.appendMessage(mailInputStream, SUN_SEP_9TH_2001, mailboxSession, true, new Flags(Flags.Flag.RECENT));
-        
-        Iterator<MailboxMessage> messages = messageMapper.findInMailbox(inbox, MessageRange.all(), FetchType.Full, 1);
-        assertThat(messages.hasNext()).isTrue();
-        List<AttachmentId> attachmentsIds = messages.next().getAttachmentsIds();
-        assertThat(attachmentsIds).hasSize(1);
+
         Optional<String> expectedName = Optional.of("exploits_of_a_mom.png");
+
+        Iterator<MailboxMessage> messages = messageMapper.findInMailbox(inbox, MessageRange.all(), FetchType.Full, 1);
+        List<AttachmentId> attachmentsIds = messages.next().getAttachmentsIds();
         assertThat(attachmentMapper.getAttachment(attachmentsIds.get(0)).getName()).isEqualTo(expectedName);
     }
 

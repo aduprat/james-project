@@ -36,6 +36,7 @@ import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.james.mime4j.stream.Field;
 
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 
@@ -67,24 +68,33 @@ public class MessageParser {
                 Optional<ContentTypeField> contentTypeField = contentTypeField(entity.getHeader().getField(CONTENT_TYPE));
                 Optional<String> contentType = contentType(contentTypeField);
                 Optional<String> name = name(contentTypeField);
-                attachments.add(createAttachment(messageWriter, entity.getBody(), contentType.or(DEFAULT_CONTENT_TYPE), name));
+                
+                attachments.add(Attachment.builder()
+                        .bytes(getBytes(messageWriter, entity.getBody()))
+                        .type(contentType.or(DEFAULT_CONTENT_TYPE))
+                        .name(name)
+                        .build());
             }
         }
         return attachments.build();
     }
 
     private Optional<String> contentType(Optional<ContentTypeField> contentTypeField) {
-        if (contentTypeField.isPresent()) {
-            return Optional.fromNullable(contentTypeField.get().getMimeType());
-        }
-        return Optional.absent();
+        return contentTypeField.transform(new Function<ContentTypeField, Optional<String>>() {
+            @Override
+            public Optional<String> apply(ContentTypeField field) {
+                return Optional.fromNullable(field.getMimeType());
+            }
+        }).or(Optional.<String> absent());
     }
 
-    private Optional<String> name(Optional<ContentTypeField> contentType) {
-        if (contentType.isPresent()) {
-            return Optional.fromNullable(contentType.get().getParameter("name"));
-        }
-        return Optional.absent();
+    private Optional<String> name(Optional<ContentTypeField> contentTypeField) {
+        return contentTypeField.transform(new Function<ContentTypeField, Optional<String>>() {
+            @Override
+            public Optional<String> apply(ContentTypeField field) {
+                return Optional.fromNullable(field.getParameter("name"));
+            }
+        }).or(Optional.<String> absent());
     }
 
     private Optional<ContentTypeField> contentTypeField(Field contentType) {
@@ -98,14 +108,9 @@ public class MessageParser {
         return ContentDispositionField.DISPOSITION_TYPE_ATTACHMENT.equalsIgnoreCase(part.getDispositionType());
     }
 
-    private Attachment createAttachment(MessageWriter messageWriter, Body body, String contentType, Optional<String> name) throws IOException {
+    private byte[] getBytes(MessageWriter messageWriter, Body body) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         messageWriter.writeBody(body, out);
-        byte[] bytes = out.toByteArray();
-        return Attachment.builder()
-                .bytes(bytes)
-                .type(contentType)
-                .name(name)
-                .build();
+        return out.toByteArray();
     }
 }
