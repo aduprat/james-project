@@ -19,35 +19,31 @@
 
 package org.apache.james.jmap.methods.integration.cucumber;
 
-import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
-import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
+import java.util.Optional;
 
-import org.apache.james.GuiceJamesServer;
+public class ContentType {
 
-import com.google.common.base.Charsets;
-import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.builder.RequestSpecBuilder;
-
-import cucumber.runtime.java.guice.ScenarioScoped;
-
-@ScenarioScoped
-public class MainStepdefs {
-
-    public GuiceJamesServer jmapServer;
-    public Runnable awaitMethod = () -> {};
-
-    public void init() throws Exception {
-        jmapServer.start();
-        RestAssured.port = jmapServer.getJmapPort();
-        RestAssured.config = newConfig().encoderConfig(encoderConfig().defaultContentCharset(Charsets.UTF_8));
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-        RestAssured.requestSpecification = new RequestSpecBuilder()
-                .setAccept(com.jayway.restassured.http.ContentType.JSON)
-                .setContentType(com.jayway.restassured.http.ContentType.JSON)
-                .build();
+    public static ContentType from(String contentType) {
+        return new ContentType(Optional.ofNullable(contentType));
     }
-    
-    public void tearDown() {
-        jmapServer.stop();
+
+    public static ContentType noContentType() {
+        return new ContentType(Optional.empty());
+    }
+
+    private final Optional<String> contentType;
+
+    private ContentType(Optional<String> contentType) {
+        this.contentType = contentType;
+    }
+
+    public Optional<String> getContentType() {
+        return contentType;
+    }
+
+    public String serialize() {
+        return contentType
+                .map(value -> "Content-Type: " + value + "\r\n")
+                .orElse("");
     }
 }

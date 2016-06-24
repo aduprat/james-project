@@ -51,7 +51,7 @@ public class UserStepdefs {
         accessToken = JmapAuthentication.authenticateJamesUser(username, password);
     }
 
-    @Given("^the current user has a mailbox named \"([^\"]*)\"$")
+    @Given("^the user has a mailbox named \"([^\"]*)\"$")
     public void createMailbox(String mailbox) throws Exception {
         mainStepdefs.jmapServer.serverProbe().createMailbox("#private", username, mailbox);
     }

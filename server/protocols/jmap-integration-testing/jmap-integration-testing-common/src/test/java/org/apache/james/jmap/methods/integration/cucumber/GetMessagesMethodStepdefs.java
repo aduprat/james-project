@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -42,8 +43,8 @@ import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.javatuples.Pair;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
-import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.response.ValidatableResponse;
 
@@ -79,43 +80,45 @@ public class GetMessagesMethodStepdefs {
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with subject \"([^\"]*)\" and content \"([^\"]*)\"$")
     public void appendMessage(String mailbox, String subject, String content) throws Throwable {
-        appendMessage(mailbox, Optional.empty(), subject, content, Optional.empty());
+        Optional<Map<String, String>> noHeaders = Optional.empty();
+        appendMessage(mailbox, ContentType.noContentType(), subject, content, noHeaders);
     }
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with content-type \"([^\"]*)\" subject \"([^\"]*)\" and content \"([^\"]*)\"$")
     public void appendMessage(String mailbox, String contentType, String subject, String content) throws Throwable {
-        appendMessage(mailbox, Optional.of(contentType), subject, content, Optional.empty());
+        Optional<Map<String, String>> noHeaders = Optional.empty();
+        appendMessage(mailbox, ContentType.from(contentType), subject, content, noHeaders);
     }
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with subject \"([^\"]*)\" and content \"([^\"]*)\" with headers$")
     public void appendMessage(String mailbox, String subject, String content, DataTable headers) throws Throwable {
-        appendMessage(mailbox, Optional.empty(), subject, content, Optional.of(headers.asMap(String.class, String.class)));
+        appendMessage(mailbox, ContentType.noContentType(), subject, content, Optional.of(headers.asMap(String.class, String.class)));
     }
 
-    private void appendMessage(String mailbox, Optional<String> contentType, String subject, String content, Optional<Map<String, String>> headers) throws Exception {
+    private void appendMessage(String mailbox, ContentType contentType, String subject, String content, Optional<Map<String, String>> headers) throws Exception {
         ZonedDateTime dateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z");
         mainStepdefs.jmapServer.serverProbe().appendMessage(userStepdefs.username, 
                 new MailboxPath(MailboxConstants.USER_NAMESPACE, userStepdefs.username, mailbox),
-                new ByteArrayInputStream(message(contentType, subject, content, headers).getBytes()), 
+                new ByteArrayInputStream(message(contentType, subject, content, headers).getBytes(Charsets.UTF_8)), 
                 Date.from(dateTime.toInstant()), false, new Flags());
     }
 
-    private String message(Optional<String> contentType, String subject, String content, Optional<Map<String,String>> headers) {
-        Function<Set<Map.Entry<String, String>>, String> entriesToString = entries -> entries.stream()
+    private String message(ContentType contentType, String subject, String content, Optional<Map<String,String>> headers) {
+        return serialize(headers) + contentType.serialize() + "Subject: " + subject + "\r\n\r\n" + content;
+    }
+
+    private String serialize(Optional<Map<String,String>> headers) {
+        return headers
+                .map(map -> map.entrySet())
+                .map(entriesToString())
+                .orElse("");
+    }
+
+    private Function<Set<Entry<String, String>>, String> entriesToString() {
+        return entries -> entries.stream()
                 .map(this::entryToPair)
                 .map(this::joinKeyValue)
                 .collect(Collectors.joining("\r\n", "", "\r\n"));
-
-        String headersAsString = headers
-                .map(map -> map.entrySet())
-                .map(entriesToString)
-                .orElse("");
-                
-        String contentTypeAsString = contentType
-                .map(value -> "Content-Type: " + value + "\r\n")
-                .orElse("");
-
-        return headersAsString + contentTypeAsString + "Subject: " + subject + "\r\n\r\n" + content;
     }
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with two attachments$")
@@ -141,27 +144,27 @@ public class GetMessagesMethodStepdefs {
                 Date.from(dateTime.toInstant()), false, new Flags());
     }
 
-    @When("^the user is getting his messages and gives a non null accountId$")
+    @When("^the user ask for messages using its accountId$")
     public void postWithAccountId() throws Exception {
         post("[[\"getMessages\", {\"accountId\": \"1\"}, \"#0\"]]");
     }
 
-    @When("^the user is getting his messages and gives unknown arguments$")
+    @When("^the user ask for messages using unknown arguments$")
     public void postWithUnknownArguments() throws Exception {
         post("[[\"getMessages\", {\"WAT\": true}, \"#0\"]]");
     }
 
-    @When("^the user is getting his messages and gives invalid argument$")
+    @When("^the user ask for messages using invalid argument$")
     public void postWithInvalidArguments() throws Exception {
         post("[[\"getMessages\", {\"ids\": null}, \"#0\"]]");
     }
 
-    @When("^the user is getting his messages$")
+    @When("^the user ask for messages$")
     public void post() throws Throwable {
         post("[[\"getMessages\", {\"ids\": []}, \"#0\"]]");
     }
 
-    @When("^the user is getting his messages and gives a list of ids \"(.*?)\"$")
+    @When("^the user ask for messages \"(.*?)\"$")
     public void postWithAListOfIds(String ids) throws Throwable {
         post("[[\"getMessages\", {\"ids\": " + ids + "}, \"#0\"]]");
     }
@@ -194,8 +197,6 @@ public class GetMessagesMethodStepdefs {
 
     private void post(String requestBody) {
         post = with()
-            .accept(ContentType.JSON)
-            .contentType(ContentType.JSON)
             .header("Authorization", userStepdefs.accessToken.serialize())
             .body(requestBody)
             .post("/jmap");
@@ -241,98 +242,84 @@ public class GetMessagesMethodStepdefs {
         response.body(ARGUMENTS + ".list", hasSize(numberOfMessages));
     }
     
-    @Then("^the id of the first message is \"([^\"]*)\"$")
+    @Then("^the id of the message is \"([^\"]*)\"$")
     public void assertIdOfTheFirstMessage(String id) throws Throwable {
         response.body(FIRST_MESSAGE + ".id", equalTo(id));
     }
 
-    @Then("^the threadId of the first message is \"([^\"]*)\"$")
+    @Then("^the threadId of the message is \"([^\"]*)\"$")
     public void assertThreadIdOfTheFirstMessage(String threadId) throws Throwable {
         response.body(FIRST_MESSAGE + ".threadId", equalTo(threadId));
     }
 
-    @Then("^the subject of the first message is \"([^\"]*)\"$")
+    @Then("^the subject of the message is \"([^\"]*)\"$")
     public void assertSubjectOfTheFirstMessage(String subject) throws Throwable {
         response.body(FIRST_MESSAGE + ".subject", equalTo(subject));
     }
 
-    @Then("^the textBody of the first message is \"([^\"]*)\"$")
+    @Then("^the textBody of the message is \"([^\"]*)\"$")
     public void assertTextBodyOfTheFirstMessage(String textBody) throws Throwable {
         response.body(FIRST_MESSAGE + ".textBody", equalTo(StringEscapeUtils.unescapeJava(textBody)));
     }
 
-    @Then("^the htmlBody of the first message is \"([^\"]*)\"$")
+    @Then("^the htmlBody of the message is \"([^\"]*)\"$")
     public void assertHtmlBodyOfTheFirstMessage(String htmlBody) throws Throwable {
         response.body(FIRST_MESSAGE + ".htmlBody", equalTo(StringEscapeUtils.unescapeJava(htmlBody)));
     }
 
-    @Then("^the isUnread of the first message is \"([^\"]*)\"$")
+    @Then("^the isUnread of the message is \"([^\"]*)\"$")
     public void assertIsUnreadOfTheFirstMessage(String isUnread) throws Throwable {
         response.body(FIRST_MESSAGE + ".isUnread", equalTo(Boolean.valueOf(isUnread)));
     }
 
-    @Then("^the preview of the first message is \"([^\"]*)\"$")
+    @Then("^the preview of the message is \"([^\"]*)\"$")
     public void assertPreviewOfTheFirstMessage(String preview) throws Throwable {
         response.body(FIRST_MESSAGE + ".preview", equalTo(StringEscapeUtils.unescapeJava(preview)));
     }
 
-    @Then("^the headers of the first message is map containing only$")
+    @Then("^the headers of the message contains:$")
     public void assertHeadersOfTheFirstMessage(DataTable headers) throws Throwable {
         response.body(FIRST_MESSAGE + ".headers", equalTo(headers.asMap(String.class, String.class)));
     }
 
-    @Then("^the date of the first message is \"([^\"]*)\"$")
+    @Then("^the date of the message is \"([^\"]*)\"$")
     public void assertDateOfTheFirstMessage(String date) throws Throwable {
         response.body(FIRST_MESSAGE + ".date", equalTo(date));
     }
 
-    @Then("^the hasAttachment of the first message is \"([^\"]*)\"$")
+    @Then("^the hasAttachment of the message is \"([^\"]*)\"$")
     public void assertHasAttachmentOfTheFirstMessage(String hasAttachment) throws Throwable {
         response.body(FIRST_MESSAGE + ".hasAttachment", equalTo(Boolean.valueOf(hasAttachment)));
     }
 
-    @Then("^the list of attachments of the first message is empty$")
+    @Then("^the list of attachments of the message is empty$")
     public void assertAttachmentsOfTheFirstMessageIsEmpty() throws Throwable {
         response.body(ATTACHMENTS, empty());
     }
 
-    @Then("^the property \"([^\"]*)\" of the first message is null$")
+    @Then("^the property \"([^\"]*)\" of the message is null$")
     public void assertPropertyIsNull(String property) throws Throwable {
         response.body(FIRST_MESSAGE + "." + property, nullValue());
     }
 
-    @Then("^the list of attachments of the first message contains (\\d+) attachments?$")
+    @Then("^the list of attachments of the message contains (\\d+) attachments?$")
     public void assertAttachmentsHasSize(int numberOfAttachments) throws Throwable {
         response.body(ATTACHMENTS, hasSize(numberOfAttachments));
     }
 
-    @Then("^the first attachment blobId is \"([^\"]*)\"$")
-    public void assertFirstAttachmentBlobId(String blobId) throws Throwable {
-        response.body(FIRST_ATTACHMENT + ".blobId", equalTo(blobId));
+    @Then("^the first attachment is:$")
+    public void assertFirstAttachment(DataTable attachmentProperties) throws Throwable {
+        assertAttachment(FIRST_ATTACHMENT, attachmentProperties);
     }
 
-    @Then("^the first attachment type is \"([^\"]*)\"$")
-    public void assertFirstAttachmentType(String type) throws Throwable {
-        response.body(FIRST_ATTACHMENT + ".type", equalTo(type));
+    @Then("^the second attachment is:$")
+    public void assertSecondAttachment(DataTable attachmentProperties) throws Throwable {
+        assertAttachment(SECOND_ATTACHMENT, attachmentProperties);
     }
 
-    @Then("^the first attachment size is (\\d+)$")
-    public void assertFirstAttachmentSize(int size) throws Throwable {
-        response.body(FIRST_ATTACHMENT + ".size", equalTo(size));
-    }
-
-    @Then("^the second attachment blobId is \"([^\"]*)\"$")
-    public void assertSecondAttachmentBlobId(String blobId) throws Throwable {
-        response.body(SECOND_ATTACHMENT + ".blobId", equalTo(blobId));
-    }
-
-    @Then("^the second attachment type is \"([^\"]*)\"$")
-    public void assertSecondAttachmentType(String type) throws Throwable {
-        response.body(SECOND_ATTACHMENT + ".type", equalTo(type));
-    }
-
-    @Then("^the second attachment size is (\\d+)$")
-    public void assertSecondAttachmentSize(int size) throws Throwable {
-        response.body(SECOND_ATTACHMENT + ".size", equalTo(size));
+    private void assertAttachment(String attachment, DataTable attachmentProperties) {
+        attachmentProperties.asMap(String.class, String.class).entrySet()
+            .stream()
+            .map(entry -> response.body(attachment + "." + entry.getKey(), equalTo(entry.getValue())));
     }
 }
