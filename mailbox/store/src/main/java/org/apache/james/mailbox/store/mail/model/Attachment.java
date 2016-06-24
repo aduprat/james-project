@@ -36,16 +36,6 @@ public class Attachment {
         return new Builder();
     }
 
-    public static Attachment from(byte[] bytes, String type, Optional<String> name) {
-        return builder()
-                .attachmentId(AttachmentId.forPayload(bytes))
-                .bytes(bytes)
-                .type(type)
-                .name(name)
-                .size(bytes.length)
-                .build();
-    }
-
     public static class Builder {
 
         private AttachmentId attachmentId;
@@ -88,8 +78,14 @@ public class Attachment {
         }
 
         public Attachment build() {
-            Preconditions.checkState(attachmentId != null, "'attachmentId' is mandatory");
             Preconditions.checkState(bytes != null, "'bytes' is mandatory");
+            if (attachmentId == null) {
+                attachmentId = AttachmentId.forPayload(bytes);
+            }
+            if (size == null) {
+                size = Long.valueOf(bytes.length);
+            }
+            Preconditions.checkState(attachmentId != null, "'attachmentId' is mandatory");
             Preconditions.checkState(type != null, "'type' is mandatory");
             Preconditions.checkState(size != null, "'size' is mandatory");
             return new Attachment(bytes, attachmentId, type, name, size);

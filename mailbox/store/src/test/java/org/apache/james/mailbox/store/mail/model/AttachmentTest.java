@@ -34,7 +34,10 @@ public class AttachmentTest {
     @Test
     public void streamShouldBeConsumedOneTime() throws Exception {
         String input = "mystream";
-        Attachment attachment = Attachment.from(input.getBytes(), "content", Optional.<String> absent());
+        Attachment attachment = Attachment.builder()
+                .bytes(input.getBytes())
+                .type("content")
+                .build();
 
         InputStream stream = attachment.getStream();
         assertThat(stream).isNotNull();
@@ -44,7 +47,10 @@ public class AttachmentTest {
     @Test
     public void streamShouldBeConsumedMoreThanOneTime() throws Exception {
         String input = "mystream";
-        Attachment attachment = Attachment.from(input.getBytes(), "content", Optional.<String> absent());
+        Attachment attachment = Attachment.builder()
+                .bytes(input.getBytes())
+                .type("content")
+                .build();
 
         attachment.getStream();
         InputStream stream = attachment.getStream();
@@ -102,37 +108,38 @@ public class AttachmentTest {
             .build();
     }
 
-    @Test (expected = IllegalStateException.class)
-    public void buildShouldThrowWhenSizeIsNotProvided() {
-        Attachment.builder()
-            .attachmentId(AttachmentId.forPayload("mystream".getBytes()))
-            .bytes("mystream".getBytes())
-            .type("content")
-            .build();
-    }
-
     @Test
-    public void fromShouldSetTheAttachmentId() throws Exception {
+    public void buildShouldSetTheAttachmentId() throws Exception {
         byte[] bytes = "mystream".getBytes();
-        Attachment attachment = Attachment.from(bytes, "content", Optional.<String> absent());
+        Attachment attachment = Attachment.builder()
+                .bytes(bytes)
+                .type("content")
+                .build();
         AttachmentId expected = AttachmentId.forPayload(bytes);
 
         assertThat(attachment.getAttachmentId()).isEqualTo(expected);
     }
 
     @Test
-    public void fromShouldSetTheSize() throws Exception {
+    public void buildShouldSetTheSize() throws Exception {
         String input = "mystream";
-        Attachment attachment = Attachment.from(input.getBytes(), "content", Optional.<String> absent());
+        Attachment attachment = Attachment.builder()
+                .bytes(input.getBytes())
+                .type("content")
+                .build();
 
         assertThat(attachment.getSize()).isEqualTo(input.getBytes().length);
     }
 
     @Test
-    public void fromShouldSetTheName() throws Exception {
+    public void buildShouldSetTheName() throws Exception {
         String input = "mystream";
         Optional<String> expectedName = Optional.of("myName");
-        Attachment attachment = Attachment.from(input.getBytes(), "content", expectedName);
+        Attachment attachment = Attachment.builder()
+                .bytes(input.getBytes())
+                .type("content")
+                .name(expectedName)
+                .build();
 
         assertThat(attachment.getName()).isEqualTo(expectedName);
     }

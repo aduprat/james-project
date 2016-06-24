@@ -102,6 +102,10 @@ public class MessageParser {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         messageWriter.writeBody(body, out);
         byte[] bytes = out.toByteArray();
-        return Attachment.from(bytes, contentType, name);
+        return Attachment.builder()
+                .bytes(bytes)
+                .type(contentType)
+                .name(name)
+                .build();
     }
 }

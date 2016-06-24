@@ -31,7 +31,6 @@ import org.xenei.junit.contract.Contract;
 import org.xenei.junit.contract.ContractTest;
 import org.xenei.junit.contract.IProducer;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 
 @Contract(MapperProvider.class)
@@ -69,7 +68,10 @@ public class AttachmentMapperTest<T extends MapperProvider> {
     @ContractTest
     public void getAttachmentShouldReturnTheAttachmentWhenReferenced() throws Exception {
         //Given
-        Attachment expected = Attachment.from("payload".getBytes(), "content", Optional.<String> absent());
+        Attachment expected = Attachment.builder()
+                .bytes("payload".getBytes())
+                .type("content")
+                .build();
         AttachmentId attachmentId = expected.getAttachmentId();
         attachmentMapper.storeAttachment(expected);
         //When
@@ -81,8 +83,14 @@ public class AttachmentMapperTest<T extends MapperProvider> {
     @ContractTest
     public void getAttachmentShouldReturnTheAttachmentsWhenMultipleStored() throws Exception {
         //Given
-        Attachment expected1 = Attachment.from("payload1".getBytes(), "content1", Optional.<String> absent());
-        Attachment expected2 = Attachment.from("payload2".getBytes(), "content2", Optional.<String> absent());
+        Attachment expected1 = Attachment.builder()
+                .bytes("payload1".getBytes())
+                .type("content1")
+                .build();
+        Attachment expected2 = Attachment.builder()
+                .bytes("payload2".getBytes())
+                .type("content2")
+                .build();
         AttachmentId attachmentId1 = expected1.getAttachmentId();
         AttachmentId attachmentId2 = expected2.getAttachmentId();
         //When
