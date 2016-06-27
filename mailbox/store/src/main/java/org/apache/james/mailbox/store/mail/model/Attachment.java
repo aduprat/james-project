@@ -79,16 +79,20 @@ public class Attachment {
 
         public Attachment build() {
             Preconditions.checkState(bytes != null, "'bytes' is mandatory");
-            if (attachmentId == null) {
-                attachmentId = AttachmentId.forPayload(bytes);
-            }
-            if (size == null) {
-                size = Long.valueOf(bytes.length);
-            }
-            Preconditions.checkState(attachmentId != null, "'attachmentId' is mandatory");
+            AttachmentId builtAttachmentId = attachmentId();
+            Long builtSize = size();
+            Preconditions.checkState(builtAttachmentId != null, "'attachmentId' is mandatory");
             Preconditions.checkState(type != null, "'type' is mandatory");
-            Preconditions.checkState(size != null, "'size' is mandatory");
-            return new Attachment(bytes, attachmentId, type, name, size);
+            Preconditions.checkState(builtSize != null, "'size' is mandatory");
+            return new Attachment(bytes, builtAttachmentId, type, name, builtSize);
+        }
+
+        private AttachmentId attachmentId() {
+            return MoreObjects.firstNonNull(attachmentId, AttachmentId.forPayload(bytes));
+        }
+
+        private Long size() {
+            return MoreObjects.firstNonNull(size, Long.valueOf(bytes.length));
         }
     }
 
