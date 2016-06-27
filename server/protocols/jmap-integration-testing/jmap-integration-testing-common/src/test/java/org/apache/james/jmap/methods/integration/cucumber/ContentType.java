@@ -37,11 +37,11 @@ public class ContentType {
         this.contentType = contentType;
     }
 
-    public Optional<String> getContentType() {
+    public Optional<String> value() {
         return contentType;
     }
 
-    public String serialize() {
+    public String serializeToHeader() {
         return contentType
                 .map(value -> "Content-Type: " + value + "\r\n")
                 .orElse("");

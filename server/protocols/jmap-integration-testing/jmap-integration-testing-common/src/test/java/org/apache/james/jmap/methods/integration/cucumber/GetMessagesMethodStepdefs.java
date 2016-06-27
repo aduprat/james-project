@@ -58,6 +58,7 @@ import groovy.json.StringEscapeUtils;
 @ScenarioScoped
 public class GetMessagesMethodStepdefs {
 
+    private static final Optional<Map<String, String>> NO_HEADERS = Optional.empty();
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String FIRST_MESSAGE = ARGUMENTS + ".list[0]";
@@ -80,14 +81,12 @@ public class GetMessagesMethodStepdefs {
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with subject \"([^\"]*)\" and content \"([^\"]*)\"$")
     public void appendMessage(String mailbox, String subject, String content) throws Throwable {
-        Optional<Map<String, String>> noHeaders = Optional.empty();
-        appendMessage(mailbox, ContentType.noContentType(), subject, content, noHeaders);
+        appendMessage(mailbox, ContentType.noContentType(), subject, content, NO_HEADERS);
     }
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with content-type \"([^\"]*)\" subject \"([^\"]*)\" and content \"([^\"]*)\"$")
     public void appendMessage(String mailbox, String contentType, String subject, String content) throws Throwable {
-        Optional<Map<String, String>> noHeaders = Optional.empty();
-        appendMessage(mailbox, ContentType.from(contentType), subject, content, noHeaders);
+        appendMessage(mailbox, ContentType.from(contentType), subject, content, NO_HEADERS);
     }
 
     @Given("^the user has a message in \"([^\"]*)\" mailbox with subject \"([^\"]*)\" and content \"([^\"]*)\" with headers$")
@@ -104,7 +103,7 @@ public class GetMessagesMethodStepdefs {
     }
 
     private String message(ContentType contentType, String subject, String content, Optional<Map<String,String>> headers) {
-        return serialize(headers) + contentType.serialize() + "Subject: " + subject + "\r\n\r\n" + content;
+        return serialize(headers) + contentType.serializeToHeader() + "Subject: " + subject + "\r\n\r\n" + content;
     }
 
     private String serialize(Optional<Map<String,String>> headers) {
