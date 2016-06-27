@@ -19,4 +19,4 @@ Feature: Download GET
     Given a message containing an attachment
     When getting the attachment with its correct blobId and a desired name
     Then the user should receive that attachment
-    And the response contains a Content-Disposition header file that desired name
+    And the response contains a Content-Disposition header file with that desired name

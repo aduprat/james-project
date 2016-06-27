@@ -25,24 +25,26 @@ import java.util.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.Iterables;
 
 public class DownloadPath {
 
     public static DownloadPath from(String path) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(path), "'path' is mandatory");
 
-        List<String> pathVariables = Splitter.on('/').omitEmptyStrings().splitToList(path);
-        Preconditions.checkArgument(pathVariables.size() >= 1 && pathVariables.size() <= 2, "'blobId' is mandatory");
+        // path =  /blobId/name
+        // idx  = 0 1      2
+        List<String> pathVariables = Splitter.on('/').splitToList(path);
+        Preconditions.checkArgument(pathVariables.size() >= 1 && pathVariables.size() <= 3, "'blobId' is mandatory");
 
-        return new DownloadPath(pathVariables.get(0), name(pathVariables));
+        String blobId = Iterables.get(pathVariables, 1, null);
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(blobId), "'blobId' is mandatory");
+
+        return new DownloadPath(blobId, name(pathVariables));
     }
 
     private static Optional<String> name(List<String> pathVariables) {
-        try {
-            return Optional.of(pathVariables.get(1));
-        } catch (IndexOutOfBoundsException e) {
-            return Optional.empty();
-        }
+        return Optional.ofNullable(Strings.emptyToNull(Iterables.get(pathVariables, 2, null)));
     }
 
     private final String blobId;

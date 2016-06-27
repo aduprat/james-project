@@ -63,7 +63,7 @@ public class DownloadServlet extends HttpServlet {
         try {
             download(getMailboxSession(req), DownloadPath.from(pathInfo), resp);
         } catch (IllegalArgumentException e) {
-            LOGGER.error(String.format("Bad path '%s'", pathInfo), e);
+            LOGGER.error(String.format("Error while downloading '%s'", pathInfo), e);
             resp.setStatus(SC_BAD_REQUEST);
         }
     }

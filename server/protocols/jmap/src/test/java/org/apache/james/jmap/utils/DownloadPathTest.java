@@ -42,6 +42,11 @@ public class DownloadPathTest {
     }
 
     @Test
+    public void fromShouldThrowWhenBlobIdIsEmpty() {
+        assertThatThrownBy(()-> DownloadPath.from("//")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     public void fromShouldParseWhenBlobId() {
         String expectedBlobId = "123456789";
         DownloadPath downloadPath = DownloadPath.from("/" + expectedBlobId);
@@ -70,5 +75,10 @@ public class DownloadPathTest {
     @Test
     public void fromShouldThrowWhenExtraPathVariables() {
         assertThatThrownBy(()-> DownloadPath.from("/123456789/myName/132/456/789")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void fromShouldThrowWhenExtraPathSeparator() {
+        assertThatThrownBy(()-> DownloadPath.from("/123456789//myName")).isInstanceOf(IllegalArgumentException.class);
     }
 }

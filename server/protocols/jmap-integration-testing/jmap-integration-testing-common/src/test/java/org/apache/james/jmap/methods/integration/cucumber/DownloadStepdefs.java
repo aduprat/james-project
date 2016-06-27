@@ -159,7 +159,7 @@ public class DownloadStepdefs {
             .statusCode(404);
     }
 
-    @Then("^the response contains a Content-Disposition header file that desired name$")
+    @Then("^the response contains a Content-Disposition header file with that desired name$")
     public void assertContentDisposition() {
         validatableResponse.header("Content-Disposition", NAME);
     }
