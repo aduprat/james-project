@@ -88,7 +88,10 @@ public class Attachment {
         }
 
         private AttachmentId attachmentId() {
-            return MoreObjects.firstNonNull(attachmentId, AttachmentId.forPayload(bytes));
+            if (attachmentId != null) {
+                return attachmentId;
+            }
+            return AttachmentId.forPayload(bytes);
         }
 
         private Long size() {
