@@ -36,6 +36,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.response.ValidatableResponse;
 
@@ -121,6 +122,16 @@ public class DownloadStepdefs {
         response = with().get("/download/" + blobId + "/" + name);
     }
 
+    @When("^\"([^\"]*)\" asks for a token for attachment \"([^\"]*)\"$")
+    public void postDownload(String username, String attachmentId) throws Throwable {
+        String blobId = blobIdByAttachmentId.get(attachmentId);
+        AccessToken accessToken = userStepdefs.tokenByUser.get(username);
+        if (accessToken != null) {
+            with().header("Authorization", accessToken.serialize());
+        }
+        response = with().post("/download/" + blobId);
+    }
+
     @Then("^the user should be authorized$")
     public void httpStatusDifferentFromUnauthorized() {
         response.then()
@@ -155,5 +166,13 @@ public class DownloadStepdefs {
     @Then("^the response contains a Content-Disposition header file with \"([^\"]*)\" name$")
     public void assertContentDisposition(String name) {
         validatableResponse.header("Content-Disposition", name);
+    }
+
+    @Then("^the user should receive an attachment access token$")
+    public void accessTokenResponse() throws Throwable {
+        response.then()
+            .statusCode(200)
+            .contentType(ContentType.TEXT)
+            .content(notNullValue());
     }
 }

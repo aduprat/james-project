@@ -40,7 +40,7 @@ public class DownloadServletTest {
         when(mailboxSessionMapperFactory.createAttachmentMapper(mailboxSession))
             .thenThrow(new MailboxException());
 
-        DownloadServlet testee = new DownloadServlet(mailboxSessionMapperFactory);
+        DownloadServlet testee = new DownloadServlet(mailboxSessionMapperFactory, null);
 
         HttpServletResponse resp = mock(HttpServletResponse.class);
         testee.download(mailboxSession, DownloadPath.from("/blobId"), resp);
