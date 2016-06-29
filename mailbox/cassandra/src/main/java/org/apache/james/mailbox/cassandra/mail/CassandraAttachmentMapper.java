@@ -85,7 +85,6 @@ public class CassandraAttachmentMapper implements AttachmentMapper {
                 .bytes(row.getBytes(PAYLOAD).array())
                 .type(row.getString(TYPE))
                 .name(Optional.fromNullable(row.getString(NAME)))
-                .size(row.getLong(SIZE))
                 .build();
     }
 
