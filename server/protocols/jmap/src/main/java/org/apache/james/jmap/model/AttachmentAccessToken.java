@@ -21,10 +21,14 @@ package org.apache.james.jmap.model;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Objects;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.Iterables;
 
 public class AttachmentAccessToken implements SignedExpiringToken {
 
@@ -33,7 +37,18 @@ public class AttachmentAccessToken implements SignedExpiringToken {
     public static Builder builder() {
         return new Builder();
     }
-    
+
+    public static AttachmentAccessToken from(String serializedAttachmentAccessToken) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(serializedAttachmentAccessToken), "'AttachmentAccessToken' is mandatory");
+        List<String> split = Splitter.on(SEPARATOR).splitToList(serializedAttachmentAccessToken);
+        Preconditions.checkArgument(split.size() == 3, "Wrong 'AttachmentAccessToken'");
+        return builder()
+                .blobId(Iterables.get(split, 0, null))
+                .expirationDate(ZonedDateTime.parse(Iterables.get(split, 1, null)))
+                .signature(Iterables.get(split, 2, null))
+                .build();
+    }
+
     public static class Builder {
         private String blobId;
         private ZonedDateTime expirationDate;
@@ -98,7 +113,9 @@ public class AttachmentAccessToken implements SignedExpiringToken {
     
     @Override
     public String getContent() {
-        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(expirationDate);
+        return blobId
+            + SEPARATOR
+            + DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(expirationDate);
     }
 
     @Override
