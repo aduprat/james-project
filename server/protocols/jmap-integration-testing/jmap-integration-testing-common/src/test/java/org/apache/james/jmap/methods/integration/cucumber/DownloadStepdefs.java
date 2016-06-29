@@ -131,10 +131,11 @@ public class DownloadStepdefs {
     public void downloadsWithName(String username, String attachmentId, String name) {
         String blobId = blobIdByAttachmentId.get(attachmentId);
         AccessToken accessToken = userStepdefs.tokenByUser.get(username);
+        RequestSpecification with = with();
         if (accessToken != null) {
-            with().header("Authorization", accessToken.serialize());
+            with.header("Authorization", accessToken.serialize());
         }
-        response = with().get("/download/" + blobId + "/" + name);
+        response = with.get("/download/" + blobId + "/" + name);
     }
 
     @Then("^the user should be authorized$")
