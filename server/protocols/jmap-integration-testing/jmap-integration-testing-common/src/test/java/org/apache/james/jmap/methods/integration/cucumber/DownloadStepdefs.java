@@ -152,7 +152,7 @@ public class DownloadStepdefs {
             .statusCode(404);
     }
 
-    @Then("^the response contains a Content-Disposition header file with \"([^\"]*)\" name$")
+    @Then("^the attachment is named \"([^\"]*)\"$")
     public void assertContentDisposition(String name) {
         validatableResponse.header("Content-Disposition", name);
     }

@@ -20,4 +20,4 @@ Feature: Download GET
     Given "username@domain.tld" mailbox "inbox" contains a message "1" with an attachment "2"
     When "username@domain.tld" downloads "2" with "myFileName.txt" name
     Then the user should receive that attachment
-    And the response contains a Content-Disposition header file with "myFileName.txt" name
+    And the attachment is named "myFileName.txt"
