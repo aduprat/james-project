@@ -41,7 +41,7 @@ public class JMAPServer implements Configurable {
     private JMAPServer(JMAPConfiguration jmapConfiguration,
                        AuthenticationServlet authenticationServlet, JMAPServlet jmapServlet, DownloadServlet downloadServlet,
                        AuthenticationFilter authenticationFilter, FirstUserConnectionFilter firstUserConnectionFilter,
-                       AttachmentAuthenticationFilter queryParameterAuthenticationFilter) {
+                       AttachmentAuthenticationFilter attachmentAuthenticationFilter) {
 
         server = JettyHttpServer.create(
                 configurationBuilderFor(jmapConfiguration)
@@ -60,7 +60,7 @@ public class JMAPServer implements Configurable {
                             .with(downloadServlet)
                         .filterAsOneLevelTemplate(JMAPUrls.DOWNLOAD)
                             .with(new AllowAllCrossOriginRequests(bypass(authenticationFilter).on("GET").and("OPTIONS").only()))
-                            .with(new AllowAllCrossOriginRequests(bypass(queryParameterAuthenticationFilter).on("POST").and("OPTIONS").only()))
+                            .with(new AllowAllCrossOriginRequests(bypass(attachmentAuthenticationFilter).on("POST").and("OPTIONS").only()))
                             .only()
                         .build());
     }

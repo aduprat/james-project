@@ -23,12 +23,12 @@ Feature: Download endpoint
 
   Scenario: An authenticated user should not have access to the download endpoint without the authentication token
     Given "usera@domain.tld" is connected
-    When "usera@domain.tld" downloads "a1" without the authentication token
+    When "usera@domain.tld" downloads "a1" without any authentication token
     Then the user should not be authorized
 
   Scenario: An authenticated user should not have access to the download endpoint with an empty authentication token
     Given "usera@domain.tld" is connected
-    When "usera@domain.tld" downloads "a1" with empty authentication token
+    When "usera@domain.tld" downloads "a1" with an empty authentication token
     Then the user should not be authorized
 
   Scenario: An authenticated user should not have access to the download endpoint with a bad authentication token
