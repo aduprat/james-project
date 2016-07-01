@@ -21,10 +21,12 @@ package org.apache.james.jmap;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
 
 import org.apache.james.jmap.crypto.JwtTokenVerifier;
 import org.apache.james.jmap.exceptions.MailboxSessionCreationException;
 import org.apache.james.jmap.exceptions.NoValidAuthHeaderException;
+import org.apache.james.jmap.utils.HeadersAuthenticationExtractor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -48,9 +50,9 @@ public class JWTAuthenticationStrategy implements AuthenticationStrategy {
     }
 
     @Override
-    public MailboxSession createMailboxSession(Stream<String> authHeaders) throws MailboxSessionCreationException, NoValidAuthHeaderException {
+    public MailboxSession createMailboxSession(HttpServletRequest httpRequest) throws MailboxSessionCreationException, NoValidAuthHeaderException {
 
-        Stream<String> userLoginStream = extractTokensFromAuthHeaders(authHeaders)
+        Stream<String> userLoginStream = extractTokensFromAuthHeaders(HeadersAuthenticationExtractor.authHeaders(httpRequest))
                 .filter(tokenManager::verify)
                 .map(tokenManager::extractLogin);
 
@@ -69,8 +71,8 @@ public class JWTAuthenticationStrategy implements AuthenticationStrategy {
     }
 
     @Override
-    public boolean checkAuthorizationHeader(Stream<String> authHeaders) {
-        return extractTokensFromAuthHeaders(authHeaders)
+    public boolean checkAuthorizationHeader(HttpServletRequest httpRequest) {
+        return extractTokensFromAuthHeaders(HeadersAuthenticationExtractor.authHeaders(httpRequest))
                 .anyMatch(tokenManager::verify);
     }
 

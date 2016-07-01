@@ -16,15 +16,23 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.jmap;
+
+package org.apache.james.jmap.utils;
+
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.stream.Stream;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.apache.james.mailbox.MailboxSession;
+public class HeadersAuthenticationExtractor {
 
-public interface AuthenticationStrategy {
+    private static final String AUTHORIZATION_HEADERS = "Authorization";
 
-    MailboxSession createMailboxSession(HttpServletRequest httpRequest);
+    public static Stream<String> authHeaders(HttpServletRequest httpRequest) {
+        Enumeration<String> authHeaders = httpRequest.getHeaders(AUTHORIZATION_HEADERS);
 
-    boolean checkAuthorizationHeader(HttpServletRequest httpRequest);
+        return authHeaders != null ? Collections.list(authHeaders).stream() : Stream.of();
+    }
+
 }
