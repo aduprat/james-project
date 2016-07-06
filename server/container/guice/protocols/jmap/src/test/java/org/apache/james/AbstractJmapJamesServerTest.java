@@ -30,6 +30,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 
+import org.apache.james.modules.protocols.ImapProbe;
+import org.apache.james.modules.protocols.LmtpProbe;
+import org.apache.james.modules.protocols.Pop3Probe;
+import org.apache.james.modules.protocols.SmtpProbe;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.JmapGuiceProbe;
 import org.junit.After;
@@ -43,15 +47,9 @@ import com.jayway.restassured.http.ContentType;
 
 public abstract class AbstractJmapJamesServerTest {
 
-    private static final int IMAP_PORT_SSL = 1993;
-    private static final int POP3_PORT = 1110;
-    private static final int SMTP_PORT = 1025;
-    private static final int LMTP_PORT = 1024;
-
     protected static final String JAMES_SERVER_HOST = "127.0.0.1";
-    protected static final int IMAP_PORT = 1143; // You need to be root (superuser) to bind to ports under 1024.
 
-    private GuiceJamesServer server;
+    protected GuiceJamesServer server;
     private SocketChannel socketChannel;
 
     @Before
@@ -98,31 +96,31 @@ public abstract class AbstractJmapJamesServerTest {
 
     @Test
     public void connectIMAPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, IMAP_PORT));
+        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, server.getProbe(ImapProbe.class).getPort().get()));
         assertThat(getServerConnectionResponse(socketChannel)).startsWith("* OK JAMES IMAP4rev1 Server");
     }
 
     @Test
     public void connectOnSecondaryIMAPServerIMAPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, IMAP_PORT_SSL));
+        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, server.getProbe(ImapProbe.class).getSSLPort().get()));
         assertThat(getServerConnectionResponse(socketChannel)).startsWith("* OK JAMES IMAP4rev1 Server");
     }
 
     @Test
     public void connectPOP3ServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, POP3_PORT));
+        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, server.getProbe(Pop3Probe.class).getPort().get()));
         assertThat(getServerConnectionResponse(socketChannel)).contains("POP3 server (JAMES POP3 Server ) ready");
     }
 
     @Test
     public void connectSMTPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, SMTP_PORT));
+        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, server.getProbe(SmtpProbe.class).getPort().get()));
         assertThat(getServerConnectionResponse(socketChannel)).startsWith("220 JAMES Linagora's SMTP awesome Server");
     }
 
     @Test
     public void connectLMTPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, LMTP_PORT));
+        socketChannel.connect(new InetSocketAddress(JAMES_SERVER_HOST, server.getProbe(LmtpProbe.class).getPort().get()));
         assertThat(getServerConnectionResponse(socketChannel)).contains("LMTP Server (JAMES Protocols Server) ready");
     }
 

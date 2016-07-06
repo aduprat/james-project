@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 
 import org.apache.commons.net.imap.IMAPClient;
+import org.apache.james.modules.protocols.ImapProbe;
 import org.apache.james.user.ldap.LdapGenericContainer;
 import org.junit.Rule;
 import org.junit.Test;
@@ -68,7 +69,7 @@ public class CassandraLdapJamesServerTest extends AbstractJmapJamesServerTest {
 
     @Test
     public void userFromLdapShouldLoginViaImapProtocol() throws Exception {
-        imapClient.connect(JAMES_SERVER_HOST, IMAP_PORT);
+        imapClient.connect(JAMES_SERVER_HOST, server.getProbe(ImapProbe.class).getPort().get());
 
         assertThat(imapClient.login(JAMES_USER, PASSWORD)).isTrue();
     }

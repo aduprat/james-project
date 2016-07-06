@@ -43,7 +43,7 @@ public class GuiceJamesServer {
     private Stager<PreDestroy> preDestroy;
     private GuiceProbeProvider guiceProbeProvider;
     private boolean isStarted = false;
-
+    
     public GuiceJamesServer() {
         this(Modules.combine(
                         new CommonServicesModule(),
@@ -69,7 +69,7 @@ public class GuiceJamesServer {
         guiceProbeProvider = injector.getInstance(GuiceProbeProvider.class);
         isStarted = true;
     }
-
+    
     public void stop() {
         if (preDestroy != null) {
             preDestroy.stage();
@@ -84,4 +84,5 @@ public class GuiceJamesServer {
     public <T extends GuiceProbe> T getProbe(Class<T> probe) {
         return guiceProbeProvider.getProbe(probe);
     }
+
 }
