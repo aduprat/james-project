@@ -141,7 +141,7 @@ public class SetMessagesCreationProcessorTest {
     private MailFactory mockedMailFactory;
     private SystemMailboxesProvider fakeSystemMailboxesProvider;
     private MockMailboxSession session;
-    private MIMEMessageConverter mimeMessageConverter;
+    private JMAPMessageConverter messageConverter;
     private AttachmentMapper mockedAttachmentMapper;
     private AttachmentMapperFactory mockedAttachmentMapperFactory;
     private SetMessagesCreationProcessor sut;
@@ -160,9 +160,9 @@ public class SetMessagesCreationProcessorTest {
         
         fakeSystemMailboxesProvider = new TestSystemMailboxesProvider(() -> optionalOutbox, () -> optionalDrafts);
         session = new MockMailboxSession(USER);
-        mimeMessageConverter = new MIMEMessageConverter();
+        messageConverter = new JMAPMessageConverter();
         sut = new SetMessagesCreationProcessor(
-                stubSessionMapperFactory, mimeMessageConverter, mockedMailSpool, mockedMailFactory, messageFactory, fakeSystemMailboxesProvider, mockedAttachmentMapperFactory);
+                stubSessionMapperFactory, messageConverter, mockedMailSpool, mockedMailFactory, messageFactory, fakeSystemMailboxesProvider, mockedAttachmentMapperFactory);
     }
 
     @Test
@@ -184,7 +184,7 @@ public class SetMessagesCreationProcessorTest {
                 .thenReturn(stubMapper);
 
         sut = new SetMessagesCreationProcessor(
-                mockSessionMapperFactory, mimeMessageConverter, mockedMailSpool, mockedMailFactory, messageFactory, fakeSystemMailboxesProvider, mockedAttachmentMapperFactory) {
+                mockSessionMapperFactory, messageConverter, mockedMailSpool, mockedMailFactory, messageFactory, fakeSystemMailboxesProvider, mockedAttachmentMapperFactory) {
             @Override
             protected MessageWithId createMessageInOutboxAndSend(ValueWithId.CreationMessageEntry createdEntry, MailboxSession session, Mailbox outbox, Function<Long, MessageId> buildMessageIdFromUid) {
                 return new MessageWithId(createdEntry.getCreationId(), FAKE_OUTBOX_MESSAGE);
@@ -204,7 +204,7 @@ public class SetMessagesCreationProcessorTest {
         // Given
         TestSystemMailboxesProvider doNotProvideOutbox = new TestSystemMailboxesProvider(Optional::empty, () -> optionalDrafts);
         SetMessagesCreationProcessor sut = new SetMessagesCreationProcessor(
-                stubSessionMapperFactory, mimeMessageConverter, mockedMailSpool, mockedMailFactory, messageFactory, doNotProvideOutbox, mockedAttachmentMapperFactory);
+                stubSessionMapperFactory, messageConverter, mockedMailSpool, mockedMailFactory, messageFactory, doNotProvideOutbox, mockedAttachmentMapperFactory);
         // When
         SetMessagesResponse actual = sut.process(createMessageInOutbox, session);
         

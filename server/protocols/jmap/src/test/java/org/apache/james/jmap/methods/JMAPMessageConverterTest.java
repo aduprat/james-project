@@ -26,11 +26,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.jmap.methods.ValueWithId.MessageWithId;
 import org.apache.james.jmap.model.CreationMessage;
 import org.apache.james.jmap.model.CreationMessage.DraftEmailer;
 import org.apache.james.jmap.model.CreationMessageId;
+import org.apache.james.mailbox.store.TestId;
 import org.apache.james.mailbox.store.mail.model.AttachmentId;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageAttachment;
 import org.apache.james.mailbox.store.mail.model.impl.Cid;
 import org.apache.james.mime4j.Charsets;
@@ -45,11 +48,11 @@ import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
 
-public class MIMEMessageConverterTest {
+public class JMAPMessageConverterTest {
     @Test
     public void convertToMimeShouldAddInReplyToHeaderWhenProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         String matchingMessageId = "unique-message-id";
         CreationMessage messageHavingInReplyTo = CreationMessage.builder()
@@ -70,7 +73,7 @@ public class MIMEMessageConverterTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void convertToMimeShouldThrowWhenMessageIsNull() {
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         sut.convertToMime(new ValueWithId.CreationMessageEntry(CreationMessageId.of("any"), null), ImmutableList.of());
     }
@@ -78,7 +81,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetBothFromAndSenderHeaders() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         String joesEmail = "joe@example.com";
         CreationMessage testMessage = CreationMessage.builder()
@@ -99,7 +102,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetCorrectLocalDate() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         Instant now = Instant.now();
         ZonedDateTime messageDate = ZonedDateTime.ofInstant(now, ZoneId.systemDefault());
@@ -122,7 +125,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetTextBodyWhenProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
         TextBody expected = new BasicBodyFactory().textBody("Hello all!", Charsets.UTF_8);
 
         CreationMessage testMessage = CreationMessage.builder()
@@ -143,7 +146,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetEmptyBodyWhenNoBodyProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
         TextBody expected = new BasicBodyFactory().textBody("", Charsets.UTF_8);
 
         CreationMessage testMessage = CreationMessage.builder()
@@ -163,7 +166,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetHtmlBodyWhenProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
         TextBody expected = new BasicBodyFactory().textBody("Hello <b>all</b>!", Charsets.UTF_8);
 
         CreationMessage testMessage = CreationMessage.builder()
@@ -184,7 +187,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldGenerateMultipartWhenHtmlBodyAndTextBodyProvided() throws Exception {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))
@@ -209,7 +212,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertShouldGenerateExpectedMultipartWhenHtmlAndTextBodyProvided() throws Exception {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))
@@ -230,11 +233,11 @@ public class MIMEMessageConverterTest {
                 "Hello <b>all</b>!\r\n";
 
         // When
-        byte[] convert = sut.convert(new MessageWithId.CreationMessageEntry(
-                CreationMessageId.of("user|mailbox|1"), testMessage), ImmutableList.of());
+        MailboxMessage convert = sut.convert(new MessageWithId.CreationMessageEntry(
+                CreationMessageId.of("user|mailbox|1"), testMessage), TestId.of(1), ImmutableList.of());
 
         // Then
-        String actual = new String(convert, Charsets.UTF_8);
+        String actual = IOUtils.toString(convert.getFullContent(), Charsets.UTF_8);
         assertThat(actual).startsWith(expectedHeaders);
         assertThat(actual).contains(expectedPart1);
         assertThat(actual).contains(expectedPart2);
@@ -243,7 +246,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetMimeTypeWhenTextBody() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))
@@ -263,7 +266,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetMimeTypeWhenHtmlBody() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))
@@ -283,7 +286,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetEmptyHtmlBodyWhenProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
         TextBody expected = new BasicBodyFactory().textBody("", Charsets.UTF_8);
 
         CreationMessage testMessage = CreationMessage.builder()
@@ -305,7 +308,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldSetEmptyTextBodyWhenProvided() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
         TextBody expected = new BasicBodyFactory().textBody("", Charsets.UTF_8);
 
         CreationMessage testMessage = CreationMessage.builder()
@@ -327,7 +330,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldAddAttachmentWhenOne() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))
@@ -369,7 +372,7 @@ public class MIMEMessageConverterTest {
     @Test
     public void convertToMimeShouldAddAttachmentAndMultipartAlternativeWhenOneAttachementAndTextAndHtmlBody() {
         // Given
-        MIMEMessageConverter sut = new MIMEMessageConverter();
+        JMAPMessageConverter sut = new JMAPMessageConverter();
 
         CreationMessage testMessage = CreationMessage.builder()
                 .mailboxIds(ImmutableList.of("dead-bada55"))

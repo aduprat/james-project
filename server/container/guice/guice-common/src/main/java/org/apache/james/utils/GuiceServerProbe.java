@@ -40,10 +40,14 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.FetchGroupImpl;
+import org.apache.james.mailbox.model.Headers;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MailboxQuery;
+import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.model.MessageResultIterator;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
@@ -363,5 +367,21 @@ public class GuiceServerProbe implements ExtendedServerProbe {
     @Override
     public Vacation retrieveVacation(AccountId accountId) {
         return vacationRepository.retrieveVacation(accountId).join();
+    }
+
+    @Override
+    public Headers getHeaders(String username, MailboxPath mailboxPath, long uid) {
+        MailboxSession mailboxSession = null;
+        try {
+            mailboxSession = mailboxManager.createSystemSession(username, LOGGER);
+            MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
+            MessageResultIterator resultIterator = messageManager.getMessages(MessageRange.one(uid), FetchGroupImpl.HEADERS, mailboxSession);
+            return Iterables.getFirst(ImmutableList.copyOf(resultIterator), null)
+                    .getHeaders();
+        } catch (MailboxException e) {
+            throw Throwables.propagate(e);
+        } finally {
+            closeSession(mailboxSession);
+        }
     }
 }

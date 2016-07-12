@@ -53,6 +53,7 @@ import org.apache.james.jmap.JmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
 import org.apache.james.jmap.model.mailbox.Role;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.Headers;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.model.Attachment;
@@ -1755,6 +1756,7 @@ public abstract class SetMessagesMethodTest {
         .when()
             .post("/jmap")
         .then()
+        .log().all()
             .statusCode(200)
             .body(NAME, equalTo("messages"))
             .body(ARGUMENTS + ".list", hasSize(1))
@@ -1982,5 +1984,55 @@ public abstract class SetMessagesMethodTest {
             .body(firstAttachment + ".blobId", equalTo(attachment.getAttachmentId().getId()))
             .body(firstAttachment + ".type", equalTo("text/html"))
             .body(firstAttachment + ".size", equalTo((int) attachment.getSize()));
+    }
+
+    @Test
+    public void mimeHeadersShouldBePresentInSentMessagesWhenSendingWithJMAP() throws Exception {
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "sent");
+
+        Attachment attachment = Attachment.builder()
+                .bytes(("<html>\n" +
+                        "  <body>attachment</body>\n" + // needed indentation, else restassured is adding some
+                        "</html>").getBytes(Charsets.UTF_8))
+                .type("text/html; charset=UTF-8")
+                .build();
+        uploadTextAttachment(attachment);
+
+        String messageCreationId = "creationId";
+        String fromAddress = username;
+        String outboxId = getOutboxId(accessToken);
+        String requestBody = "[" +
+                "  [" +
+                "    \"setMessages\","+
+                "    {" +
+                "      \"create\": { \"" + messageCreationId  + "\" : {" +
+                "        \"from\": { \"name\": \"Me\", \"email\": \"" + fromAddress + "\"}," +
+                "        \"to\": [{ \"name\": \"Me\", \"email\": \"" + fromAddress + "\"}]," +
+                "        \"subject\": \"Message with an attachment\"," +
+                "        \"textBody\": \"Test body, plain text version\"," +
+                "        \"htmlBody\": \"Test <b>body</b>, HTML version\"," +
+                "        \"mailboxIds\": [\"" + outboxId + "\"], " +
+                "        \"attachments\": [" +
+                "               {\"blobId\" : \"" + attachment.getAttachmentId().getId() + "\", " +
+                "               \"type\" : \"" + attachment.getType() + "\", " +
+                "               \"size\" : " + attachment.getSize() + ", " +
+                "               \"isInline\" : false }" +
+                "           ]" +
+                "      }}" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]";
+
+        given()
+            .header("Authorization", accessToken.serialize())
+            .body(requestBody)
+        .when()
+            .post("/jmap");
+
+        calmlyAwait.atMost(30, TimeUnit.SECONDS).until( () -> isAnyMessageFoundInInbox(accessToken));
+
+        Headers headers = jmapServer.serverProbe().getHeaders(username, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "sent"), 1);
+        assertThat(headers.headers()).hasSize(8);
     }
 }

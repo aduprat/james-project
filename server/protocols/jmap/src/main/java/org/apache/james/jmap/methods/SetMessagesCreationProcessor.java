@@ -20,7 +20,6 @@
 package org.apache.james.jmap.methods;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -29,10 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
-import javax.mail.Flags;
 import javax.mail.MessagingException;
-import javax.mail.internet.SharedInputStream;
-import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.james.jmap.exceptions.AttachmentsNotFoundException;
 import org.apache.james.jmap.methods.ValueWithId.CreationMessageEntry;
@@ -68,12 +64,9 @@ import org.apache.james.mailbox.store.mail.AttachmentMapperFactory;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.AttachmentId;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
-import org.apache.james.mailbox.store.mail.model.MailboxId;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageAttachment;
 import org.apache.james.mailbox.store.mail.model.impl.Cid;
-import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
-import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
 import org.apache.james.util.streams.ImmutableCollectors;
 import org.apache.mailet.Mail;
 import org.slf4j.Logger;
@@ -88,7 +81,7 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(SetMailboxesCreationProcessor.class);
     private final MailboxSessionMapperFactory mailboxSessionMapperFactory;
-    private final MIMEMessageConverter mimeMessageConverter;
+    private final JMAPMessageConverter messageConverter;
     private final MailSpool mailSpool;
     private final MailFactory mailFactory;
     private final MessageFactory messageFactory;
@@ -98,14 +91,14 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
     
     @VisibleForTesting @Inject
     SetMessagesCreationProcessor(MailboxSessionMapperFactory mailboxSessionMapperFactory,
-                                 MIMEMessageConverter mimeMessageConverter,
+                                 JMAPMessageConverter messageConverter,
                                  MailSpool mailSpool,
                                  MailFactory mailFactory,
                                  MessageFactory messageFactory,
                                  SystemMailboxesProvider systemMailboxesProvider,
                                  AttachmentMapperFactory attachmentMapperFactory) {
         this.mailboxSessionMapperFactory = mailboxSessionMapperFactory;
-        this.mimeMessageConverter = mimeMessageConverter;
+        this.messageConverter = messageConverter;
         this.mailSpool = mailSpool;
         this.mailFactory = mailFactory;
         this.messageFactory = messageFactory;
@@ -303,18 +296,7 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
 
     private MailboxMessage buildMailboxMessage(MailboxSession session, MessageWithId.CreationMessageEntry createdEntry, Mailbox outbox) throws MailboxException {
         ImmutableList<MessageAttachment> messageAttachments = getMessageAttachments(session, createdEntry.getValue().getAttachments());
-        byte[] messageContent = mimeMessageConverter.convert(createdEntry, messageAttachments);
-        SharedInputStream content = new SharedByteArrayInputStream(messageContent);
-        long size = messageContent.length;
-        int bodyStartOctet = 0;
-
-        Flags flags = getMessageFlags(createdEntry.getValue());
-        PropertyBuilder propertyBuilder = buildPropertyBuilder();
-        MailboxId mailboxId = outbox.getMailboxId();
-        Date internalDate = Date.from(createdEntry.getValue().getDate().toInstant());
-
-        return new SimpleMailboxMessage(internalDate, size,
-                bodyStartOctet, content, flags, propertyBuilder, mailboxId, messageAttachments);
+        return messageConverter.convert(createdEntry, outbox.getMailboxId(), messageAttachments);
     }
 
     private ImmutableList<MessageAttachment> getMessageAttachments(MailboxSession session, ImmutableList<Attachment> attachments) throws MailboxException {
@@ -337,27 +319,6 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
             LOG.error(String.format("Attachment %s not found", attachment.getBlobId()), e);
             return null;
         }
-    }
-
-    private PropertyBuilder buildPropertyBuilder() {
-        return new PropertyBuilder();
-    }
-
-    private Flags getMessageFlags(CreationMessage message) {
-        Flags result = new Flags();
-        if (!message.isIsUnread()) {
-            result.add(Flags.Flag.SEEN);
-        }
-        if (message.isIsFlagged()) {
-            result.add(Flags.Flag.FLAGGED);
-        }
-        if (message.isIsAnswered() || message.getInReplyToMessageId().isPresent()) {
-            result.add(Flags.Flag.ANSWERED);
-        }
-        if (message.isIsDraft()) {
-            result.add(Flags.Flag.DRAFT);
-        }
-        return result;
     }
 
     private void sendMessage(MailboxMessage mailboxMessage, Message jmapMessage, MailboxSession session) throws MessagingException {

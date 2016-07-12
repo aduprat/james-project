@@ -27,10 +27,18 @@ import java.util.TimeZone;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import javax.mail.Flags;
+import javax.mail.internet.SharedInputStream;
+import javax.mail.util.SharedByteArrayInputStream;
+
 import org.apache.james.jmap.model.CreationMessage;
 import org.apache.james.jmap.model.CreationMessage.DraftEmailer;
 import org.apache.james.jmap.model.CreationMessageId;
+import org.apache.james.mailbox.store.mail.model.MailboxId;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MessageAttachment;
+import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
+import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
 import org.apache.james.mime4j.Charsets;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.dom.FieldParser;
@@ -65,9 +73,9 @@ import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.io.ByteStreams;
 import com.google.common.net.MediaType;
 
-public class MIMEMessageConverter {
+public class JMAPMessageConverter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MIMEMessageConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JMAPMessageConverter.class);
 
     private static final String PLAIN_TEXT_MEDIA_TYPE = MediaType.PLAIN_TEXT_UTF_8.withoutParameters().toString();
     private static final String HTML_MEDIA_TYPE = MediaType.HTML_UTF_8.withoutParameters().toString();
@@ -78,20 +86,43 @@ public class MIMEMessageConverter {
 
     private final BasicBodyFactory bodyFactory;
 
-    public MIMEMessageConverter() {
+    public JMAPMessageConverter() {
         this.bodyFactory = new BasicBodyFactory();
     }
 
-    public byte[] convert(ValueWithId.CreationMessageEntry creationMessageEntry, ImmutableList<MessageAttachment> messageAttachments) {
-
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        DefaultMessageWriter writer = new DefaultMessageWriter();
+    public MailboxMessage convert(ValueWithId.CreationMessageEntry creationMessageEntry, MailboxId mailboxId, ImmutableList<MessageAttachment> messageAttachments) {
         try {
-            writer.writeMessage(convertToMime(creationMessageEntry, messageAttachments), buffer);
+            Message message = convertToMime(creationMessageEntry, messageAttachments);
+            return convertToMailboxMessage(message, creationMessageEntry.getValue(), mailboxId, messageAttachments);
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
-        return buffer.toByteArray();
+    }
+
+    private MailboxMessage convertToMailboxMessage(Message message, CreationMessage creationMessage, MailboxId mailboxId, ImmutableList<MessageAttachment> messageAttachments) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        DefaultMessageWriter writer = new DefaultMessageWriter();
+
+        int bodyStartOctet = writeHeader(message, writer, buffer);
+
+        writer.writeBody(message.getBody(), buffer);
+        byte[] bytesContent = buffer.toByteArray();
+        SharedInputStream content = new SharedByteArrayInputStream(bytesContent);
+        long size = bytesContent.length;
+
+        return new SimpleMailboxMessage(Date.from(creationMessage.getDate().toInstant()), 
+                size,
+                bodyStartOctet, 
+                content, 
+                getMessageFlags(creationMessage), 
+                buildPropertyBuilder(), 
+                mailboxId, 
+                messageAttachments);
+    }
+
+    private int writeHeader(Message message, DefaultMessageWriter writer, ByteArrayOutputStream buffer) throws IOException {
+        writer.writeHeader(message.getHeader(), buffer);
+        return buffer.size();
     }
 
     @VisibleForTesting Message convertToMime(ValueWithId.CreationMessageEntry creationMessageEntry, ImmutableList<MessageAttachment> messageAttachments) {
@@ -280,5 +311,26 @@ public class MIMEMessageConverter {
         }
         CreationMessage.EmailUserAndDomain emailUserAndDomain = address.getEmailUserAndDomain();
         return new Mailbox(address.getName().orElse(null), null, emailUserAndDomain.getUser().orElse(null), emailUserAndDomain.getDomain().orElse(null));
+    }
+
+    private PropertyBuilder buildPropertyBuilder() {
+        return new PropertyBuilder();
+    }
+
+    private Flags getMessageFlags(CreationMessage message) {
+        Flags result = new Flags();
+        if (!message.isIsUnread()) {
+            result.add(Flags.Flag.SEEN);
+        }
+        if (message.isIsFlagged()) {
+            result.add(Flags.Flag.FLAGGED);
+        }
+        if (message.isIsAnswered() || message.getInReplyToMessageId().isPresent()) {
+            result.add(Flags.Flag.ANSWERED);
+        }
+        if (message.isIsDraft()) {
+            result.add(Flags.Flag.DRAFT);
+        }
+        return result;
     }
 }
