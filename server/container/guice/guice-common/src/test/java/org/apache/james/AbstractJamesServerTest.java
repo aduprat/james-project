@@ -26,6 +26,13 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.security.KeyStore;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.james.modules.protocols.ImapProbe;
 import org.apache.james.modules.protocols.LmtpProbe;
@@ -81,9 +88,22 @@ public abstract class AbstractJamesServerTest {
     }
 
     @Test
-    public void connectOnSecondaryIMAPServerIMAPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress("127.0.0.1", server.getProbe(ImapProbe.class).getSSLPort().get()));
-        assertThat(getServerConnectionResponse(socketChannel)).startsWith("* OK JAMES IMAP4rev1 Server");
+    public void connectIMAPSServerShouldRespondOnConnect() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        String password = "james72laBalle";
+        keyStore.load(ClassLoader.getSystemResourceAsStream("keystore"), password.toCharArray());
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
+        keyManagerFactory.init(keyStore, password.toCharArray());
+
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509"); 
+        trustManagerFactory.init(keyStore);
+
+        SSLContext sslContext = SSLContext.getInstance("TLS"); 
+        sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null); 
+        SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory(); 
+        SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket("127.0.0.1", server.getProbe(ImapProbe.class).getSSLPort().get());
+        sslSocket.startHandshake();
+        assertThat(sslSocket.isConnected());
     }
 
     @Test
