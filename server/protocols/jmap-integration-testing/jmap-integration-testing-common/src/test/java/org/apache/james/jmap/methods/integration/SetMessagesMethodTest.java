@@ -1343,6 +1343,7 @@ public abstract class SetMessagesMethodTest {
                 .body(requestBody)
         // When
         .when()
+        .log().all()
                 .post("/jmap");
 
         // Then

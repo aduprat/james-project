@@ -104,8 +104,8 @@ public class JMAPMessageConverter {
         DefaultMessageWriter writer = new DefaultMessageWriter();
 
         int bodyStartOctet = writeHeader(message, writer, buffer);
-
         writer.writeBody(message.getBody(), buffer);
+
         byte[] bytesContent = buffer.toByteArray();
         SharedInputStream content = new SharedByteArrayInputStream(bytesContent);
         long size = bytesContent.length;
