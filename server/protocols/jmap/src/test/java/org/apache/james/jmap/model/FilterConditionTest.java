@@ -116,54 +116,33 @@ public class FilterConditionTest {
     }
 
     @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenText() {
-        FilterCondition.builder().text(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenFrom() {
-        FilterCondition.builder().from(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenTo() {
-        FilterCondition.builder().to(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenCc() {
-        FilterCondition.builder().cc(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenBcc() {
-        FilterCondition.builder().bcc(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenSubject() {
-        FilterCondition.builder().subject(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenBody() {
-        FilterCondition.builder().body(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
     public void builderShouldThrowWhenHeader() {
         FilterCondition.builder().header(ImmutableList.of());
     }
 
     @Test
     public void buildShouldWork() {
+        String text = "text";
+        String from = "sender@james.org";
+        String to = "recipient@james.org";
+        String cc = "copy@james.org";
+        String bcc = "blindcopy@james.org";
+        String subject = "subject";
+        String body = "body";
         FilterCondition expectedFilterCondition = new FilterCondition(Optional.of(ImmutableList.of("1")), Optional.of(ImmutableList.of("2")), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), 
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), 
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(text), Optional.of(from), 
+                Optional.of(to), Optional.of(cc), Optional.of(bcc), Optional.of(subject), Optional.of(body), Optional.empty());
 
         FilterCondition filterCondition = FilterCondition.builder()
                 .inMailboxes(Optional.of(ImmutableList.of("1")))
                 .notInMailboxes("2")
+                .text(text)
+                .from(from)
+                .to(to)
+                .cc(cc)
+                .bcc(bcc)
+                .subject(subject)
+                .body(body)
                 .build();
 
         assertThat(filterCondition).isEqualToComparingFieldByField(expectedFilterCondition);

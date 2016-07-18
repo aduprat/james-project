@@ -128,34 +128,41 @@ public class FilterCondition implements Filter {
         }
 
         public Builder text(String text) {
-            throw new NotImplementedException();
+            this.text = text;
+            return this;
         }
 
         public Builder from(String from) {
-            throw new NotImplementedException();
+            this.from = from;
+            return this;
         }
 
         public Builder to(String to) {
-            throw new NotImplementedException();
+            this.to = to;
+            return this;
         }
 
         public Builder cc(String cc) {
-            throw new NotImplementedException();
+            this.cc = cc;
+            return this;
         }
 
         public Builder bcc(String bcc) {
-            throw new NotImplementedException();
+            this.bcc = bcc;
+            return this;
         }
 
         public Builder subject(String subject) {
-            throw new NotImplementedException();
+            this.subject = subject;
+            return this;
         }
 
         public Builder body(String body) {
-            throw new NotImplementedException();
+            this.body = body;
+            return this;
         }
 
-        public Builder header(List<String> body) {
+        public Builder header(List<String> header) {
             throw new NotImplementedException();
         }
 
