@@ -21,9 +21,10 @@ package org.apache.james.jmap.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
@@ -70,58 +71,27 @@ public class FilterConditionTest {
         assertThat(filterCondition.getNotInMailboxes()).contains(ImmutableList.of("1", "2"));
     }
     
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenBefore() {
-        FilterCondition.builder().before(null);
+    @Test(expected=NullPointerException.class)
+    public void builderShouldThrowWhenHeaderIsNull() {
+        FilterCondition.builder().header(null);
     }
 
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenAfter() {
-        FilterCondition.builder().after(null);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenMinSize() {
-        FilterCondition.builder().minSize(0);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenMaxSize() {
-        FilterCondition.builder().maxSize(0);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenIsFlagged() {
-        FilterCondition.builder().isFlagged(false);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenIsUnread() {
-        FilterCondition.builder().isUnread(false);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenIsAnswered() {
-        FilterCondition.builder().isAnswered(false);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenIsDraft() {
-        FilterCondition.builder().isDraft(false);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenHasAttachment() {
-        FilterCondition.builder().hasAttachment(false);
-    }
-
-    @Test(expected=NotImplementedException.class)
-    public void builderShouldThrowWhenHeader() {
-        FilterCondition.builder().header(ImmutableList.of());
+    @Test(expected=IllegalArgumentException.class)
+    public void builderShouldThrowWhenHeaderHasMoreThanTwoElements() {
+        FilterCondition.builder().header(ImmutableList.of("1", "2", "3"));
     }
 
     @Test
     public void buildShouldWork() {
+        Date before = new Date();
+        Date after = new Date();
+        int minSize = 4;
+        int maxSize = 123;
+        boolean isFlagged = true;
+        boolean isUnread = true;
+        boolean isAnswered = true;
+        boolean isDraft = true;
+        boolean hasAttachment = true;
         String text = "text";
         String from = "sender@james.org";
         String to = "recipient@james.org";
@@ -129,13 +99,23 @@ public class FilterConditionTest {
         String bcc = "blindcopy@james.org";
         String subject = "subject";
         String body = "body";
-        FilterCondition expectedFilterCondition = new FilterCondition(Optional.of(ImmutableList.of("1")), Optional.of(ImmutableList.of("2")), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), 
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(text), Optional.of(from), 
-                Optional.of(to), Optional.of(cc), Optional.of(bcc), Optional.of(subject), Optional.of(body), Optional.empty());
+        List<String> header = ImmutableList.of("name", "value");
+        FilterCondition expectedFilterCondition = new FilterCondition(Optional.of(ImmutableList.of("1")), Optional.of(ImmutableList.of("2")), Optional.of(before), Optional.of(after), Optional.of(minSize), Optional.of(maxSize), 
+                Optional.of(isFlagged), Optional.of(isUnread), Optional.of(isAnswered), Optional.of(isDraft), Optional.of(hasAttachment), Optional.of(text), Optional.of(from), 
+                Optional.of(to), Optional.of(cc), Optional.of(bcc), Optional.of(subject), Optional.of(body), Optional.of(header));
 
         FilterCondition filterCondition = FilterCondition.builder()
                 .inMailboxes(Optional.of(ImmutableList.of("1")))
                 .notInMailboxes("2")
+                .before(before)
+                .after(after)
+                .minSize(minSize)
+                .maxSize(maxSize)
+                .isFlagged(isFlagged)
+                .isUnread(isUnread)
+                .isAnswered(isAnswered)
+                .isDraft(isDraft)
+                .hasAttachment(hasAttachment)
                 .text(text)
                 .from(from)
                 .to(to)
@@ -143,6 +123,7 @@ public class FilterConditionTest {
                 .bcc(bcc)
                 .subject(subject)
                 .body(body)
+                .header(header)
                 .build();
 
         assertThat(filterCondition).isEqualToComparingFieldByField(expectedFilterCondition);

@@ -24,13 +24,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.apache.commons.lang.NotImplementedException;
-
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.MoreObjects.ToStringHelper;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 @JsonDeserialize(builder = FilterCondition.Builder.class)
@@ -92,39 +91,48 @@ public class FilterCondition implements Filter {
         }
 
         public Builder before(Date before) {
-            throw new NotImplementedException();
+            this.before = before;
+            return this;
         }
 
         public Builder after(Date after) {
-            throw new NotImplementedException();
+            this.after = after;
+            return this;
         }
 
         public Builder minSize(int minSize) {
-            throw new NotImplementedException();
+            this.minSize = minSize;
+            return this;
         }
 
         public Builder maxSize(int maxSize) {
-            throw new NotImplementedException();
+            this.maxSize = maxSize;
+            return this;
         }
 
-        public Builder isFlagged(boolean isFlagger) {
-            throw new NotImplementedException();
+        public Builder isFlagged(boolean isFlagged) {
+            this.isFlagged = isFlagged;
+            return this;
         }
 
         public Builder isUnread(boolean isUnread) {
-            throw new NotImplementedException();
+            this.isUnread = isUnread;
+            return this;
         }
 
         public Builder isAnswered(boolean isAnswered) {
-            throw new NotImplementedException();
+            this.isAnswered = isAnswered;
+            return this;
         }
 
         public Builder isDraft(boolean isDraft) {
-            throw new NotImplementedException();
+            this.isDraft = isDraft;
+            return this;
         }
 
         public Builder hasAttachment(boolean hasAttachment) {
-            throw new NotImplementedException();
+            this.hasAttachment = hasAttachment;
+            return this;
         }
 
         public Builder text(String text) {
@@ -163,7 +171,10 @@ public class FilterCondition implements Filter {
         }
 
         public Builder header(List<String> header) {
-            throw new NotImplementedException();
+            Preconditions.checkNotNull(header);
+            Preconditions.checkArgument(header.size() < 3, "'header' should contains lesser than three elements");
+            this.header = Optional.of(header);
+            return this;
         }
 
         public FilterCondition build() {

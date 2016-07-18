@@ -20,7 +20,13 @@
 package org.apache.james.jmap.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Date;
+
+import javax.mail.Flags.Flag;
+
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.jmap.model.Filter;
 import org.apache.james.jmap.model.FilterCondition;
 import org.apache.james.jmap.model.FilterOperator;
@@ -28,11 +34,21 @@ import org.apache.james.jmap.model.Operator;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.SearchQuery.AddressOperator;
 import org.apache.james.mailbox.model.SearchQuery.AddressType;
+import org.apache.james.mailbox.model.SearchQuery.BooleanOperator;
 import org.apache.james.mailbox.model.SearchQuery.Conjunction;
 import org.apache.james.mailbox.model.SearchQuery.ConjunctionCriterion;
 import org.apache.james.mailbox.model.SearchQuery.ContainsOperator;
+import org.apache.james.mailbox.model.SearchQuery.DateComparator;
+import org.apache.james.mailbox.model.SearchQuery.DateOperator;
+import org.apache.james.mailbox.model.SearchQuery.DateResolution;
+import org.apache.james.mailbox.model.SearchQuery.ExistsOperator;
+import org.apache.james.mailbox.model.SearchQuery.FlagCriterion;
 import org.apache.james.mailbox.model.SearchQuery.HeaderCriterion;
+import org.apache.james.mailbox.model.SearchQuery.InternalDateCriterion;
+import org.apache.james.mailbox.model.SearchQuery.NumericComparator;
+import org.apache.james.mailbox.model.SearchQuery.NumericOperator;
 import org.apache.james.mailbox.model.SearchQuery.Scope;
+import org.apache.james.mailbox.model.SearchQuery.SizeCriterion;
 import org.apache.james.mailbox.model.SearchQuery.TextCriterion;
 import org.junit.Test;
 
@@ -184,6 +200,147 @@ public class FilterToSearchQueryTest {
         TextCriterion bodyCriterion = (TextCriterion) fifthLevel.getCriteria().get(1);
         assertThat(bodyCriterion.getType()).isEqualTo(Scope.BODY);
         assertThat(bodyCriterion.getOperator()).isInstanceOf(ContainsOperator.class).isEqualTo(new ContainsOperator(text));
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenAfter() {
+        Date after = new Date();
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .after(after)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(InternalDateCriterion.class);
+        InternalDateCriterion criterion = (InternalDateCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getOperator()).isEqualTo(new DateOperator(DateComparator.AFTER, after, DateResolution.Second));
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenBefore() {
+        Date before = new Date();
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .before(before)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(InternalDateCriterion.class);
+        InternalDateCriterion criterion = (InternalDateCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getOperator()).isEqualTo(new DateOperator(DateComparator.BEFORE, before, DateResolution.Second));
+    }
+
+    @Test
+    public void filterConditionShouldThrowWhenHasAttachment() {
+        assertThatThrownBy(() -> new FilterToSearchQuery().map(FilterCondition.builder()
+                .hasAttachment(true)
+                .build()))
+            .isInstanceOf(NotImplementedException.class);
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenHeaderWithOneElement() {
+        String headerName = "name";
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .header(ImmutableList.of(headerName))
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(HeaderCriterion.class);
+        HeaderCriterion criterion = (HeaderCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getHeaderName()).isEqualTo(headerName);
+        assertThat(criterion.getOperator()).isEqualTo(ExistsOperator.exists());
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenIsAnswered() {
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .isAnswered(true)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(FlagCriterion.class);
+        FlagCriterion criterion = (FlagCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getFlag()).isEqualTo(Flag.ANSWERED);
+        assertThat(criterion.getOperator()).isEqualTo(BooleanOperator.set());
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenIsDraft() {
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .isDraft(true)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(FlagCriterion.class);
+        FlagCriterion criterion = (FlagCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getFlag()).isEqualTo(Flag.DRAFT);
+        assertThat(criterion.getOperator()).isEqualTo(BooleanOperator.set());
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenIsFlagged() {
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .isFlagged(true)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(FlagCriterion.class);
+        FlagCriterion criterion = (FlagCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getFlag()).isEqualTo(Flag.FLAGGED);
+        assertThat(criterion.getOperator()).isEqualTo(BooleanOperator.set());
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenIsUnread() {
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .isUnread(true)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(FlagCriterion.class);
+        FlagCriterion criterion = (FlagCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getFlag()).isEqualTo(Flag.SEEN);
+        assertThat(criterion.getOperator()).isEqualTo(BooleanOperator.unset());
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenMaxSize() {
+        int maxSize = 123;
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .maxSize(maxSize)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(SizeCriterion.class);
+        SizeCriterion criterion = (SizeCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getOperator()).isEqualTo(new NumericOperator(maxSize, NumericComparator.LESS_THAN));
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenMinSize() {
+        int minSize = 4;
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .minSize(minSize)
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(SizeCriterion.class);
+        SizeCriterion criterion = (SizeCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getOperator()).isEqualTo(new NumericOperator(minSize, NumericComparator.GREATER_THAN));
+    }
+
+    @Test
+    public void filterConditionShouldMapWhenHeaderWithTwoElements() {
+        String headerName = "name";
+        String headerValue = "value";
+        SearchQuery searchQuery = new FilterToSearchQuery().map(FilterCondition.builder()
+                .header(ImmutableList.of(headerName, headerValue))
+                .build());
+
+        assertThat(searchQuery.getCriterias()).hasSize(1);
+        assertThat(searchQuery.getCriterias().get(0)).isInstanceOf(HeaderCriterion.class);
+        HeaderCriterion criterion = (HeaderCriterion) searchQuery.getCriterias().get(0);
+        assertThat(criterion.getHeaderName()).isEqualTo(headerName);
+        assertThat(criterion.getOperator()).isEqualTo(new ContainsOperator(headerValue));
     }
 
     @Test

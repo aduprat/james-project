@@ -23,12 +23,18 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import javax.mail.Flags.Flag;
+
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.jmap.model.Filter;
 import org.apache.james.jmap.model.FilterCondition;
 import org.apache.james.jmap.model.FilterOperator;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.SearchQuery.AddressType;
 import org.apache.james.mailbox.model.SearchQuery.Criterion;
+import org.apache.james.mailbox.model.SearchQuery.DateResolution;
+
+import com.google.common.collect.Iterables;
 
 public class FilterToSearchQuery {
 
@@ -76,6 +82,37 @@ public class FilterToSearchQuery {
         }
         if (filter.getBody().isPresent()) {
             searchQuery.andCriteria(SearchQuery.bodyContains(filter.getBody().get()));
+        }
+        if (filter.getAfter().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.internalDateAfter(filter.getAfter().get(), DateResolution.Second));
+        }
+        if (filter.getBefore().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.internalDateBefore(filter.getBefore().get(), DateResolution.Second));
+        }
+        if (filter.getHasAttachment().isPresent()) {
+            throw new NotImplementedException();
+        }
+        if (filter.getHeader().isPresent()) {
+            List<String> header = filter.getHeader().get();
+            searchQuery.andCriteria(SearchQuery.headerContains(header.get(0), Iterables.get(header, 1, null)));
+        }
+        if (filter.getIsAnswered().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.ANSWERED));
+        }
+        if (filter.getIsDraft().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.DRAFT));
+        }
+        if (filter.getIsFlagged().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.FLAGGED));
+        }
+        if (filter.getIsUnread().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.flagIsUnSet(Flag.SEEN));
+        }
+        if (filter.getMaxSize().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.sizeLessThan(filter.getMaxSize().get()));
+        }
+        if (filter.getMinSize().isPresent()) {
+            searchQuery.andCriteria(SearchQuery.sizeGreaterThan(filter.getMinSize().get()));
         }
         return searchQuery;
     }

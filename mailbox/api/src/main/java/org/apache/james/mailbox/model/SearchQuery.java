@@ -633,7 +633,7 @@ public class SearchQuery implements Serializable {
 
     private final List<Criterion> criterias = new ArrayList<Criterion>();
 
-    private List<Sort> sorts = new ArrayList<SearchQuery.Sort>(Arrays.asList(new Sort(Sort.SortClause.Uid, false)));
+    private List<Sort> sorts = new ArrayList<Sort>(Arrays.asList(new Sort(Sort.SortClause.Uid, false)));
 
     public void andCriteria(Criterion crit) {
         criterias.add(crit);
@@ -1871,7 +1871,7 @@ public class SearchQuery implements Serializable {
 
         private final NumericComparator type;
 
-        private NumericOperator(long value, NumericComparator type) {
+        public NumericOperator(long value, NumericComparator type) {
             super();
             this.value = value;
             this.type = type;
