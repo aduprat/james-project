@@ -22,7 +22,6 @@ package org.apache.james.jmap.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.Test;
@@ -70,16 +69,6 @@ public class FilterConditionTest {
                 .build();
         assertThat(filterCondition.getNotInMailboxes()).contains(ImmutableList.of("1", "2"));
     }
-    
-    @Test(expected=NullPointerException.class)
-    public void builderShouldThrowWhenHeaderIsNull() {
-        FilterCondition.builder().header(null);
-    }
-
-    @Test(expected=IllegalArgumentException.class)
-    public void builderShouldThrowWhenHeaderHasMoreThanTwoElements() {
-        FilterCondition.builder().header(ImmutableList.of("1", "2", "3"));
-    }
 
     @Test
     public void buildShouldWork() {
@@ -99,7 +88,7 @@ public class FilterConditionTest {
         String bcc = "blindcopy@james.org";
         String subject = "subject";
         String body = "body";
-        List<String> header = ImmutableList.of("name", "value");
+        Header header = Header.from(ImmutableList.of("name", "value"));
         FilterCondition expectedFilterCondition = new FilterCondition(Optional.of(ImmutableList.of("1")), Optional.of(ImmutableList.of("2")), Optional.of(before), Optional.of(after), Optional.of(minSize), Optional.of(maxSize), 
                 Optional.of(isFlagged), Optional.of(isUnread), Optional.of(isAnswered), Optional.of(isDraft), Optional.of(hasAttachment), Optional.of(text), Optional.of(from), 
                 Optional.of(to), Optional.of(cc), Optional.of(bcc), Optional.of(subject), Optional.of(body), Optional.of(header));

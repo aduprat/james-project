@@ -19,10 +19,6 @@
 
 package org.apache.james.jmap.utils;
 
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
 import javax.mail.Flags.Flag;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -34,114 +30,76 @@ import org.apache.james.mailbox.model.SearchQuery.AddressType;
 import org.apache.james.mailbox.model.SearchQuery.Criterion;
 import org.apache.james.mailbox.model.SearchQuery.DateResolution;
 
-import com.google.common.collect.Iterables;
+import com.github.fge.lambdas.Throwing;
+import com.github.steveash.guavate.Guavate;
+import com.google.common.collect.ImmutableList;
 
 public class FilterToSearchQuery {
 
-    public SearchQuery map(Filter filter) {
+    public SearchQuery convert(Filter filter) {
         if (filter instanceof FilterCondition) {
-            return mapCondition((FilterCondition) filter);
+            return convertCondition((FilterCondition) filter);
         }
         if (filter instanceof FilterOperator) {
-            return mapOperator((FilterOperator) filter);
+            return convertOperator((FilterOperator) filter);
         }
         throw new RuntimeException("Unknown filter");
     }
 
-    private SearchQuery mapCondition(FilterCondition filter) {
+    private SearchQuery convertCondition(FilterCondition filter) {
         SearchQuery searchQuery = new SearchQuery();
-        if (filter.getText().isPresent()) {
-            String text = filter.getText().get();
+        filter.getText().ifPresent(text -> {
             searchQuery.andCriteria(
-                    SearchQuery.or(SearchQuery.address(AddressType.From, text),
-                            SearchQuery.or(SearchQuery.address(AddressType.To, text),
-                                    SearchQuery.or(SearchQuery.address(AddressType.Cc, text),
-                                            SearchQuery.or(SearchQuery.address(AddressType.Bcc, text),
-                                                    SearchQuery.or(SearchQuery.headerContains("Subject", text),
-                                                            SearchQuery.bodyContains(text))
-                                                    )
-                                            )
-                                    )
-                            )
+                    SearchQuery.or(ImmutableList.of(
+                            SearchQuery.address(AddressType.From, text),
+                            SearchQuery.address(AddressType.To, text),
+                            SearchQuery.address(AddressType.Cc, text),
+                            SearchQuery.address(AddressType.Bcc, text),
+                            SearchQuery.headerContains("Subject", text),
+                            SearchQuery.bodyContains(text)))
                     );
-        }
-        if (filter.getFrom().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.address(AddressType.From, filter.getFrom().get()));
-        }
-        if (filter.getTo().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.address(AddressType.To, filter.getTo().get()));
-        }
-        if (filter.getCc().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.address(AddressType.Cc, filter.getCc().get()));
-        }
-        if (filter.getBcc().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.address(AddressType.Bcc, filter.getBcc().get()));
-        }
-        if (filter.getSubject().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.headerContains("Subject", filter.getSubject().get()));
-        }
-        if (filter.getBody().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.bodyContains(filter.getBody().get()));
-        }
-        if (filter.getAfter().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.internalDateAfter(filter.getAfter().get(), DateResolution.Second));
-        }
-        if (filter.getBefore().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.internalDateBefore(filter.getBefore().get(), DateResolution.Second));
-        }
-        if (filter.getHasAttachment().isPresent()) {
-            throw new NotImplementedException();
-        }
-        if (filter.getHeader().isPresent()) {
-            List<String> header = filter.getHeader().get();
-            searchQuery.andCriteria(SearchQuery.headerContains(header.get(0), Iterables.get(header, 1, null)));
-        }
-        if (filter.getIsAnswered().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.ANSWERED));
-        }
-        if (filter.getIsDraft().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.DRAFT));
-        }
-        if (filter.getIsFlagged().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.FLAGGED));
-        }
-        if (filter.getIsUnread().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.flagIsUnSet(Flag.SEEN));
-        }
-        if (filter.getMaxSize().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.sizeLessThan(filter.getMaxSize().get()));
-        }
-        if (filter.getMinSize().isPresent()) {
-            searchQuery.andCriteria(SearchQuery.sizeGreaterThan(filter.getMinSize().get()));
-        }
+        });
+        filter.getFrom().ifPresent(from -> searchQuery.andCriteria(SearchQuery.address(AddressType.From, from)));
+        filter.getTo().ifPresent(to -> searchQuery.andCriteria(SearchQuery.address(AddressType.To, to)));
+        filter.getCc().ifPresent(cc -> searchQuery.andCriteria(SearchQuery.address(AddressType.Cc, cc)));
+        filter.getBcc().ifPresent(bcc -> searchQuery.andCriteria(SearchQuery.address(AddressType.Bcc, bcc)));
+        filter.getSubject().ifPresent(subject -> searchQuery.andCriteria(SearchQuery.headerContains("Subject", subject)));
+        filter.getBody().ifPresent(body ->  searchQuery.andCriteria(SearchQuery.bodyContains(body)));
+        filter.getAfter().ifPresent(after -> searchQuery.andCriteria(SearchQuery.internalDateAfter(after, DateResolution.Second)));
+        filter.getBefore().ifPresent(before -> searchQuery.andCriteria(SearchQuery.internalDateBefore(before, DateResolution.Second)));
+        filter.getHasAttachment().ifPresent(Throwing.consumer(hasAttachment -> { throw new NotImplementedException(); } ));
+        filter.getHeader().ifPresent(header -> searchQuery.andCriteria(SearchQuery.headerContains(header.getName(), header.getValue().orElse(null))));
+        filter.getIsAnswered().ifPresent(isAnswered -> searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.ANSWERED)));
+        filter.getIsDraft().ifPresent(isDraft -> searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.DRAFT)));
+        filter.getIsFlagged().ifPresent(isFlagged -> searchQuery.andCriteria(SearchQuery.flagIsSet(Flag.FLAGGED)));
+        filter.getIsUnread().ifPresent(isUnread -> searchQuery.andCriteria(SearchQuery.flagIsUnSet(Flag.SEEN)));
+        filter.getMaxSize().ifPresent(maxSize -> searchQuery.andCriteria(SearchQuery.sizeLessThan(maxSize)));
+        filter.getMinSize().ifPresent(minSize -> searchQuery.andCriteria(SearchQuery.sizeGreaterThan(minSize)));
         return searchQuery;
     }
 
-    private SearchQuery mapOperator(FilterOperator filter) {
+    private SearchQuery convertOperator(FilterOperator filter) {
         SearchQuery searchQuery = new SearchQuery();
-        Consumer<Criterion> andCriteria = f -> searchQuery.andCriteria(f);
-        Stream<List<Criterion>> mappedConditions = filter.getConditions().stream()
-            .map(this::map)
-            .map(q -> q.getCriterias());
         switch (filter.getOperator()) {
         case AND:
-            mappedConditions
-                .map(SearchQuery::and)
-                .forEach(andCriteria);
+            searchQuery.andCriteria(SearchQuery.and(convertCriterias(filter)));
             return searchQuery;
    
         case OR:
-            mappedConditions
-                .map(SearchQuery::or)
-                .forEach(andCriteria);
+            searchQuery.andCriteria(SearchQuery.or(convertCriterias(filter)));
             return searchQuery;
    
         case NOT:
-            mappedConditions
-                .map(SearchQuery::not)
-                .forEach(andCriteria);
+            searchQuery.andCriteria(SearchQuery.not(convertCriterias(filter)));
             return searchQuery;
         }
         throw new RuntimeException("Unknown operator");
+    }
+
+    private ImmutableList<Criterion> convertCriterias(FilterOperator filter) {
+        return filter.getConditions().stream()
+            .map(this::convert)
+            .flatMap(sq -> sq.getCriterias().stream())
+            .collect(Guavate.toImmutableList());
     }
 }

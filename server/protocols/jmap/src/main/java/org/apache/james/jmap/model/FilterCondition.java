@@ -29,7 +29,6 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.MoreObjects.ToStringHelper;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 @JsonDeserialize(builder = FilterCondition.Builder.class)
@@ -60,12 +59,11 @@ public class FilterCondition implements Filter {
         private String bcc;
         private String subject;
         private String body;
-        private Optional<List<String>> header;
+        private Header header;
 
         private Builder() {
             inMailboxes = Optional.empty();
             notInMailboxes = Optional.empty();
-            header = Optional.empty();
         }
 
         public Builder inMailboxes(String... inMailboxes) {
@@ -170,17 +168,15 @@ public class FilterCondition implements Filter {
             return this;
         }
 
-        public Builder header(List<String> header) {
-            Preconditions.checkNotNull(header);
-            Preconditions.checkArgument(header.size() < 3, "'header' should contains lesser than three elements");
-            this.header = Optional.of(header);
+        public Builder header(Header header) {
+            this.header = header;
             return this;
         }
 
         public FilterCondition build() {
             return new FilterCondition(inMailboxes, notInMailboxes, Optional.ofNullable(before), Optional.ofNullable(after), Optional.ofNullable(minSize), Optional.ofNullable(maxSize),
                     Optional.ofNullable(isFlagged), Optional.ofNullable(isUnread), Optional.ofNullable(isAnswered), Optional.ofNullable(isDraft), Optional.ofNullable(hasAttachment),
-                    Optional.ofNullable(text), Optional.ofNullable(from), Optional.ofNullable(to), Optional.ofNullable(cc), Optional.ofNullable(bcc), Optional.ofNullable(subject), Optional.ofNullable(body), header);
+                    Optional.ofNullable(text), Optional.ofNullable(from), Optional.ofNullable(to), Optional.ofNullable(cc), Optional.ofNullable(bcc), Optional.ofNullable(subject), Optional.ofNullable(body), Optional.ofNullable(header));
         }
     }
 
@@ -202,11 +198,11 @@ public class FilterCondition implements Filter {
     private final Optional<String> bcc;
     private final Optional<String> subject;
     private final Optional<String> body;
-    private final Optional<List<String>> header;
+    private final Optional<Header> header;
 
     @VisibleForTesting FilterCondition(Optional<List<String>> inMailboxes, Optional<List<String>> notInMailboxes, Optional<Date> before, Optional<Date> after, Optional<Integer> minSize, Optional<Integer> maxSize,
             Optional<Boolean> isFlagged, Optional<Boolean> isUnread, Optional<Boolean> isAnswered, Optional<Boolean> isDraft, Optional<Boolean> hasAttachment,
-            Optional<String> text, Optional<String> from, Optional<String> to, Optional<String> cc, Optional<String> bcc, Optional<String> subject, Optional<String> body, Optional<List<String>> header) {
+            Optional<String> text, Optional<String> from, Optional<String> to, Optional<String> cc, Optional<String> bcc, Optional<String> subject, Optional<String> body, Optional<Header> header) {
 
         this.inMailboxes = inMailboxes;
         this.notInMailboxes = notInMailboxes;
@@ -301,7 +297,7 @@ public class FilterCondition implements Filter {
         return body;
     }
 
-    public Optional<List<String>> getHeader() {
+    public Optional<Header> getHeader() {
         return header;
     }
 

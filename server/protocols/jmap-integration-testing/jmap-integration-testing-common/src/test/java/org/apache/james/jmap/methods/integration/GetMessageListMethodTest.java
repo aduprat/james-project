@@ -102,6 +102,31 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
+    public void getMessageListShouldErrorInvalidArgumentsWhenHeaderIsInvalid() throws Exception {
+        given()
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"filter\":{\"header\":[\"132\", \"456\", \"789\"]}}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type", equalTo("invalidArguments"));
+    }
+
+    @Test
+    public void getMessageListShouldNotFailWhenHeaderIsValid() throws Exception {
+        given()
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMessageList\", {\"filter\":{\"header\":[\"132\", \"456\"]}}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("messageList"));
+    }
+
+    @Test
     public void getMessageListShouldReturnAllMessagesWhenSingleMailboxNoParameters() throws Exception {
         jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 

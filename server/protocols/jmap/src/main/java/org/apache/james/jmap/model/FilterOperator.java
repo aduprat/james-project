@@ -37,6 +37,21 @@ public class FilterOperator implements Filter {
         return new Builder();
     }
 
+    public static Builder and() {
+        return builder()
+                .operator(Operator.AND);
+    }
+
+    public static Builder or() {
+        return builder()
+                .operator(Operator.OR);
+    }
+
+    public static Builder not() {
+        return builder()
+                .operator(Operator.NOT);
+    }
+
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
