@@ -47,7 +47,8 @@ public class IndexableMessage {
         IndexableMessage indexableMessage = new IndexableMessage();
         try {
             MimePart parsingResult = new MimePartParser(message, textExtractor).parse();
-            indexableMessage.bodyText = parsingResult.locateFirstTextualBody();
+            indexableMessage.bodyText = parsingResult.locateFirstTextBody();
+            indexableMessage.bodyHtml = parsingResult.locateFirstHtmlBody();
             indexableMessage.setFlattenedAttachments(parsingResult);
             indexableMessage.copyHeaderFields(parsingResult.getHeaderCollection(), getSanitizedInternalDate(message, zoneId));
             indexableMessage.generateText();
@@ -107,7 +108,8 @@ public class IndexableMessage {
                 cc.serialize(),
                 bcc.serialize(),
                 subjects.serialize(),
-                bodyText.orElse(null))
+                bodyText.orElse(null),
+                bodyHtml.orElse(null))
             .filter(str -> !Strings.isNullOrEmpty(str))
             .collect(Collectors.joining(" "));
     }
@@ -137,6 +139,7 @@ public class IndexableMessage {
     private List<Property> properties;
     private List<MimePart> attachments;
     private Optional<String> bodyText;
+    private Optional<String> bodyHtml;
     private String text;
 
     @JsonProperty(JsonMessageConstants.ID)
@@ -262,6 +265,11 @@ public class IndexableMessage {
     @JsonProperty(JsonMessageConstants.TEXT_BODY)
     public Optional<String> getBodyText() {
         return bodyText;
+    }
+
+    @JsonProperty(JsonMessageConstants.HTML_BODY)
+    public Optional<String> getBodyHtml() {
+        return bodyHtml;
     }
 
     @JsonProperty(JsonMessageConstants.HAS_ATTACHMENT)
