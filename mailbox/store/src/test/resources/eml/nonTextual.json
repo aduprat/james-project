@@ -153,5 +153,6 @@
   "isFlagged":false,
   "isRecent":false,
   "hasAttachment":true,
-  "isUnread":true
+  "isUnread":true,
+  "text": "Benoit Tellier btellier@linagora.com btellier@linagora.com btellier@linagora.com Test message This mail have a non textual attachment !\n\n"
 }
