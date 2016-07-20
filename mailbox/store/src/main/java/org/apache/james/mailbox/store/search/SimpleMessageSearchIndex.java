@@ -55,6 +55,11 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
     public SimpleMessageSearchIndex(MessageMapperFactory factory) {
         this.factory = factory;
     }
+
+    @Override
+    public boolean hasCapability(MessageSerachIndexCapabilities capability) {
+        return false;
+    }
     
     /**
      * Walks down the query tree's conjunctions to find a UidCriterion

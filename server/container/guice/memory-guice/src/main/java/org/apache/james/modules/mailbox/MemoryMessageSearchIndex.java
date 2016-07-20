@@ -17,40 +17,26 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.mailbox.store.search;
+package org.apache.james.modules.mailbox;
 
-import java.util.Iterator;
+import java.util.EnumSet;
 
-import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.SearchQuery;
-import org.apache.james.mailbox.store.mail.model.Mailbox;
+import javax.inject.Inject;
 
+import org.apache.james.mailbox.store.mail.MessageMapperFactory;
+import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 
-/**
- * An index which can be used to search for MailboxMessage UID's that match a {@link SearchQuery}.
- * 
- * A developer should think of building an inverse-index for that.
- * 
- *
- * @param <Id>
- */
-public interface MessageSearchIndex {
+public class MemoryMessageSearchIndex extends SimpleMessageSearchIndex {
 
+    private static final EnumSet<MessageSerachIndexCapabilities> SUPPORTED_CAPABILITIES = EnumSet.of(MessageSerachIndexCapabilities.Text);
 
-    enum MessageSerachIndexCapabilities {
-        Text
+    @Inject
+    private MemoryMessageSearchIndex(MessageMapperFactory factory) {
+        super(factory);
     }
 
-    boolean hasCapability(MessageSerachIndexCapabilities capability);
-
-    /**
-     * Return all uids of the previous indexed {@link Mailbox}'s which match the {@link SearchQuery}
-     * 
-     * @param mailbox
-     * @param searchQuery
-     * @return Iterator on found uids
-     * @throws MailboxException
-     */
-    Iterator<Long> search(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) throws MailboxException;
+    @Override
+    public boolean hasCapability(MessageSerachIndexCapabilities capability) {
+        return SUPPORTED_CAPABILITIES.contains(capability);
+    }
 }
