@@ -38,11 +38,16 @@ import org.apache.james.mailbox.store.mail.model.Mailbox;
 public interface MessageSearchIndex {
 
 
-    enum MessageSerachIndexCapabilities {
+    enum MessageSearchIndexCapabilities {
+        /**
+         *  The implementation supporting this capability should
+         *  provide an index on the fields: 
+         *  From, To, Cc, Bcc, Subjects, textBody & htmlBody
+         */
         Text
     }
 
-    boolean hasCapability(MessageSerachIndexCapabilities capability);
+    boolean hasCapability(MessageSearchIndexCapabilities capability);
 
     /**
      * Return all uids of the previous indexed {@link Mailbox}'s which match the {@link SearchQuery}

@@ -95,7 +95,7 @@ public class JamesCapabilitiesServerTest {
             .thenReturn(EnumSet.of(MailboxManager.MessageCapabilities.Attachment));
 
         MessageSearchIndex messageSearchIndex = mock(MessageSearchIndex.class);
-        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSerachIndexCapabilities.Text))
+        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSearchIndexCapabilities.Text))
             .thenReturn(true);
 
         server = createCassandraJamesServer(mailboxManager, messageSearchIndex);
@@ -112,7 +112,7 @@ public class JamesCapabilitiesServerTest {
             .thenReturn(EnumSet.noneOf(MailboxManager.MessageCapabilities.class));
 
         MessageSearchIndex messageSearchIndex = mock(MessageSearchIndex.class);
-        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSerachIndexCapabilities.Text))
+        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSearchIndexCapabilities.Text))
             .thenReturn(true);
 
         server = createCassandraJamesServer(mailboxManager, messageSearchIndex);
@@ -129,7 +129,7 @@ public class JamesCapabilitiesServerTest {
             .thenReturn(EnumSet.allOf(MailboxManager.MessageCapabilities.class));
 
         MessageSearchIndex messageSearchIndex = mock(MessageSearchIndex.class);
-        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSerachIndexCapabilities.Text))
+        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSearchIndexCapabilities.Text))
             .thenReturn(false);
 
         server = createCassandraJamesServer(mailboxManager, messageSearchIndex);
@@ -145,7 +145,7 @@ public class JamesCapabilitiesServerTest {
             .thenReturn(EnumSet.of(MailboxManager.MessageCapabilities.Attachment));
 
         MessageSearchIndex messageSearchIndex = mock(MessageSearchIndex.class);
-        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSerachIndexCapabilities.Text))
+        when(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSearchIndexCapabilities.Text))
             .thenReturn(true);
 
         server = createCassandraJamesServer(mailboxManager, messageSearchIndex);

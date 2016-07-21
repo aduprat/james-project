@@ -110,7 +110,7 @@ public class JMAPModule extends AbstractModule {
             Preconditions.checkArgument(mailboxManager.getSupportedMessageCapabilities().contains(MailboxManager.MessageCapabilities.Attachment),
                     "Attachment support in MailboxManager is required by JMAP Module");
 
-            Preconditions.checkArgument(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSerachIndexCapabilities.Text),
+            Preconditions.checkArgument(messageSearchIndex.hasCapability(MessageSearchIndex.MessageSearchIndexCapabilities.Text),
                     "Text support in MessageSearchIndex is required by JMAP Module");
         }
 

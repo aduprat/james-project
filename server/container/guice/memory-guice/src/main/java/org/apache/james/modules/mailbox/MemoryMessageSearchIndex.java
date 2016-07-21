@@ -28,7 +28,7 @@ import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 
 public class MemoryMessageSearchIndex extends SimpleMessageSearchIndex {
 
-    private static final EnumSet<MessageSerachIndexCapabilities> SUPPORTED_CAPABILITIES = EnumSet.of(MessageSerachIndexCapabilities.Text);
+    private static final EnumSet<MessageSearchIndexCapabilities> SUPPORTED_CAPABILITIES = EnumSet.of(MessageSearchIndexCapabilities.Text);
 
     @Inject
     private MemoryMessageSearchIndex(MessageMapperFactory factory) {
@@ -36,7 +36,7 @@ public class MemoryMessageSearchIndex extends SimpleMessageSearchIndex {
     }
 
     @Override
-    public boolean hasCapability(MessageSerachIndexCapabilities capability) {
+    public boolean hasCapability(MessageSearchIndexCapabilities capability) {
         return SUPPORTED_CAPABILITIES.contains(capability);
     }
 }

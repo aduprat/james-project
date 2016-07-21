@@ -53,7 +53,7 @@ public class LazyMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public boolean hasCapability(MessageSerachIndexCapabilities capability) {
+    public boolean hasCapability(MessageSearchIndexCapabilities capability) {
         return false;
     }
 
