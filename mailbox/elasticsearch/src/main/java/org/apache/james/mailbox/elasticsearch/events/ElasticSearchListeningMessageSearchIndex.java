@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
-import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxManager.SearchCapabilities;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.elasticsearch.ElasticSearchIndexer;
 import org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants;
 import org.apache.james.mailbox.elasticsearch.json.MessageToElasticSearchJson;
@@ -82,7 +82,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
     public Iterator<Long> search(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) throws MailboxException {
         MailboxId mailboxId = mailbox.getMailboxId();
         return searcher
-                .search(ImmutableList.of(mailboxId), searchQuery)
+                .search(ImmutableList.of(session.getUser()), ImmutableList.of(mailboxId), searchQuery)
                 .get(mailboxId)
                 .iterator();
     }
@@ -90,13 +90,13 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
     @Override
     public Map<MailboxId, Collection<Long>> search(MailboxSession session, MultimailboxesSearchQuery searchQuery)
             throws MailboxException {
-        return searcher.search(searchQuery.getMailboxIds(), searchQuery.getSearchQuery()).asMap();
+        return searcher.search(ImmutableList.of(session.getUser()), searchQuery.getMailboxIds(), searchQuery.getSearchQuery()).asMap();
     }
 
     @Override
     public void add(MailboxSession session, Mailbox mailbox, MailboxMessage message) throws MailboxException {
         try {
-            indexer.indexMessage(indexIdFor(mailbox, message.getUid()), messageToElasticSearchJson.convertToJson(message));
+            indexer.indexMessage(indexIdFor(mailbox, message.getUid()), messageToElasticSearchJson.convertToJson(message, ImmutableList.of(session.getUser())));
         } catch (Exception e) {
             LOGGER.error("Error when indexing message " + message.getUid(), e);
         }
