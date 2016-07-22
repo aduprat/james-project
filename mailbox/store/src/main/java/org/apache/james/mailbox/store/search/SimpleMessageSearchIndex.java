@@ -114,6 +114,9 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
     }
     
     private Multimap<MailboxId, Long> searchMultimap(MailboxSession session, Mailbox mailbox, SearchQuery query) throws MailboxException {
+        if (!mailbox.getUser().equals(session.getUser().getUserName())) {
+            return ImmutableMultimap.of();
+        }
         MessageMapper mapper = messageMapperFactory.getMessageMapper(session);
 
         final SortedSet<MailboxMessage> hitSet = new TreeSet<MailboxMessage>();
@@ -139,15 +142,9 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
         }
         
         // MessageSearches does the filtering for us
-        if (session == null) {
-            return ImmutableMultimap.<MailboxId, Long>builder()
-                        .putAll(mailbox.getMailboxId(), ImmutableList.copyOf(new MessageSearches(hitSet.iterator(), query).iterator()))
-                        .build();
-        } else {
-            return ImmutableMultimap.<MailboxId, Long>builder()
-                        .putAll(mailbox.getMailboxId(), ImmutableList.copyOf(new MessageSearches(hitSet.iterator(), query, session.getLog()).iterator()))
-                        .build();
-        }
+        return ImmutableMultimap.<MailboxId, Long>builder()
+                    .putAll(mailbox.getMailboxId(), ImmutableList.copyOf(new MessageSearches(hitSet.iterator(), query, session).iterator()))
+                    .build();
     }
 
     @Override
