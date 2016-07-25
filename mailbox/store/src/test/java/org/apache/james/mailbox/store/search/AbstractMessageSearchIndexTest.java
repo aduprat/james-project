@@ -157,6 +157,14 @@ public abstract class AbstractMessageSearchIndexTest {
     protected abstract void await();
     protected abstract void initializeMailboxManager() throws Exception;
 
+    @Test(expected = IllegalArgumentException.class)
+    public void searchShouldThrowWhenSessionIsNull() throws MailboxException {
+        SearchQuery searchQuery = new SearchQuery();
+        MailboxSession session = null;
+        assertThat(messageSearchIndex.search(session, mailbox, searchQuery))
+            .isEmpty();
+    }
+
     @Test
     public void searchShouldReturnEmptyWhenUserDontMatch() throws MailboxException {
         Assume.assumeTrue(storeMailboxManager.getSupportedSearchCapabilities().contains(MailboxManager.SearchCapabilities.MultimailboxSearch));

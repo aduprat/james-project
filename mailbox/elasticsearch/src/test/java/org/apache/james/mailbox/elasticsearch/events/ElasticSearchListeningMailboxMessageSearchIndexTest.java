@@ -32,6 +32,7 @@ import java.util.List;
 import javax.mail.Flags;
 
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MailboxSession.User;
 import org.apache.james.mailbox.elasticsearch.ElasticSearchIndexer;
 import org.apache.james.mailbox.elasticsearch.json.MessageToElasticSearchJson;
 import org.apache.james.mailbox.elasticsearch.search.ElasticSearchSearcher;
@@ -70,7 +71,8 @@ public class ElasticSearchListeningMailboxMessageSearchIndexTest {
 
         indexer = control.createMock(ElasticSearchIndexer.class);
 
-        expect(messageToElasticSearchJson.convertToJson(anyObject(MailboxMessage.class), anyObject())).andReturn("json content").anyTimes();
+        List<User> users = anyObject();
+        expect(messageToElasticSearchJson.convertToJson(anyObject(MailboxMessage.class), users)).andReturn("json content").anyTimes();
         expect(messageToElasticSearchJson.getUpdatedJsonMessagePart(anyObject(Flags.class), anyLong())).andReturn("json updated content").anyTimes();
 
         testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, indexer, elasticSearchSearcher, messageToElasticSearchJson);

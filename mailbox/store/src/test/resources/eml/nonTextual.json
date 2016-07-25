@@ -155,5 +155,6 @@
   "hasAttachment":true,
   "isUnread":true,
   "users": [
+    "username"
   ]
 }

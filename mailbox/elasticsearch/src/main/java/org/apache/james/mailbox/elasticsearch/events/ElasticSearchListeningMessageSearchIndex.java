@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSearchIndex {
@@ -80,6 +81,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
     
     @Override
     public Iterator<Long> search(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) throws MailboxException {
+        Preconditions.checkArgument(session != null, "'session' is mandatory");
         MailboxId mailboxId = mailbox.getMailboxId();
         return searcher
                 .search(ImmutableList.of(session.getUser()), ImmutableList.of(mailboxId), searchQuery)
@@ -90,6 +92,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
     @Override
     public Map<MailboxId, Collection<Long>> search(MailboxSession session, MultimailboxesSearchQuery searchQuery)
             throws MailboxException {
+        Preconditions.checkArgument(session != null, "'session' is mandatory");
         return searcher.search(ImmutableList.of(session.getUser()), searchQuery.getMailboxIds(), searchQuery.getSearchQuery()).asMap();
     }
 

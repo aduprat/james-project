@@ -45,6 +45,7 @@ public class IndexableMessage {
 
     public static IndexableMessage from(MailboxMessage message, List<User> users, TextExtractor textExtractor, ZoneId zoneId) {
         Preconditions.checkNotNull(message.getMailboxId());
+        Preconditions.checkArgument(!users.isEmpty());
         IndexableMessage indexableMessage = new IndexableMessage();
         try {
             MimePart parsingResult = new MimePartParser(message, textExtractor).parse();

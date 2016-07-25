@@ -48,6 +48,7 @@ import org.apache.james.mailbox.store.mail.MessageMapperFactory;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableMultimap.Builder;
@@ -99,6 +100,7 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
     
     @Override
     public Iterator<Long> search(MailboxSession session, Mailbox mailbox, SearchQuery query) throws MailboxException {
+        Preconditions.checkArgument(session != null, "'session' is mandatory");
         return searchMultimap(session, ImmutableList.of(mailbox), query)
                 .get(mailbox.getMailboxId())
                 .iterator();
@@ -114,7 +116,7 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
     }
     
     private Multimap<MailboxId, Long> searchMultimap(MailboxSession session, Mailbox mailbox, SearchQuery query) throws MailboxException {
-        if (!mailbox.getUser().equals(session.getUser().getUserName())) {
+        if (!isMatchingUser(session, mailbox)) {
             return ImmutableMultimap.of();
         }
         MessageMapper mapper = messageMapperFactory.getMessageMapper(session);
@@ -145,6 +147,10 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
         return ImmutableMultimap.<MailboxId, Long>builder()
                     .putAll(mailbox.getMailboxId(), ImmutableList.copyOf(new MessageSearches(hitSet.iterator(), query, session).iterator()))
                     .build();
+    }
+
+    private boolean isMatchingUser(MailboxSession session, Mailbox mailbox) {
+        return mailbox.getUser().equals(session.getUser().getUserName());
     }
 
     @Override

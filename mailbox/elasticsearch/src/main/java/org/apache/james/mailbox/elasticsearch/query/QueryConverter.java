@@ -64,9 +64,6 @@ public class QueryConverter {
     }
 
     private QueryBuilder addUsersFilter(QueryBuilder queryBuilder, List<User> users) {
-        if (users.isEmpty()) {
-            return queryBuilder;
-        }
         ImmutableList<String> usernames = users.stream()
                 .map(User::getUserName)
                 .collect(Guavate.toImmutableList());

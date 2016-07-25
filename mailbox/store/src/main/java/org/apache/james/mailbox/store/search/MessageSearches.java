@@ -92,7 +92,9 @@ public class MessageSearches implements Iterable<Long> {
                     matched.add(m);
                 }
             } catch (MailboxException e) {
-                session.getLog().debug("Unable to search message " + m.getUid(), e);
+                if (session != null && session.getLog() != null) {
+                    session.getLog().debug("Unable to search message " + m.getUid(), e);
+                }
             }
         }
         Set<Long> uids = new HashSet<Long>();
@@ -205,7 +207,7 @@ public class MessageSearches implements Iterable<Long> {
             .searchContents(Lists.<CharSequence>newArrayList(value))
             .caseInsensitive(true)
             .includeHeaders(header);
-        if (session != null) {
+        if (session != null && session.getLog() != null) {
             builder.logger(session.getLog());
         }
         return builder.build().messageMatches(input);
