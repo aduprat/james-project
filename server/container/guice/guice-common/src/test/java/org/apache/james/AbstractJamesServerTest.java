@@ -23,13 +23,19 @@ import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.util.Date;
 
+import javax.mail.Flags;
+
+import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -135,5 +141,24 @@ public abstract class AbstractJamesServerTest {
         socketChannel.read(byteBuffer);
         byte[] bytes = byteBuffer.array();
         return new String(bytes, Charset.forName("UTF-8"));
+    }
+
+    @Test
+    public void userMailboxPathShouldBeUserWhenReIndexing() throws Exception {
+        server.serverProbe().addDomain("james.org");
+
+        String user1 = "user1@james.org";
+        server.serverProbe().addUser(user1, "password");
+        server.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, user1, "Inbox");
+        server.serverProbe().appendMessage(user1, new MailboxPath(MailboxConstants.USER_NAMESPACE, user1, "Inbox"),
+                new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes(Charsets.UTF_8)), new Date(), false, new Flags());
+
+        String user2 = "user2@james.org";
+        server.serverProbe().addUser(user2, "password");
+        server.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, user2, "Outbox");
+        server.serverProbe().appendMessage(user2, new MailboxPath(MailboxConstants.USER_NAMESPACE, user2, "Outbox"),
+                new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes(Charsets.UTF_8)), new Date(), false, new Flags());
+
+        server.serverProbe().reIndexAll();
     }
 }
