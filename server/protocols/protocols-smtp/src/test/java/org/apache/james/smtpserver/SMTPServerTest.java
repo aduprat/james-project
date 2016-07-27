@@ -40,6 +40,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -81,6 +82,8 @@ import com.google.common.base.Preconditions;
 
 @SuppressWarnings("deprecation")
 public class SMTPServerTest {
+
+    private static final long TEN_MILLIS = TimeUnit.MILLISECONDS.toMillis(10);
 
     final class AlterableDNSServer implements DNSService {
 
@@ -371,22 +374,27 @@ public class SMTPServerTest {
 
         smtpProtocol.quit();
         smtpProtocol.disconnect();
-        ensureIsDisconnected(smtpProtocol);
+        ensureIsDisconnected(smtpProtocol, 10);
         smtpProtocol2.quit();
         smtpProtocol2.disconnect();
-        ensureIsDisconnected(smtpProtocol2);
+        ensureIsDisconnected(smtpProtocol2, 10);
 
         smtpProtocol3.connect("127.0.0.1", port);
         Thread.sleep(3000);
 
     }
 
-    private void ensureIsDisconnected(SMTPClient smtpProtocol) {
-        try {
-            smtpProtocol.isConnected();
-            Thread.sleep(10);
-            ensureIsDisconnected(smtpProtocol);
-        } catch (Exception e) {
+    private void ensureIsDisconnected(SMTPClient smtpProtocol, int decrement) {
+        if (decrement > 0) {
+            try {
+                boolean connected = smtpProtocol.isConnected();
+                if (!connected) {
+                    return;
+                }
+                Thread.sleep(TEN_MILLIS);
+                ensureIsDisconnected(smtpProtocol, decrement - 1);
+            } catch (Exception e) {
+            }
         }
     }
 
