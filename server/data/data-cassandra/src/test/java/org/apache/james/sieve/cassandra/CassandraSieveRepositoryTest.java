@@ -22,9 +22,13 @@ package org.apache.james.sieve.cassandra;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.sieverepository.api.SieveRepository;
 import org.apache.james.sieverepository.lib.AbstractSieveRepositoryTest;
+import org.junit.ClassRule;
 
 public class CassandraSieveRepositoryTest extends AbstractSieveRepositoryTest {
-    private CassandraCluster cassandra = CassandraCluster.create(new CassandraSieveRepositoryModule());
+    public static final int DATE_TIMESTAMP = 123456141;
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraSieveRepositoryModule());
 
     @Override
     protected SieveRepository createSieveRepository() throws Exception {

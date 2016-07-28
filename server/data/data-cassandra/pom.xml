@@ -193,6 +193,10 @@
                     <artifactId>guava</artifactId>
                 </dependency>
                 <dependency>
+                    <groupId>com.google.inject</groupId>
+                    <artifactId>guice</artifactId>
+                </dependency>
+                <dependency>
                     <groupId>commons-codec</groupId>
                     <artifactId>commons-codec</artifactId>
                 </dependency>
@@ -226,17 +230,17 @@
                 </dependency>
                 <dependency>
                     <groupId>info.cukes</groupId>
+                    <artifactId>cucumber-guice</artifactId>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>info.cukes</groupId>
                     <artifactId>cucumber-java</artifactId>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
                     <groupId>info.cukes</groupId>
                     <artifactId>cucumber-junit</artifactId>
-                    <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>info.cukes</groupId>
-                    <artifactId>cucumber-picocontainer</artifactId>
                     <scope>test</scope>
                 </dependency>
                 <dependency>
@@ -253,6 +257,11 @@
                 <dependency>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-simple</artifactId>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.testcontainers</groupId>
+                    <artifactId>testcontainers</artifactId>
                     <scope>test</scope>
                 </dependency>
             </dependencies>

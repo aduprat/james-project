@@ -23,19 +23,27 @@ import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTableTest;
+import org.junit.ClassRule;
 import org.slf4j.LoggerFactory;
 
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
+import cucumber.runtime.java.guice.ScenarioScoped;
 
+@ScenarioScoped
 public class CassandraRecipientRewriteTableTest extends AbstractRecipientRewriteTableTest {
 
-    private CassandraCluster cassandra;
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraRRTModule());
+
+//    @Inject
+//    private CassandraRecipientRewriteTableTest(CassandraCluster cassandra) {
+//        this.cassandra = cassandra;
+//    }
 
     @Before
     @Override
     public void setUp() throws Exception {
-        cassandra = CassandraCluster.create(new CassandraRRTModule());
         cassandra.ensureAllTables();
         super.setUp();
     }

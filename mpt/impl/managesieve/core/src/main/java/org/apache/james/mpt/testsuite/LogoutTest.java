@@ -38,7 +38,7 @@ public class LogoutTest extends ManageSieveMPTTest {
 
     @After
     public void tearDown() {
-        system.stop();
+        hostSystem.stop();
     }
 
     @Test
