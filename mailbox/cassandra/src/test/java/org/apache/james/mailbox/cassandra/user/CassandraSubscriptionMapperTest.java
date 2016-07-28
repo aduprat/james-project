@@ -33,6 +33,7 @@ import org.apache.james.mailbox.cassandra.modules.CassandraSubscriptionModule;
 import org.apache.james.mailbox.store.user.model.Subscription;
 import org.apache.james.mailbox.store.user.model.impl.SimpleSubscription;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,12 +47,14 @@ import com.datastax.driver.core.Session;
 public class CassandraSubscriptionMapperTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(CassandraSubscriptionMapperTest.class);
-    private static final CassandraCluster CLUSTER = CassandraCluster.create(new CassandraSubscriptionModule());
     private static Session session;
     private static CassandraSubscriptionMapper mapper;
     private static Map<String, List<SimpleSubscription>> subscriptionList;
     private static final int USERS = 5;
     private static final int MAILBOX_NO = 5;
+
+    @ClassRule
+    public static CassandraCluster CLUSTER = CassandraCluster.create(new CassandraSubscriptionModule());
 
     @Before
     public void setUp() throws Exception {

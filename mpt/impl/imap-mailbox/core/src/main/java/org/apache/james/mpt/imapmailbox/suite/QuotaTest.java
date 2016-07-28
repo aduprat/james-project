@@ -19,14 +19,16 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
+import java.util.Locale;
+
+import javax.inject.Inject;
+
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseSelectedState;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
-
-import javax.inject.Inject;
-import java.util.Locale;
 
 public class QuotaTest extends BaseSelectedState {
 
@@ -35,6 +37,11 @@ public class QuotaTest extends BaseSelectedState {
 
     public QuotaTest() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

@@ -27,6 +27,7 @@ import javax.inject.Inject;
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseSelectedInbox;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -36,6 +37,11 @@ public class MailboxAnnotation extends BaseSelectedInbox {
 
     public MailboxAnnotation() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

@@ -19,6 +19,9 @@
 
 package org.apache.james.mpt.host;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.decode.ImapDecoder;
 import org.apache.james.imap.decode.main.ImapRequestStreamHandler;
@@ -31,9 +34,6 @@ import org.apache.james.mpt.helper.ByteBufferInputStream;
 import org.apache.james.mpt.helper.ByteBufferOutputStream;
 import org.apache.james.mpt.session.ImapSessionImpl;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public abstract class JamesImapHostSystem implements ImapHostSystem {
 
@@ -123,5 +123,8 @@ public abstract class JamesImapHostSystem implements ImapHostSystem {
     public void beforeTests() throws Exception {
         // default do nothing
     }
-    
+
+    public void stop() {
+        // default do nothing
+    }
 }

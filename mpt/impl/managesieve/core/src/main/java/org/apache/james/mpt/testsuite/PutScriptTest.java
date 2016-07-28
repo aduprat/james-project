@@ -19,12 +19,14 @@
 
 package org.apache.james.mpt.testsuite;
 
-import com.google.inject.Inject;
+import java.util.Locale;
+
 import org.apache.james.mpt.host.ManageSieveHostSystem;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Locale;
+import com.google.inject.Inject;
 
 public class PutScriptTest extends ManageSieveMPTTest {
 
@@ -38,6 +40,11 @@ public class PutScriptTest extends ManageSieveMPTTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
+    }
+
+    @After
+    public void tearDown() {
+        hostSystem.stop();
     }
 
     @Test

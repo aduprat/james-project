@@ -62,4 +62,6 @@ public interface HostSystem extends SessionFactory {
 
     void afterTest() throws Exception;
 
+    void stop();
+
 }

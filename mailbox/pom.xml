@@ -126,6 +126,7 @@
         <assertj-1.version>1.7.1</assertj-1.version>
         <assertj-3.version>3.2.0</assertj-3.version>
         <logback.version>1.1.7</logback.version>
+        <testcontainers.version>1.0.2</testcontainers.version>
     </properties>
 
     <dependencyManagement>
@@ -453,6 +454,11 @@
                 <groupId>nl.jqno.equalsverifier</groupId>
                 <artifactId>equalsverifier</artifactId>
                 <version>1.7.6</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${testcontainers.version}</version>
             </dependency>
             <!--
                 END Testing

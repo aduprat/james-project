@@ -41,14 +41,17 @@ import org.apache.james.mailbox.model.SimpleMailboxACL;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.google.common.base.Throwables;
 
 public class CassandraACLMapperTest {
 
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraAclModule());
+
     private CassandraACLMapper cassandraACLMapper;
-    private CassandraCluster cassandra;
     private SimpleMailbox mailbox;
     private int uidValidity;
     private int maxRetry;
@@ -56,7 +59,6 @@ public class CassandraACLMapperTest {
 
     @Before
     public void setUp() {
-        cassandra = CassandraCluster.create(new CassandraAclModule());
         cassandra.ensureAllTables();
         uidValidity = 10;
         mailbox = new SimpleMailbox(new MailboxPath("#private", "benwa@linagora.com", "INBOX"), uidValidity);

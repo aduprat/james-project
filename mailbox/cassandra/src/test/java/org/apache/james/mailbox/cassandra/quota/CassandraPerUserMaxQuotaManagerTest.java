@@ -24,14 +24,15 @@ import org.apache.james.mailbox.cassandra.modules.CassandraQuotaModule;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.store.quota.GenericMaxQuotaManagerTest;
 import org.junit.After;
+import org.junit.ClassRule;
 
 public class CassandraPerUserMaxQuotaManagerTest extends GenericMaxQuotaManagerTest {
 
-    private CassandraCluster cassandra;
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraQuotaModule());
 
     @Override
     protected MaxQuotaManager provideMaxQuotaManager() {
-        cassandra = CassandraCluster.create(new CassandraQuotaModule());
         cassandra.ensureAllTables();
         return new CassandraPerUserMaxQuotaManager(cassandra.getConf());
     }

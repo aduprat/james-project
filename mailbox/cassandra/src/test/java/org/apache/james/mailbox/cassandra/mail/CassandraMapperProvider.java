@@ -38,17 +38,28 @@ import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MapperProvider;
 
+import com.google.common.base.Throwables;
+
 public class CassandraMapperProvider implements MapperProvider {
 
-    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
-        new CassandraAclModule(),
-        new CassandraMailboxModule(),
-        new CassandraMessageModule(),
-        new CassandraMailboxCounterModule(),
-        new CassandraModSeqModule(),
-        new CassandraUidModule(),
-        new CassandraAttachmentModule(),
-        new CassandraAnnotationModule()));
+    private final CassandraCluster cassandra;
+
+    public CassandraMapperProvider() {
+        try {
+            cassandra = CassandraCluster.create(new CassandraModuleComposite(
+                    new CassandraAclModule(),
+                    new CassandraMailboxModule(),
+                    new CassandraMessageModule(),
+                    new CassandraMailboxCounterModule(),
+                    new CassandraModSeqModule(),
+                    new CassandraUidModule(),
+                    new CassandraAttachmentModule(),
+                    new CassandraAnnotationModule()));
+            cassandra.startWithoutLifecycle();
+        } catch (Throwable e) {
+            throw Throwables.propagate(e);
+        }
+    }
 
     @Override
     public MailboxMapper createMailboxMapper() throws MailboxException {

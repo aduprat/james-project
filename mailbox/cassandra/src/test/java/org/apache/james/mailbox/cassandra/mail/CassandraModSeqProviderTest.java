@@ -32,18 +32,20 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.github.fge.lambdas.Throwing;
 
 public class CassandraModSeqProviderTest {
+    
+    private static final int MAX_RETRY = 100;
 
-    private static final CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
+    @ClassRule
+    public static CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
         new CassandraAclModule(),
         new CassandraMailboxModule(),
         new CassandraModSeqModule()));
-    
-    private static final int MAX_RETRY = 100;
     
     private CassandraModSeqProvider modSeqProvider;
     private CassandraMailboxMapper mapper;

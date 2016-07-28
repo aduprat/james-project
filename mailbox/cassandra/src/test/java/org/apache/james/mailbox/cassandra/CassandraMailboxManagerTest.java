@@ -46,28 +46,37 @@ import com.google.common.base.Throwables;
 @ContractImpl(CassandraMailboxManager.class)
 public class CassandraMailboxManagerTest {
 
-    private static final CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
-        new CassandraAclModule(),
-        new CassandraMailboxModule(),
-        new CassandraMessageModule(),
-        new CassandraMailboxCounterModule(),
-        new CassandraUidModule(),
-        new CassandraModSeqModule(),
-        new CassandraSubscriptionModule(),
-        new CassandraAttachmentModule(),
-        new CassandraAnnotationModule()));
+    private final CassandraCluster cassandra;
+
+    public CassandraMailboxManagerTest() {
+        try {
+            cassandra = CassandraCluster.create(new CassandraModuleComposite(
+                    new CassandraAclModule(),
+                    new CassandraMailboxModule(),
+                    new CassandraMessageModule(),
+                    new CassandraMailboxCounterModule(),
+                    new CassandraUidModule(),
+                    new CassandraModSeqModule(),
+                    new CassandraSubscriptionModule(),
+                    new CassandraAttachmentModule(),
+                    new CassandraAnnotationModule()));
+            cassandra.startWithoutLifecycle();
+        } catch (Throwable e) {
+            throw Throwables.propagate(e);
+        }
+    }
 
     private IProducer<CassandraMailboxManager> producer = new IProducer<CassandraMailboxManager>() {
 
         @Override
         public CassandraMailboxManager newInstance() {
-            CASSANDRA.ensureAllTables();
-            CassandraUidProvider uidProvider = new CassandraUidProvider(CASSANDRA.getConf());
-            CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(CASSANDRA.getConf());
+            cassandra.ensureAllTables();
+            CassandraUidProvider uidProvider = new CassandraUidProvider(cassandra.getConf());
+            CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(cassandra.getConf());
             CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
                 modSeqProvider,
-                CASSANDRA.getConf(),
-                CASSANDRA.getTypesProvider());
+                cassandra.getConf(),
+                cassandra.getTypesProvider());
 
             CassandraMailboxManager manager = new CassandraMailboxManager(mapperFactory, null, new NoMailboxPathLocker(), new MessageParser());
             try {
@@ -81,7 +90,7 @@ public class CassandraMailboxManagerTest {
 
         @Override
         public void cleanUp() {
-            CASSANDRA.clearAllTables();
+            cassandra.clearAllTables();
         }
     };
 

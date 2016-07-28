@@ -21,7 +21,6 @@ package org.apache.james.backends.cassandra;
 import java.util.Optional;
 
 import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraTableManager;
@@ -30,13 +29,16 @@ import org.apache.james.backends.cassandra.init.ClusterFactory;
 import org.apache.james.backends.cassandra.init.ClusterWithKeyspaceCreatedFactory;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.utils.FunctionRunnerWithRetry;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.google.common.base.Throwables;
 
-public final class CassandraCluster {
+public final class CassandraCluster implements TestRule {
     private static final String CLUSTER_IP = "localhost";
     private static final String KEYSPACE_NAME = "apache_james";
     private static final int REPLICATION_FACTOR = 1;
@@ -45,37 +47,56 @@ public final class CassandraCluster {
     private static final int MAX_RETRY = 2000;
 
     private final CassandraModule module;
-    private final Session session;
-    private final CassandraTypesProvider typesProvider;
-    private final EmbeddedCassandra embeddedCassandra;
+    private Session session;
+    private CassandraTypesProvider typesProvider;
+    private EmbeddedCassandra embeddedCassandra;
 
     public static CassandraCluster create(CassandraModule module) throws RuntimeException {
-        return new CassandraCluster(module, EmbeddedCassandra.createStartServer());
+        return new CassandraCluster(module);
     }
 
-    @Inject
-    private CassandraCluster(CassandraModule module, EmbeddedCassandra embeddedCassandra) throws RuntimeException {
+    private CassandraCluster(CassandraModule module) {
         this.module = module;
-        this.embeddedCassandra = embeddedCassandra;
+    }
+
+    @Override
+    public Statement apply(Statement base, Description description) {
+        embeddedCassandra = EmbeddedCassandra.createStartServer();
+        return embeddedCassandra.apply(new Statement() {
+            
+            @Override
+            public void evaluate() throws Throwable {
+                start();
+                base.evaluate();
+            }
+        }, description);
+    }
+
+    private void start() throws RuntimeException {
         try {
-            this.session = new FunctionRunnerWithRetry(MAX_RETRY).executeAndRetrieveObject(CassandraCluster.this::tryInitializeSession);
+            this.session = new FunctionRunnerWithRetry(MAX_RETRY).executeAndRetrieveObject(this::tryInitializeSession);
             this.typesProvider = new CassandraTypesProvider(module, session);
         } catch (Exception exception) {
             throw Throwables.propagate(exception);
         }
     }
 
+    /**
+     *  Don't use this method for rules
+     *  Only used for junit-contract suites.
+     */
+    public void startWithoutLifecycle() throws Exception {
+        embeddedCassandra = EmbeddedCassandra.createStartServer();
+        embeddedCassandra.startWithoutLifecycle();
+        start();
+    }
+
+    public void stop() {
+        embeddedCassandra.stop();
+    }
+
     public Session getConf() {
         return session;
-    }
-
-    public void ensureAllTables() {
-        new CassandraTableManager(module, session).ensureAllTables();
-    }
-
-    @PreDestroy
-    public void clearAllTables() {
-        new CassandraTableManager(module, session).clearAllTables();
     }
 
     private Optional<Session> tryInitializeSession() {
@@ -106,5 +127,14 @@ public final class CassandraCluster {
 
     public CassandraTypesProvider getTypesProvider() {
         return typesProvider;
+    }
+
+    public void ensureAllTables() {
+        new CassandraTableManager(module, session).ensureAllTables();
+    }
+
+    @PreDestroy
+    public void clearAllTables() {
+        new CassandraTableManager(module, session).clearAllTables();
     }
 }

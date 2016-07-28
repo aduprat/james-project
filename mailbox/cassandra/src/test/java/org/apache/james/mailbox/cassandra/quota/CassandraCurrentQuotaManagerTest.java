@@ -27,18 +27,20 @@ import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.store.quota.QuotaRootImpl;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 public class CassandraCurrentQuotaManagerTest {
 
     private static final QuotaRoot QUOTA_ROOT = QuotaRootImpl.quotaRoot("value");
 
-    private CassandraCluster cassandra;
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraQuotaModule());
+
     private CassandraCurrentQuotaManager currentQuotaManager;
 
     @Before
     public void setUp() {
-        cassandra = CassandraCluster.create(new CassandraQuotaModule());
         cassandra.ensureAllTables();
         currentQuotaManager = new CassandraCurrentQuotaManager(cassandra.getConf());
     }

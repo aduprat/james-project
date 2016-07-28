@@ -58,6 +58,11 @@
                 <artifactId>javax.inject</artifactId>
                 <version>1</version>
             </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>1.0.2</version>
+            </dependency>
         </dependencies>
 
     </dependencyManagement>

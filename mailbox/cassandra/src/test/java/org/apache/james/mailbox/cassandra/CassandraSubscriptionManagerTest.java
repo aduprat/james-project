@@ -25,13 +25,15 @@ import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
 import org.apache.james.mailbox.cassandra.modules.CassandraSubscriptionModule;
+import org.junit.ClassRule;
 
 /**
  * Test Cassandra subscription against some general purpose written code.
  */
 public class CassandraSubscriptionManagerTest extends AbstractSubscriptionManagerTest {
 
-    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraSubscriptionModule());
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraSubscriptionModule());
     
     @Override
     public SubscriptionManager createSubscriptionManager() {

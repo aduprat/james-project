@@ -19,11 +19,13 @@
 
 package org.apache.james.mpt.testsuite;
 
-import com.google.inject.Inject;
+import java.util.Locale;
+
 import org.apache.james.mpt.host.ManageSieveHostSystem;
+import org.junit.After;
 import org.junit.Test;
 
-import java.util.Locale;
+import com.google.inject.Inject;
 
 public class LogoutTest extends ManageSieveMPTTest {
 
@@ -32,6 +34,11 @@ public class LogoutTest extends ManageSieveMPTTest {
 
     public LogoutTest() throws Exception {
         super(hostSystem);
+    }
+
+    @After
+    public void tearDown() {
+        system.stop();
     }
 
     @Test

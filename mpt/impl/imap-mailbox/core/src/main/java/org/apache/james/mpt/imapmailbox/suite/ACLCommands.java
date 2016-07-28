@@ -19,16 +19,18 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
+import java.util.Locale;
+
+import javax.inject.Inject;
+
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.SimpleMailboxACL;
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.GrantRightsOnHost;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseImapProtocol;
+import org.junit.AfterClass;
 import org.junit.Test;
-
-import javax.inject.Inject;
-import java.util.Locale;
 
 public class ACLCommands extends BaseImapProtocol {
     public static final String OTHER_USER_NAME = "Boby";
@@ -44,6 +46,11 @@ public class ACLCommands extends BaseImapProtocol {
     public ACLCommands() throws Exception {
         super(system);
         readWriteSeenRight = new SimpleMailboxACL.Rfc4314Rights("rsw");
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

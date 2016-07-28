@@ -25,6 +25,7 @@ import javax.inject.Inject;
 
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class Listing extends BaseAuthenticatedState {
@@ -34,6 +35,11 @@ public class Listing extends BaseAuthenticatedState {
     
     public Listing() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

@@ -35,6 +35,7 @@ import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.user.SubscriptionMapper;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +45,12 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class CassandraMailboxSessionMapperFactoryTest {
-    private static final CassandraCluster CLUSTER = CassandraCluster.create(
-            new CassandraModuleComposite(new CassandraModSeqModule(), new CassandraUidModule()));
+
     private final static Logger LOG = LoggerFactory.getLogger(CassandraMailboxSessionMapperFactoryTest.class);
+
+    @ClassRule
+    public static CassandraCluster CLUSTER = CassandraCluster.create(
+            new CassandraModuleComposite(new CassandraModSeqModule(), new CassandraUidModule()));
 
     @Before
     public void beforeMethod() {
