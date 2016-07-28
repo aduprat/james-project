@@ -29,4 +29,13 @@ import cucumber.api.junit.Cucumber;
         glue = { "org.apache.james.rrt.lib", "org.apache.james.rrt.cassandra" }
     )
 public class RewriteTablesTest {
+
+//    @ClassRule
+//    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraRRTModule());
+//
+//    @Provides
+//    @Singleton
+//    public CassandraCluster getCassandraCluster() {
+//        return cassandra;
+//    }
 }

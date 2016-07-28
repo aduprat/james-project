@@ -30,15 +30,14 @@ import org.apache.james.sieverepository.api.SieveRepository;
 import org.apache.james.sieverepository.api.exception.ScriptNotFoundException;
 import org.apache.james.sieverepository.lib.AbstractSieveRepositoryTest;
 import org.joda.time.DateTime;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 public class CassandraSieveRepositoryTest extends AbstractSieveRepositoryTest {
     public static final int DATE_TIMESTAMP = 123456141;
-    private CassandraCluster cassandra;
 
-    public CassandraSieveRepositoryTest() {
-        cassandra = CassandraCluster.create(new CassandraSieveRepositoryModule());
-    }
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraSieveRepositoryModule());
 
     @Override
     protected SieveRepository createSieveRepository() throws Exception {

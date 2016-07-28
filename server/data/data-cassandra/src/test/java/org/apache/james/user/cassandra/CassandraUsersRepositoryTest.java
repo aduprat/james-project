@@ -23,10 +23,12 @@ import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.user.lib.AbstractUsersRepository;
 import org.apache.james.user.lib.AbstractUsersRepositoryTest;
 import org.junit.After;
+import org.junit.ClassRule;
 
 public class CassandraUsersRepositoryTest extends AbstractUsersRepositoryTest {
 
-    private CassandraCluster cassandra;
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraUsersRepositoryModule());
 
     @After
     public void tearDown() {
@@ -35,7 +37,6 @@ public class CassandraUsersRepositoryTest extends AbstractUsersRepositoryTest {
 
     @Override
     protected AbstractUsersRepository getUsersRepository() throws Exception {
-        cassandra = CassandraCluster.create(new CassandraUsersRepositoryModule());
         CassandraUsersRepository cassandraUsersRepository = new CassandraUsersRepository();
         cassandraUsersRepository.setSession(cassandra.getConf());
         return cassandraUsersRepository;

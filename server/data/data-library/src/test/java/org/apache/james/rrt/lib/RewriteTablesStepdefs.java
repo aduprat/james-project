@@ -30,7 +30,9 @@ import org.apache.james.rrt.api.RecipientRewriteTableException;
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
+import cucumber.runtime.java.guice.ScenarioScoped;
 
+@ScenarioScoped
 public class RewriteTablesStepdefs {
 
     public AbstractRecipientRewriteTable rewriteTable;
