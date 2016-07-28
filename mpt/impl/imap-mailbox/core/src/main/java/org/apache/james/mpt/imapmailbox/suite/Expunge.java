@@ -25,6 +25,7 @@ import javax.inject.Inject;
 
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseSelectedState;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class Expunge extends BaseSelectedState {
@@ -35,7 +36,12 @@ public class Expunge extends BaseSelectedState {
     public Expunge() throws Exception {
         super(system);
     }
-    
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
+    }
+
     @Test
     public void testBasicExpungeUS() throws Exception {
         scriptTest("ExpungeBasics", Locale.US);

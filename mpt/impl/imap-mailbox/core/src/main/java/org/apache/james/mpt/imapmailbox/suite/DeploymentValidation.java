@@ -19,11 +19,13 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
-import javax.inject.Inject;
 import java.util.Locale;
+
+import javax.inject.Inject;
 
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseImapProtocol;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class DeploymentValidation extends BaseImapProtocol {
@@ -36,6 +38,11 @@ public class DeploymentValidation extends BaseImapProtocol {
 
     public DeploymentValidation() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Override

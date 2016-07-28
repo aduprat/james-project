@@ -19,26 +19,29 @@
 
 package org.apache.james.mailbox.cassandra.event.distributed;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.concurrent.TimeUnit;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.mailbox.cassandra.modules.CassandraRegistrationModule;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.publisher.Topic;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.concurrent.TimeUnit;
 
 public class CassandraMailboxPathRegistrerMapperTest {
 
-    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraRegistrationModule());
     private static final MailboxPath MAILBOX_PATH = new MailboxPath("namespace", "user", "name");
     private static final MailboxPath MAILBOX_PATH_2 = new MailboxPath("namespace2", "user2", "name2");
     private static final Topic TOPIC = new Topic("topic");
     private static final int CASSANDRA_TIME_OUT_IN_S = 100;
     private static final Topic TOPIC_2 = new Topic("topic2");
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraRegistrationModule());
 
     private CassandraMailboxPathRegisterMapper mapper;
 

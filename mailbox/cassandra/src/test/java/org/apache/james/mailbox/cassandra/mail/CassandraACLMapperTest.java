@@ -40,6 +40,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.SimpleMailboxACL;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.google.common.base.Throwables;
@@ -48,14 +49,16 @@ public class CassandraACLMapperTest {
 
     public static final CassandraId MAILBOX_ID = CassandraId.of(UUID.fromString("464765a0-e4e7-11e4-aba4-710c1de3782b"));
     public static final int MAX_RETRY = 100;
-    private CassandraACLMapper cassandraACLMapper;
-    private CassandraCluster cassandra;
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraAclModule());
+
     private CassandraAsyncExecutor cassandraAsyncExecutor;
+    private CassandraACLMapper cassandraACLMapper;
     private ExecutorService executor;
 
     @Before
     public void setUp() {
-        cassandra = CassandraCluster.create(new CassandraAclModule());
         cassandra.ensureAllTables();
         cassandraAsyncExecutor = new CassandraAsyncExecutor(cassandra.getConf());
         cassandraACLMapper = new CassandraACLMapper(MAILBOX_ID, cassandra.getConf(), cassandraAsyncExecutor, MAX_RETRY);

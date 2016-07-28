@@ -67,4 +67,8 @@ public class FileHostSystem extends JamesManageSieveHostSystem {
             FileUtils.forceDelete(root);
         }
     }
+
+    @Override
+    public void stop() {
+    }
 }

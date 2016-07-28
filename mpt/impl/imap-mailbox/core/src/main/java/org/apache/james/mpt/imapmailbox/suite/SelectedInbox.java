@@ -25,6 +25,7 @@ import javax.inject.Inject;
 
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseSelectedInbox;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class SelectedInbox extends BaseSelectedInbox {
@@ -34,6 +35,11 @@ public class SelectedInbox extends BaseSelectedInbox {
     
     public SelectedInbox() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

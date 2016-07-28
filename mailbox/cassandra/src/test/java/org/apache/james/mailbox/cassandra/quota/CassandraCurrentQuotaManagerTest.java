@@ -24,19 +24,22 @@ import org.apache.james.mailbox.cassandra.modules.CassandraQuotaModule;
 import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
 import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManagerTest;
 import org.junit.After;
+import org.junit.ClassRule;
 
 public class CassandraCurrentQuotaManagerTest extends StoreCurrentQuotaManagerTest {
 
-    private static final CassandraCluster CASSANDRA_CLUSTER = CassandraCluster.create(new CassandraQuotaModule());
-
-    @Override
-    protected StoreCurrentQuotaManager provideTestee() {
-        return new CassandraCurrentQuotaManager(CASSANDRA_CLUSTER.getConf());
-    }
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraQuotaModule());
 
     @After
     public void tearDown() {
-        CASSANDRA_CLUSTER.clearAllTables();
+        cassandra.clearAllTables();
+    }
+
+    @Override
+    protected StoreCurrentQuotaManager provideTestee() {
+        cassandra.ensureAllTables();
+        return new CassandraCurrentQuotaManager(cassandra.getConf());
     }
 
 }

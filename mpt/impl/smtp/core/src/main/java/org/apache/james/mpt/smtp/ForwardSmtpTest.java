@@ -30,6 +30,7 @@ import javax.inject.Inject;
 
 import org.apache.james.mpt.script.AbstractSimpleScriptedTestProtocol;
 import org.apache.james.util.streams.SwarmGenericContainer;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -79,6 +80,11 @@ public class ForwardSmtpTest extends AbstractSimpleScriptedTestProtocol {
         		.setPort(80)
         		.setBaseUri("http://" + containerIp.getHostAddress())
         		.build();
+    }
+
+    @After
+    public void tearDown() {
+        hostSystem.stop();
     }
 
     @Test

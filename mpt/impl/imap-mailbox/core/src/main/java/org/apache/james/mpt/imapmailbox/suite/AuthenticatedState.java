@@ -27,6 +27,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -38,6 +39,11 @@ public class AuthenticatedState extends BaseAuthenticatedState {
     
     public AuthenticatedState() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

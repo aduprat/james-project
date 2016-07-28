@@ -42,6 +42,7 @@ import org.apache.james.mailbox.store.json.event.MailboxConverter;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.apache.james.mailbox.util.EventCollector;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 /**
@@ -56,7 +57,9 @@ public class CassandraBasedRegisteredDistributedMailboxDelegatingListenerTest {
     public static final int CASSANDRA_TIME_OUT_IN_S = 10;
     public static final int SCHEDULER_PERIOD_IN_S = 20;
 
-    private CassandraCluster cassandraClusterSingleton = CassandraCluster.create(new CassandraRegistrationModule());
+    @ClassRule
+    public static CassandraCluster cassandraClusterSingleton = CassandraCluster.create(new CassandraRegistrationModule());
+
     private RegisteredDelegatingMailboxListener registeredDelegatingMailboxListener1;
     private RegisteredDelegatingMailboxListener registeredDelegatingMailboxListener2;
     private RegisteredDelegatingMailboxListener registeredDelegatingMailboxListener3;

@@ -33,6 +33,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.github.fge.lambdas.Throwing;
@@ -40,12 +41,13 @@ import com.google.common.base.Optional;
 
 public class CassandraUidProviderTest {
 
-    private static final CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
+    private static final int MAX_RETRY = 100;
+
+    @ClassRule
+    public static CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
         new CassandraAclModule(),
         new CassandraMailboxModule(),
         new CassandraUidModule()));
-    
-    private static final int MAX_RETRY = 100;
     
     private CassandraUidProvider uidProvider;
     private CassandraMailboxMapper mapper;

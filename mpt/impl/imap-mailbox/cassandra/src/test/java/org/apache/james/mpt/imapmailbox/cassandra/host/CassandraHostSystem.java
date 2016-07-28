@@ -29,9 +29,9 @@ import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
+import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraDeletedMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraFirstUnseenDAO;
-import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxCounterDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxPathDAO;
@@ -102,6 +102,7 @@ public class CassandraHostSystem extends JamesImapHostSystem {
             new CassandraAnnotationModule(),
             new CassandraApplicableFlagsModule());
         cassandraClusterSingleton = CassandraCluster.create(mailboxModule);
+        cassandraClusterSingleton.startWithoutLifecycle();
         com.datastax.driver.core.Session session = cassandraClusterSingleton.getConf();
         CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(session);
         CassandraUidProvider uidProvider = new CassandraUidProvider(session);
@@ -186,5 +187,10 @@ public class CassandraHostSystem extends JamesImapHostSystem {
     public void setQuotaLimits(long maxMessageQuota, long maxStorageQuota) throws MailboxException {
         perUserMaxQuotaManager.setDefaultMaxMessage(maxMessageQuota);
         perUserMaxQuotaManager.setDefaultMaxStorage(maxStorageQuota);
+    }
+
+    @Override
+    public void stop() {
+        cassandraClusterSingleton.stop();
     }
 }

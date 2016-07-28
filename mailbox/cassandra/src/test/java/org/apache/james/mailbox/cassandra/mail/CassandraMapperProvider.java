@@ -52,33 +52,40 @@ import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.MapperProvider;
 import org.apache.james.mailbox.store.mail.model.MessageUidProvider;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 
 public class CassandraMapperProvider implements MapperProvider {
 
     private static final Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
     private static final MockMailboxSession MAILBOX_SESSION = new MockMailboxSession("benwa");
-    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
-        new CassandraAclModule(),
-        new CassandraMailboxModule(),
-        new CassandraMessageModule(),
-        new CassandraMailboxCounterModule(),
-        new CassandraMailboxRecentsModule(),
-        new CassandraModSeqModule(),
-        new CassandraUidModule(),
-        new CassandraAttachmentModule(),
-        new CassandraAnnotationModule(),
-        new CassandraFirstUnseenModule(),
-        new CassandraApplicableFlagsModule(),
-        new CassandraDeletedMessageModule()));
-    public static final int MAX_ACL_RETRY = 10;
+    private static final int MAX_ACL_RETRY = 10;
 
     private final MessageUidProvider messageUidProvider;
     private final CassandraModSeqProvider cassandraModSeqProvider;
+    private final CassandraCluster cassandra;
 
     public CassandraMapperProvider() {
-        messageUidProvider = new MessageUidProvider();
-        cassandraModSeqProvider = new CassandraModSeqProvider(cassandra.getConf());
+        try {
+            cassandra = CassandraCluster.create(new CassandraModuleComposite(
+                    new CassandraAclModule(),
+                    new CassandraMailboxModule(),
+                    new CassandraMessageModule(),
+                    new CassandraMailboxCounterModule(),
+                    new CassandraMailboxRecentsModule(),
+                    new CassandraModSeqModule(),
+                    new CassandraUidModule(),
+                    new CassandraAttachmentModule(),
+                    new CassandraAnnotationModule(),
+                    new CassandraFirstUnseenModule(),
+                    new CassandraApplicableFlagsModule(),
+                    new CassandraDeletedMessageModule()));
+            cassandra.startWithoutLifecycle();
+            messageUidProvider = new MessageUidProvider();
+            cassandraModSeqProvider = new CassandraModSeqProvider(cassandra.getConf());
+        } catch (Throwable e) {
+            throw Throwables.propagate(e);
+        }
     }
 
     @Override

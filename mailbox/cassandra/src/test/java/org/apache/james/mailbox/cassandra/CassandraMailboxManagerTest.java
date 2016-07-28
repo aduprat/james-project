@@ -24,9 +24,9 @@ import org.apache.james.mailbox.acl.GroupMembershipResolver;
 import org.apache.james.mailbox.acl.MailboxACLResolver;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
+import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraDeletedMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraFirstUnseenDAO;
-import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxCounterDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxPathDAO;
@@ -68,42 +68,51 @@ public class CassandraMailboxManagerTest {
     private static final int LIMIT_ANNOTATION_SIZE = 30;
     public static final int MAX_ACL_RETRY = 10;
 
-    private static final CassandraCluster CASSANDRA = CassandraCluster.create(new CassandraModuleComposite(
-        new CassandraAclModule(),
-        new CassandraMailboxModule(),
-        new CassandraMessageModule(),
-        new CassandraMailboxCounterModule(),
-        new CassandraMailboxRecentsModule(),
-        new CassandraFirstUnseenModule(),
-        new CassandraUidModule(),
-        new CassandraModSeqModule(),
-        new CassandraSubscriptionModule(),
-        new CassandraAttachmentModule(),
-        new CassandraDeletedMessageModule(),
-        new CassandraAnnotationModule()));
+    private final CassandraCluster cassandra;
+
+    public CassandraMailboxManagerTest() {
+        try {
+            cassandra = CassandraCluster.create(new CassandraModuleComposite(
+                    new CassandraAclModule(),
+                    new CassandraMailboxModule(),
+                    new CassandraMessageModule(),
+                    new CassandraMailboxCounterModule(),
+                    new CassandraMailboxRecentsModule(),
+                    new CassandraFirstUnseenModule(),
+                    new CassandraUidModule(),
+                    new CassandraModSeqModule(),
+                    new CassandraSubscriptionModule(),
+                    new CassandraAttachmentModule(),
+                    new CassandraDeletedMessageModule(),
+                    new CassandraAnnotationModule()));
+            cassandra.startWithoutLifecycle();
+        } catch (Throwable e) {
+            throw Throwables.propagate(e);
+        }
+    }
 
     private IProducer<CassandraMailboxManager> producer = new IProducer<CassandraMailboxManager>() {
 
         @Override
         public CassandraMailboxManager newInstance() {
-            CASSANDRA.ensureAllTables();
-            CassandraUidProvider uidProvider = new CassandraUidProvider(CASSANDRA.getConf());
-            CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(CASSANDRA.getConf());
+            cassandra.ensureAllTables();
+            CassandraUidProvider uidProvider = new CassandraUidProvider(cassandra.getConf());
+            CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(cassandra.getConf());
             CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
-            CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(CASSANDRA.getConf(), messageIdFactory);
-            CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(CASSANDRA.getConf(), messageIdFactory);
-            CassandraMessageDAO messageDAO = new CassandraMessageDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider(), messageIdFactory);
-            CassandraMailboxCounterDAO mailboxCounterDAO = new CassandraMailboxCounterDAO(CASSANDRA.getConf());
-            CassandraMailboxRecentsDAO mailboxRecentsDAO = new CassandraMailboxRecentsDAO(CASSANDRA.getConf());
-            CassandraMailboxDAO mailboxDAO = new CassandraMailboxDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider(), MAX_ACL_RETRY);
-            CassandraMailboxPathDAO mailboxPathDAO = new CassandraMailboxPathDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider());
-            CassandraFirstUnseenDAO firstUnseenDAO = new CassandraFirstUnseenDAO(CASSANDRA.getConf());
-            CassandraApplicableFlagDAO applicableFlagDAO = new CassandraApplicableFlagDAO(CASSANDRA.getConf());
-            CassandraDeletedMessageDAO deletedMessageDAO = new CassandraDeletedMessageDAO(CASSANDRA.getConf());
+            CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(cassandra.getConf(), messageIdFactory);
+            CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(cassandra.getConf(), messageIdFactory);
+            CassandraMessageDAO messageDAO = new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), messageIdFactory);
+            CassandraMailboxCounterDAO mailboxCounterDAO = new CassandraMailboxCounterDAO(cassandra.getConf());
+            CassandraMailboxRecentsDAO mailboxRecentsDAO = new CassandraMailboxRecentsDAO(cassandra.getConf());
+            CassandraMailboxDAO mailboxDAO = new CassandraMailboxDAO(cassandra.getConf(), cassandra.getTypesProvider(), MAX_ACL_RETRY);
+            CassandraMailboxPathDAO mailboxPathDAO = new CassandraMailboxPathDAO(cassandra.getConf(), cassandra.getTypesProvider());
+            CassandraFirstUnseenDAO firstUnseenDAO = new CassandraFirstUnseenDAO(cassandra.getConf());
+            CassandraApplicableFlagDAO applicableFlagDAO = new CassandraApplicableFlagDAO(cassandra.getConf());
+            CassandraDeletedMessageDAO deletedMessageDAO = new CassandraDeletedMessageDAO(cassandra.getConf());
 
             CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
                 modSeqProvider,
-                CASSANDRA.getConf(),
+                cassandra.getConf(),
                 messageDAO,
                 messageIdDAO,
                 imapUidDAO,
@@ -134,7 +143,7 @@ public class CassandraMailboxManagerTest {
 
         @Override
         public void cleanUp() {
-            CASSANDRA.clearAllTables();
+            cassandra.clearAllTables();
         }
     };
 

@@ -23,10 +23,12 @@ import org.apache.james.mailbox.cassandra.modules.CassandraSubscriptionModule;
 import org.apache.james.mailbox.store.user.SubscriptionMapper;
 import org.apache.james.mailbox.store.user.SubscriptionMapperTest;
 import org.junit.After;
+import org.junit.ClassRule;
 
 public class CassandraSubscriptionMapperTest extends SubscriptionMapperTest {
 
-    private static final CassandraCluster CLUSTER = CassandraCluster.create(new CassandraSubscriptionModule());
+    @ClassRule
+    public static CassandraCluster CLUSTER = CassandraCluster.create(new CassandraSubscriptionModule());
 
     @Override
     protected SubscriptionMapper createSubscriptionMapper() {

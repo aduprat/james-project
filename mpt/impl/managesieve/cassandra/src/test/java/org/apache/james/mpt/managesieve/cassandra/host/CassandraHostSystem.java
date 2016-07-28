@@ -19,6 +19,7 @@
 
 package org.apache.james.mpt.managesieve.cassandra.host;
 
+import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mpt.host.JamesManageSieveHostSystem;
 import org.apache.james.sieve.cassandra.CassandraActiveScriptDAO;
@@ -29,7 +30,6 @@ import org.apache.james.sieve.cassandra.CassandraSieveRepositoryModule;
 import org.apache.james.sieverepository.api.SieveRepository;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.cassandra.CassandraUsersRepository;
-import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 
 public class CassandraHostSystem extends JamesManageSieveHostSystem {
@@ -58,6 +58,11 @@ public class CassandraHostSystem extends JamesManageSieveHostSystem {
     @Override
     protected void resetData() throws Exception {
         CASSANDRA_CLUSTER.clearAllTables();
+    }
+
+    @Override
+    public void stop() {
+        CASSANDRA_CLUSTER.stop();
     }
 
 }

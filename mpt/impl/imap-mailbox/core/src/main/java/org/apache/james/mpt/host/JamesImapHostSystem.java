@@ -160,4 +160,8 @@ public abstract class JamesImapHostSystem implements ImapHostSystem {
         return configuration;
     }
     
+    @Override
+    public void stop() {
+        // default do nothing
+    }
 }

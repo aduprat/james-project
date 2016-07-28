@@ -19,12 +19,14 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
-import org.apache.james.mpt.api.HostSystem;
-import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
-import org.junit.Test;
+import java.util.Locale;
 
 import javax.inject.Inject;
-import java.util.Locale;
+
+import org.apache.james.mpt.api.HostSystem;
+import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
+import org.junit.AfterClass;
+import org.junit.Test;
 
 public class UidSearchOnIndex extends BaseAuthenticatedState {
 
@@ -33,6 +35,11 @@ public class UidSearchOnIndex extends BaseAuthenticatedState {
 
     public UidSearchOnIndex() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

@@ -45,9 +45,12 @@ import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.NoMailboxPathLocker;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
+import org.junit.ClassRule;
 
 public class CassandraMailboxManagerAttachmentTest extends AbstractMailboxManagerAttachmentTest {
-    private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
             new CassandraAclModule(),
             new CassandraMailboxModule(),
             new CassandraMessageModule(),

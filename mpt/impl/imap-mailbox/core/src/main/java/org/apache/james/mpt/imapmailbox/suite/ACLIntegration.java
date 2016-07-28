@@ -19,16 +19,18 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
+import java.util.Locale;
+
+import javax.inject.Inject;
+
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.SimpleMailboxACL;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.GrantRightsOnHost;
 import org.apache.james.mpt.imapmailbox.MailboxMessageAppender;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseImapProtocol;
+import org.junit.AfterClass;
 import org.junit.Test;
-
-import javax.inject.Inject;
-import java.util.Locale;
 
 public class ACLIntegration extends BaseImapProtocol {
     public static final String OTHER_USER_NAME = "Boby";
@@ -51,6 +53,11 @@ public class ACLIntegration extends BaseImapProtocol {
     public void setUp() throws Exception {
         super.setUp();
         system.addUser(OTHER_USER_NAME, OTHER_USER_PASSWORD);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

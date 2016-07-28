@@ -19,46 +19,52 @@
 
 package org.apache.james.backends.cassandra.init;
 
-import java.util.Arrays;
-import java.util.List;
-
 import static com.datastax.driver.core.DataType.text;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
-import com.google.common.collect.ImmutableList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraTable;
 import org.apache.james.backends.cassandra.components.CassandraType;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
+
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import com.google.common.collect.ImmutableList;
 
 public class CassandraTypeProviderTest {
 
     private static final String TYPE_NAME = "typename";
     private static final String PROPERTY = "property";
-    
-    private CassandraCluster cassandra;
-    private CassandraModule module;
+
+    private static final CassandraModule MODULE = new CassandraModule() {
+        @Override public List<CassandraTable> moduleTables() {
+            return ImmutableList.of();
+        }
+
+        @Override public List<CassandraIndex> moduleIndex() {
+            return ImmutableList.of();
+        }
+
+        @Override public List<CassandraType> moduleTypes() {
+            return ImmutableList.copyOf(
+                Arrays.asList(new CassandraType(TYPE_NAME, SchemaBuilder.createType(TYPE_NAME)
+                    .ifNotExists()
+                    .addColumn(PROPERTY, text()))));
+        }
+    };
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(MODULE);
 
     @Before
     public void setUp() {
-        module = new CassandraModule() {
-            @Override public List<CassandraTable> moduleTables() {
-                return ImmutableList.of();
-            }
-
-            @Override public List<CassandraType> moduleTypes() {
-                return ImmutableList.copyOf(
-                    Arrays.asList(new CassandraType(TYPE_NAME, SchemaBuilder.createType(TYPE_NAME)
-                        .ifNotExists()
-                        .addColumn(PROPERTY, text()))));
-            }
-        };
-        cassandra = CassandraCluster.create(module);
         cassandra.getTypesProvider();
         cassandra.ensureAllTables();
     }
@@ -76,15 +82,15 @@ public class CassandraTypeProviderTest {
     @Test
     public void initializeTypesShouldCreateTheTypes() {
         deleteMailboxBaseType();
-        new CassandraTypesCreator(module, cassandra.getConf()).initializeTypes();
-        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(module, cassandra.getConf());
+        new CassandraTypesCreator(MODULE, cassandra.getConf()).initializeTypes();
+        CassandraTypesProvider cassandraTypesProviderTest = new CassandraTypesProvider(MODULE, cassandra.getConf());
         assertThat(cassandraTypesProviderTest.getDefinedUserType(TYPE_NAME))
             .isNotNull();
     }
 
     @Test
     public void initializeTypesShouldNotFailIfCalledTwice() {
-        new CassandraTypesProvider(module, cassandra.getConf());
+        new CassandraTypesProvider(MODULE, cassandra.getConf());
         assertThat(cassandra.getTypesProvider().getDefinedUserType(TYPE_NAME))
             .isNotNull();
     }

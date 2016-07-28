@@ -25,6 +25,7 @@ import javax.inject.Inject;
 
 import org.apache.james.mpt.api.HostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class ConcurrentSessions extends BaseAuthenticatedState {
@@ -35,7 +36,12 @@ public class ConcurrentSessions extends BaseAuthenticatedState {
     public ConcurrentSessions() throws Exception {
         super(system);
     }
-    
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
+    }
+
     @Test
     public void testConcurrentExpungeResponseUS() throws Exception {
           scriptTest("ConcurrentExpungeResponse", Locale.US);

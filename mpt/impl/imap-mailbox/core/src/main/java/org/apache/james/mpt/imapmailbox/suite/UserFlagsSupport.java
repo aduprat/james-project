@@ -19,14 +19,16 @@
 
 package org.apache.james.mpt.imapmailbox.suite;
 
-import com.google.inject.Inject;
 import java.util.Locale;
 
 import org.apache.james.mpt.api.ImapFeatures;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
+
+import com.google.inject.Inject;
 
 public class UserFlagsSupport extends BaseAuthenticatedState {
 
@@ -35,6 +37,11 @@ public class UserFlagsSupport extends BaseAuthenticatedState {
 
     public UserFlagsSupport() throws Exception {
         super(system);
+    }
+
+    @AfterClass
+    public static void stop() {
+        system.stop();
     }
 
     @Test

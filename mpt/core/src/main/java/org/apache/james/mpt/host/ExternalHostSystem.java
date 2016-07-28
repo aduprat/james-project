@@ -113,4 +113,7 @@ public class ExternalHostSystem extends ExternalSessionFactory implements ImapHo
         throw new NotImplementedException();
     }
     
+    @Override
+    public void stop() {
+    }
 }

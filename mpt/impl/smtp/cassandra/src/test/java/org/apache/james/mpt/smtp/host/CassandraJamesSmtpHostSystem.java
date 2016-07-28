@@ -113,4 +113,9 @@ public class CassandraJamesSmtpHostSystem extends ExternalSessionFactory impleme
             .overrideWith(new CassandraJmapServerModule(folder::getRoot, embeddedElasticSearch, embeddedCassandra),
                 (binder) -> binder.bind(DNSService.class).toInstance(inMemoryDNSService));
     }
+
+    @Override
+    public void stop() {
+        embeddedCassandra.stop();
+    }
 }

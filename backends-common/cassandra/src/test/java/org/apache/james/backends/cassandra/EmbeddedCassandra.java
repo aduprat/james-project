@@ -18,33 +18,54 @@
  ****************************************************************/
 package org.apache.james.backends.cassandra;
 
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.shaded.com.github.dockerjava.api.model.ExposedPort;
 
-import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.thrift.transport.TTransportException;
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+public class EmbeddedCassandra implements TestRule {
 
-import com.google.common.base.Throwables;
-
-public class EmbeddedCassandra {
-
-    private int port;
+    private GenericContainer cassandra;
 
     public static EmbeddedCassandra createStartServer() {
         return new EmbeddedCassandra();
     }
 
     private EmbeddedCassandra() {
-        try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE, TimeUnit.SECONDS.toMillis(20));
-            port = EmbeddedCassandraServerHelper.getNativeTransportPort();
-        } catch (ConfigurationException | TTransportException | IOException e) {
-            Throwables.propagate(e);
-        }
+        cassandra = new GenericContainer("cassandra:2.2.3");
     }
 
     public int cassandraPort() {
-        return port;
+        return cassandra.getContainerInfo()
+                .getNetworkSettings()
+                .getPorts()
+                .getBindings()
+                .get(ExposedPort.tcp(9042))[0]
+                        .getHostPort();
+    }
+
+    public void startWithoutLifecycle() throws Exception {
+        cassandra.start();
+    }
+
+    public void stop() {
+        cassandra.stop();
+    }
+
+    @Override
+    public Statement apply(Statement base, Description description) {
+        return new Statement() {
+            
+            @Override
+            public void evaluate() throws Throwable {
+                cassandra.start();
+                try {
+                    base.evaluate();
+                } finally {
+                    cassandra.stop();
+                }
+            }
+        };
     }
 }
