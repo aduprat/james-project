@@ -35,11 +35,11 @@
                 <ul>
                     <li>
                         <a href='mailetdocs-mojo.html'>mailetdocs:mailetdocs</a>
-                        Generates catalog and reports on mailets and matchers
+                        Generates catalog and reports on mailets and matchers on a single maven project
                     </li>
                     <li>
                         <a href='mailetdocs-mojo.html'>mailetdocs:aggregate</a>
-                        Generates catalog and reports on mailets and matchers on a project and all its subprojects
+                        Generates catalog and reports on mailets and matchers on a maven project and all its subprojects
                     </li>
                 </ul>
             </subsection>
