@@ -19,16 +19,17 @@
 
 package org.apache.james.transport.mailets;
 
-import com.google.common.base.Throwables;
-
-import org.apache.james.core.MailImpl;
-import org.apache.james.core.MimeMessageUtil;
-import org.apache.james.dnsservice.api.DNSService;
-import org.apache.mailet.Mail;
-import org.apache.mailet.MailAddress;
-import org.apache.mailet.base.GenericMailet;
-import org.apache.mailet.base.RFC2822Headers;
-import org.apache.mailet.base.RFC822DateFormat;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Locale;
 
 import javax.inject.Inject;
 import javax.mail.Message;
@@ -40,16 +41,16 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.ParseException;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.Locale;
+import org.apache.james.core.MailImpl;
+import org.apache.james.core.MimeMessageUtil;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.mailet.Mail;
+import org.apache.mailet.MailAddress;
+import org.apache.mailet.base.GenericMailet;
+import org.apache.mailet.base.RFC2822Headers;
+import org.apache.mailet.base.RFC822DateFormat;
+
+import com.google.common.base.Throwables;
 
 /**
  * <p>
@@ -151,6 +152,8 @@ import java.util.Locale;
  */
 
 public abstract class AbstractRedirect extends GenericMailet {
+
+    protected abstract boolean isNotifyMailet();
 
     /**
      * Gets the expected init parameters.
@@ -285,6 +288,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      * @return the <code>passThrough</code> init parameter, or false if missing
      */
     protected boolean getPassThrough() {
+        if (isNotifyMailet()) {
+            return Boolean.valueOf(getInitParameter("passThrough", "true"));
+        }
         return Boolean.valueOf(getInitParameter("passThrough"));
     }
 
@@ -338,6 +344,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         if missing
      */
     protected int getInLineType() {
+        if (isNotifyMailet()) {
+            return getTypeCode(getInitParameter("inline", "none"));
+        }
         return getTypeCode(getInitParameter("inline", "unaltered"));
     }
 
@@ -372,6 +381,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         if missing
      */
     protected int getAttachmentType() {
+        if (isNotifyMailet()) {
+            return getTypeCode(getInitParameter("attachment", "message"));
+        }
         return getTypeCode(getInitParameter("attachment", "none"));
     }
 
@@ -394,6 +406,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         missing
      */
     protected String getMessage() {
+        if (isNotifyMailet()) {
+            return getInitParameter("notice", getInitParameter("message", "We were unable to deliver the attached message because of an error in the mail server."));
+        }
         return getInitParameter("message", "");
     }
 
@@ -404,7 +419,72 @@ public abstract class AbstractRedirect extends GenericMailet {
      * @return {@link #getMessage()}
      */
     protected String getMessage(Mail originalMail) throws MessagingException {
+        if (isNotifyMailet()) {
+            return getMessageForNotifyMailets(originalMail);
+        }
         return (isStatic()) ? this.messageText : getMessage();
+    }
+
+    private String getMessageForNotifyMailets(Mail originalMail) throws MessagingException {
+        MimeMessage message = originalMail.getMessage();
+        StringWriter sout = new StringWriter();
+        PrintWriter out = new PrintWriter(sout, true);
+
+        // First add the "local" notice
+        // (either from conf or generic error message)
+        out.println(getMessage());
+        // And then the message from other mailets
+        if (originalMail.getErrorMessage() != null) {
+            out.println();
+            out.println("Error message below:");
+            out.println(originalMail.getErrorMessage());
+        }
+        out.println();
+        out.println("Message details:");
+
+        if (message.getSubject() != null) {
+            out.println("  Subject: " + message.getSubject());
+        }
+        if (message.getSentDate() != null) {
+            out.println("  Sent date: " + message.getSentDate());
+        }
+        out.println("  MAIL FROM: " + originalMail.getSender());
+        Iterator<MailAddress> rcptTo = originalMail.getRecipients().iterator();
+        out.println("  RCPT TO: " + rcptTo.next());
+        while (rcptTo.hasNext()) {
+            out.println("           " + rcptTo.next());
+        }
+        String[] addresses;
+        addresses = message.getHeader(RFC2822Headers.FROM);
+        if (addresses != null) {
+            out.print("  From: ");
+            for (String address : addresses) {
+                out.print(address + " ");
+            }
+            out.println();
+        }
+        addresses = message.getHeader(RFC2822Headers.TO);
+        if (addresses != null) {
+            out.print("  To: ");
+            for (String address : addresses) {
+                out.print(address + " ");
+            }
+            out.println();
+        }
+        addresses = message.getHeader(RFC2822Headers.CC);
+        if (addresses != null) {
+            out.print("  CC: ");
+            for (String address : addresses) {
+                out.print(address + " ");
+            }
+            out.println();
+        }
+        out.println("  Size (in bytes): " + message.getSize());
+        if (message.getLineCount() >= 0) {
+            out.println("  Number of lines: " + message.getLineCount());
+        }
+
+        return sout.toString();
     }
 
     /**
@@ -495,6 +575,10 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         <code>SpecialAddress.TO</code> or <code>null</code> if missing
      */
     protected InternetAddress[] getTo() throws MessagingException {
+        if (isNotifyMailet()) {
+            return null;
+        }
+
         InternetAddress[] iaarray;
         String addressList = getInitParameter("to");
 
@@ -574,6 +658,10 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         <code>SpecialAddress.NULL</code> or <code>null</code> if missing
      */
     protected MailAddress getReplyTo() throws MessagingException {
+        if (isNotifyMailet()) {
+            return SpecialAddress.NULL;
+        }
+
         String addressString = getInitParameter("replyTo", getInitParameter("replyto"));
 
         if (addressString != null) {
@@ -677,6 +765,10 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         handled by {@link #setReversePath}
      */
     protected MailAddress getReversePath(Mail originalMail) throws MessagingException {
+        if (isNotifyMailet()) {
+            return getSender(originalMail);
+        }
+
         MailAddress reversePath = (isStatic()) ? this.reversePath : getReversePath();
         if (reversePath != null) {
             if (reversePath == SpecialAddress.UNALTERED || reversePath == SpecialAddress.REVERSE_PATH) {
@@ -772,6 +864,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      * @return the <code>subject</code> init parameter or null if missing
      */
     protected String getSubject() {
+        if (isNotifyMailet()) {
+            return null;
+        }
         return getInitParameter("subject");
     }
 
@@ -793,6 +888,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      *         missing
      */
     protected String getSubjectPrefix() {
+        if (isNotifyMailet()) {
+            return getInitParameter("prefix", "Re:");
+        }
         return getInitParameter("prefix");
     }
 
@@ -812,6 +910,18 @@ public abstract class AbstractRedirect extends GenericMailet {
      * method.
      */
     protected void setSubjectPrefix(Mail newMail, String subjectPrefix, Mail originalMail) throws MessagingException {
+        if (isNotifyMailet()) {
+            String subject = originalMail.getMessage().getSubject();
+            if (subject == null) {
+                subject = "";
+            }
+            if (subjectPrefix == null || subject.indexOf(subjectPrefix) == 0) {
+                newMail.getMessage().setSubject(subject);
+            } else {
+                newMail.getMessage().setSubject(subjectPrefix + subject);
+            }
+        }
+
         String subject = getSubject(originalMail);
         if ((subjectPrefix != null && subjectPrefix.length() > 0) || subject != null) {
             if (subject == null) {
@@ -870,6 +980,9 @@ public abstract class AbstractRedirect extends GenericMailet {
      * @return the <code>isReply</code> init parameter; false if missing
      */
     protected boolean isReply() {
+        if (isNotifyMailet()) {
+            return true;
+        }
         return Boolean.valueOf(getInitParameter("isReply"));
     }
 
