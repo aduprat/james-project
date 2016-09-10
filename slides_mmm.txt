@@ -1,0 +1,44 @@
+De la ligne de code au déploiement du service en prod
+
+# Motivation
+## Automatisation
+  Gain de temps
+  Plus d'erreur humaine
+## Toujours la dernière release
+  Fournir aux utilisateurs la dernière version
+  Les dernières fonctionalités
+
+
+# De la ligne de code...
+  Les PRs passent par la même validation qu'une release
+  Garantie l'intégration d'une feature
+
+# Etapes de la validation d'une PR
+  Compilation
+  Tests unitaires
+  Tests d'intégrations
+  Feadback sur la PR (Github, Slack...)
+  Tests d'acceptance, QA
+
+# ... au déploiement du service
+## Intégration d'une PR
+  Nécessite la validation des reviewers
+  Nécessite la validité des étapes automatisées (tests unitaires, ...)
+## Déploiement des livrables
+  Génération des packages
+  Images dockers sur dockerhub
+### ... en prod
+  Téléchargement des images/packages
+  Redémarrage des services
+
+# Stateless cI
+  Pas d'intéraction avec l'UI
+  Reboot easy
+  Toute modification est soumise à une revue
+## Configuration de Jenkins
+  Installation des plugins (plugins.txt)
+  Initialisation de la configuration de Jenkins/plugins par le code
+## Coder votre build
+  Validé par PR
+  Suivi des modifications du build
+  Réutilisable
