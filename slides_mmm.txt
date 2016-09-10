@@ -2,6 +2,7 @@ De la ligne de code au déploiement du service en prod
 
 # Motivation
 ## Automatisation
+  Toutes les étapes sont automatisées
   Gain de temps
   Plus d'erreur humaine
 ## Toujours la dernière release
@@ -24,15 +25,23 @@ De la ligne de code au déploiement du service en prod
 ## Intégration d'une PR
   Nécessite la validation des reviewers
   Nécessite la validité des étapes automatisées (tests unitaires, ...)
-  Feedback sur l'intégration (mail, Slack, ...)
-## Déploiement des livrables
+  Feedback de l'intégration (mail, Slack, ...)
+## Génération des livrables
   Génération des packages
-  Images dockers sur dockerhub
-### ... en prod
-  Téléchargement des images/packages
-  Redémarrage des services
+  Déploiement des images dockers sur dockerhub
 
-# Stateless cI
+# ... en prod
+## Téléchargement des images/packages
+  Service toujours disponible
+## Redémarrage des services
+  Pas de coupure par redémarrage progressif des instances
+## Pas de mise à jour de la base de données
+  Mais création de nouvelles
+  Rapidité de migration
+  Aucune perte de données
+  Basculement progressif 
+
+# Stateless CI
   Pas d'intéraction avec l'UI
   Reboot easy
   Toute modification est soumise à une revue
