@@ -17,13 +17,14 @@ De la ligne de code au déploiement du service en prod
   Compilation
   Tests unitaires
   Tests d'intégrations
-  Feadback sur la PR (Github, Slack...)
+  Feadback sur la PR (Github, Slack, ...)
   Tests d'acceptance, QA
 
 # ... au déploiement du service
 ## Intégration d'une PR
   Nécessite la validation des reviewers
   Nécessite la validité des étapes automatisées (tests unitaires, ...)
+  Feedback sur l'intégration (mail, Slack, ...)
 ## Déploiement des livrables
   Génération des packages
   Images dockers sur dockerhub
