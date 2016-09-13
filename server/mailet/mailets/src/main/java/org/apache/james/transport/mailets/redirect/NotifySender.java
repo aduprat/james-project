@@ -124,6 +124,11 @@ public class NotifySender extends AbstractRedirect {
     }
 
     @Override
+    protected InitParameters getInitParameters() {
+        return new NotifyMailetInitParameters(this);
+    }
+
+    @Override
     protected String[] getAllowedInitParameters() {
         return CONFIGURABLE_PARAMETERS;
     }
