@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.transport.mailets;
+package org.apache.james.transport.mailets.redirect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,7 +28,8 @@ import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
-import org.apache.james.transport.mailets.AbstractRedirect.SpecialAddress;
+import org.apache.james.transport.mailets.redirect.AbstractRedirect;
+import org.apache.james.transport.mailets.redirect.AbstractRedirect.SpecialAddress;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.RFC2822Headers;
 import org.apache.mailet.base.test.FakeMail;
