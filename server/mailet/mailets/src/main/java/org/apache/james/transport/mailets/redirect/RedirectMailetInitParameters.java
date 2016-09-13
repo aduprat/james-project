@@ -25,9 +25,17 @@ import com.google.common.base.Strings;
 
 public class RedirectMailetInitParameters implements InitParameters {
 
+    public static InitParameters from(GenericMailet mailet) {
+        RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet);
+        if (initParameters.isStatic()) {
+            return StaticInitParameters.from(initParameters);
+        }
+        return initParameters;
+    }
+
     private final GenericMailet mailet;
 
-    public RedirectMailetInitParameters(GenericMailet mailet) {
+    private RedirectMailetInitParameters(GenericMailet mailet) {
         this.mailet = mailet;
     }
 
