@@ -41,6 +41,7 @@ import javax.mail.internet.ParseException;
 import org.apache.james.core.MailImpl;
 import org.apache.james.core.MimeMessageUtil;
 import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.transport.mailets.utils.MimeMessageModifier;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.DateFormats;
@@ -725,12 +726,7 @@ public abstract class AbstractRedirect extends GenericMailet {
      */
     protected void setSubjectPrefix(Mail newMail, String subjectPrefix, Mail originalMail) throws MessagingException {
         if (isNotifyMailet()) {
-            String subject = Strings.nullToEmpty(originalMail.getMessage().getSubject());
-            if (subjectPrefix == null || !subject.contains(subjectPrefix)) {
-                newMail.getMessage().setSubject(subject);
-            } else {
-                newMail.getMessage().setSubject(subjectPrefix + subject);
-            }
+            new MimeMessageModifier().addSubjectPrefix(originalMail.getMessage(), subjectPrefix);
         }
 
         String subject = getSubject(originalMail);
