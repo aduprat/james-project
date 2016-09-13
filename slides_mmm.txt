@@ -1,27 +1,47 @@
 De la ligne de code au déploiement du service en prod
 
+# James before state
+
+
 # Motivation
-## Automatisation
+ Compiler, lancer des tests et intégrer du code était douloureux il y a 10 ans : on l'a donc transformé en activité permanente, c'est l'intégration continue 
+ Déployer peut être douloureux : il faut donc le faire plus souvent pour diminuer la douleur, c'est le déploiement continue
+## Déployer, une activité douloureuse
+ Interruption de service
+ Manipulations manuelles
+ Migration de données
+ Difficulté de retour-arrière
+ Connaissances pas forcément collectives
+## Comment réduire la douleur
+### Automatisation
   Toutes les étapes sont automatisées
   Gain de temps
   Plus d'erreur humaine
-## Toujours la dernière release
-  Fournir aux utilisateurs la dernière version
-  Les dernières fonctionalités
+  Capitalisation : Automatisation == code
+### Toujours la dernière version du code
+  Détecter les problèmes au plus tôt
+  Diminution du coup de maintenance (pas de backport des patchs, pas de switch de version pour le développeur, etc)
+  Possibilité de fournir aux utilisateurs les fonctionnalités dès qu'elles sont prêtes
+
+# De l'agilé au DevOps
 
 
 # De la ligne de code...
   Les PRs passent par la même validation qu'une release
-  Garantie l'intégration d'une feature
-
-# Etapes de la validation d'une PR
-  Compilation
+## Architecture
+  Conception pour déploiement multi-instance
+  Application serveur sans état (stateless)
+## Etapes de la validation d'une PR par la CI
+  Principe d'une PR
+  Merge de la branche de la PR sur master
+  Compilation : ajouter les produits pour chaque ligne
   Tests unitaires
   Tests d'intégrations
   Feadback sur la PR (Github, Slack, ...)
   Tests d'acceptance, QA
 
 # ... au déploiement du service
+  Les différentes étapes de la CI garantissent la non régression lors de l'intégration de la PR
 ## Intégration d'une PR
   Nécessite la validation des reviewers
   Nécessite la validité des étapes automatisées (tests unitaires, ...)
@@ -30,25 +50,28 @@ De la ligne de code au déploiement du service en prod
   Génération des packages
   Déploiement des images dockers sur dockerhub
 
-# ... en prod
+# ... en prod (pre-prod)
 ## Téléchargement des images/packages
   Service toujours disponible
 ## Redémarrage des services
-  Pas de coupure par redémarrage progressif des instances
+  Pas de coupure par redémarrage progressif des instances (rolling upgrade)
+  "Blue-green deployment" : cohabitation des versions avec routage des requêtes progressif
 ## Pas de mise à jour de la base de données
-  Mais création de nouvelles
-  Rapidité de migration
-  Aucune perte de données
-  Basculement progressif 
+  Mais création de nouvelles tables
+  Rapidité de migration, elle se fait au fur et à mesure
+  Aucune perte de données, les anciennes données sont toujours disponibles (anciennes tables)
+  Basculement progressif, les nouvelles données sont créées dans les nouvelles tables : faire un schema
+## Activation de la feature (feature flipping)  : ff4j
 
 # Stateless CI
-  Pas d'intéraction avec l'UI
-  Reboot easy
-  Toute modification est soumise à une revue
+  Pas d'intéraction avec l'UI, toute la configuration est dans le code
+  Reboot easy, la configuration se fait automatiquement depuis le code
+  Toute modification de code est soumise à une revue (historisation des modifications)
 ## Configuration de Jenkins
-  Installation des plugins (plugins.txt)
-  Initialisation de la configuration de Jenkins/plugins par le code
-## Coder votre build
-  Validé par PR
+ Installation des plugins automatique (plugins.txt)
+ Initialisation de la configuration de Jenkins/plugins par le code
+## Coder le build de votre application
+  Le code du build fait parti du code de l'application
+  Modifications validées par PR 
   Suivi des modifications du build
   Réutilisable
