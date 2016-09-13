@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.mail.MessagingException;
-import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
 import org.apache.mailet.Mail;
@@ -287,8 +286,8 @@ public class Redirect extends AbstractRedirect {
 
     private static final String[] CONFIGURABLE_PARAMETERS = new String[] {
             "static", "debug", "passThrough", "fakeDomainCheck", "inline", "attachment", "message", "recipients", "to", "replyTo", "replyto", "reversePath", "sender", "subject", "prefix", "attachError", "isReply" };
-    private static final String[] ALLOWED_SPECIALS = new String[]{
-            "postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null" };
+    private static final List<String> ALLOWED_SPECIALS = ImmutableList.of(
+            "postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null");
 
     @Override
     public String getMailetInfo() {
@@ -330,30 +329,10 @@ public class Redirect extends AbstractRedirect {
             throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
         }
         ImmutableList.Builder<MailAddress> builder = ImmutableList.builder();
-        for (InternetAddress address : extractAddresses(recipientsOrTo)) {
-            builder.add(toMailAddress(address));
+        for (MailAddress address : new AddressExtractor(getMailetContext()).from(recipientsOrTo, ALLOWED_SPECIALS)) {
+            builder.add(address);
         }
         return builder.build();
-    }
-
-    private InternetAddress[] extractAddresses(String addressList) throws MessagingException {
-        try {
-            return InternetAddress.parse(addressList, false);
-        } catch (AddressException e) {
-            throw new MessagingException("Exception thrown parsing: " + addressList, e);
-        }
-    }
-
-    private MailAddress toMailAddress(InternetAddress address) throws MessagingException {
-        try {
-            MailAddress specialAddress = getSpecialAddress(address.getAddress(), ALLOWED_SPECIALS);
-            if (specialAddress != null) {
-                return specialAddress;
-            }
-            return new MailAddress(address);
-        } catch (Exception e) {
-            throw new MessagingException("Exception thrown parsing: " + address.getAddress());
-        }
     }
 
     private String getRecipientsOrTo() throws MessagingException {
@@ -370,8 +349,8 @@ public class Redirect extends AbstractRedirect {
             throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
         }
         List<InternetAddress> list = Lists.newArrayList();
-        for (InternetAddress address : extractAddresses(toOrRecipients)) {
-            list.add(toMailAddress(address).toInternetAddress());
+        for (MailAddress address : new AddressExtractor(getMailetContext()).from(toOrRecipients, ALLOWED_SPECIALS)) {
+            list.add(address.toInternetAddress());
         }
         return list.toArray(new InternetAddress[list.size()]);
     }
@@ -387,20 +366,8 @@ public class Redirect extends AbstractRedirect {
             return null;
         }
 
-        MailAddress specialAddress = getSpecialAddress(addressString, new String[] { "postmaster", "sender", "null" });
-        if (specialAddress != null) {
-            return specialAddress;
-        }
-
-        return toMailAddress(addressString);
-    }
-
-    private MailAddress toMailAddress(String addressString) throws MessagingException {
-        try {
-            return new MailAddress(addressString);
-        } catch (Exception e) {
-            throw new MessagingException("Exception thrown in getReversePath() parsing: " + addressString, e);
-        }
+        List<MailAddress> mailAddress = new AddressExtractor(getMailetContext()).from(addressString, ImmutableList.of("postmaster", "sender", "null"));
+        return mailAddress.get(0);
     }
 
     @Override
