@@ -31,7 +31,6 @@ import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.james.dnsservice.api.DNSService;
-import org.apache.james.transport.mailets.redirect.TypeCode;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailContext;
@@ -109,49 +108,6 @@ public class RedirectTest {
         redirect.init(mailetConfig);
 
         assertThat(redirect.getRecipients()).isNull();
-    }
-
-    @Test
-    public void isStaticShouldReturnFalseWhenDefault() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        redirect.init(mailetConfig);
-
-        assertThat(redirect.isStatic()).isFalse();
-    }
-
-    @Test
-    public void isStaticShouldReturnTrueWhenInitParameterIsTrue() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("static", "true");
-        redirect.init(mailetConfig);
-
-        assertThat(redirect.isStatic()).isTrue();
-    }
-
-    @Test
-    public void isStaticShouldReturnFalseWhenInitParameterIsFalse() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("static", "false");
-        redirect.init(mailetConfig);
-
-        assertThat(redirect.isStatic()).isFalse();
-    }
-
-    @Test
-    public void getInLineTypeShouldReturnBodyValueWhenDefault() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        redirect.init(mailetConfig);
-
-        assertThat(redirect.getInLineType()).isEqualTo(TypeCode.BODY);
-    }
-
-    @Test
-    public void getInLineTypeShouldReturnHeadsValueWhenInlineIsEqualToHeads() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("inline", "heads");
-        redirect.init(mailetConfig);
-
-        assertThat(redirect.getInLineType()).isEqualTo(TypeCode.HEADS);
     }
 
     @Test

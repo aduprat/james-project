@@ -21,12 +21,21 @@ package org.apache.james.transport.mailets.redirect;
 
 import org.apache.mailet.base.GenericMailet;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
 public class RedirectMailetInitParameters implements InitParameters {
 
     public static InitParameters from(GenericMailet mailet) {
-        RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet);
+        RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet, Optional.<TypeCode> absent(), Optional.<TypeCode> absent());
+        if (initParameters.isStatic()) {
+            return StaticInitParameters.from(initParameters);
+        }
+        return initParameters;
+    }
+
+    public static InitParameters from(GenericMailet mailet, Optional<TypeCode> defaultAttachmentType, Optional<TypeCode> defaultInLineType) {
+        RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet, defaultAttachmentType, defaultAttachmentType);
         if (initParameters.isStatic()) {
             return StaticInitParameters.from(initParameters);
         }
@@ -34,9 +43,13 @@ public class RedirectMailetInitParameters implements InitParameters {
     }
 
     private final GenericMailet mailet;
+    private final Optional<TypeCode> defaultAttachmentType;
+    private final Optional<TypeCode> defaultInLineType;
 
-    private RedirectMailetInitParameters(GenericMailet mailet) {
+    private RedirectMailetInitParameters(GenericMailet mailet, Optional<TypeCode> defaultAttachmentType, Optional<TypeCode> defaultInLineType) {
         this.mailet = mailet;
+        this.defaultAttachmentType = defaultAttachmentType;
+        this.defaultInLineType = defaultInLineType;
     }
 
     @Override
@@ -51,12 +64,12 @@ public class RedirectMailetInitParameters implements InitParameters {
 
     @Override
     public TypeCode getInLineType() {
-        return TypeCode.from(mailet.getInitParameter("inline", "unaltered"));
+        return defaultInLineType.or(TypeCode.from(mailet.getInitParameter("inline", "unaltered")));
     }
 
     @Override
     public TypeCode getAttachmentType() {
-        return TypeCode.from(mailet.getInitParameter("attachment", "none"));
+        return defaultAttachmentType.or(TypeCode.from(mailet.getInitParameter("attachment", "none")));
     }
 
     @Override
