@@ -28,8 +28,6 @@ import java.net.UnknownHostException;
 import javax.mail.MessagingException;
 
 import org.apache.james.dnsservice.api.DNSService;
-import org.apache.james.transport.mailets.redirect.NotifySender;
-import org.apache.james.transport.mailets.redirect.AbstractRedirect.SpecialAddress;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMailContext;
 import org.apache.mailet.base.test.FakeMailetConfig;
