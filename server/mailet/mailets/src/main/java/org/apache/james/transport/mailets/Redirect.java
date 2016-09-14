@@ -17,7 +17,25 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.transport.mailets.redirect;
+package org.apache.james.transport.mailets;
+
+import java.util.Collection;
+import java.util.List;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.InternetAddress;
+
+import org.apache.james.transport.mailets.redirect.AbstractRedirect;
+import org.apache.james.transport.mailets.redirect.AddressExtractor;
+import org.apache.james.transport.mailets.redirect.InitParameters;
+import org.apache.james.transport.mailets.redirect.RedirectMailetInitParameters;
+import org.apache.james.transport.mailets.redirect.TypeCode;
+import org.apache.mailet.Mail;
+import org.apache.mailet.MailAddress;
+
+import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 /**
  * <p>
@@ -25,9 +43,13 @@ package org.apache.james.transport.mailets.redirect;
  * </p>
  * <p>
  * Can produce listserver, forward and notify behaviour, with the original
- * message intact, attached, appended or left out altogether. Can be used as a
- * replacement to {@link Redirect}, having more consistent defaults, and new
- * options available.<br>
+ * message intact, attached, appended or left out altogether.
+ * </p>
+ * <p>
+ * It differs from {@link Resend} because (i) some defaults are different,
+ * notably for the following parameters: <i>&lt;recipients&gt;</i>,
+ * <i>&lt;to&gt;</i>, <i>&lt;reversePath&gt;</i> and <i>&lt;inline&gt;</i>; (ii)
+ * because it allows the use of the <i>&lt;static&gt;</i> parameter;.<br>
  * Use <code>Resend</code> if you need full control, <code>Redirect</code> if
  * the more automatic behaviour of some parameters is appropriate.
  * </p>
@@ -45,7 +67,11 @@ package org.apache.james.transport.mailets.redirect;
  * <tr valign=top>
  * <td width="20%">&lt;recipients&gt;</td>
  * <td width="80%">
- * A comma delimited list of addresses for recipients of this message.<br>
+ * A comma delimited list of addresses for recipients of this message; it will
+ * use the &quot;to&quot; list if not specified, and &quot;unaltered&quot; if
+ * none of the lists is specified.<br>
+ * These addresses will only appear in the To: header if no &quot;to&quot; list
+ * is supplied.<br>
  * Such addresses can contain &quot;full names&quot;, like <i>Mr. John D. Smith
  * &lt;john.smith@xyz.com&gt;</i>.<br>
  * The list can include constants &quot;sender&quot;, &quot;from&quot;,
@@ -55,13 +81,16 @@ package org.apache.james.transport.mailets.redirect;
  * available, otherwise the From header if available, otherwise the Sender
  * header if available, otherwise the return-path; &quot;from&quot; is made
  * equivalent to &quot;sender&quot;, and &quot;to&quot; is made equivalent to
- * &quot;recipients&quot;; &quot;null&quot; is ignored. Default:
- * &quot;unaltered&quot;.</td>
+ * &quot;recipients&quot;; &quot;null&quot; is ignored.</td>
  * </tr>
  * <tr valign=top>
  * <td width="20%">&lt;to&gt;</td>
  * <td width="80%">
- * A comma delimited list of addresses to appear in the To: header.<br>
+ * A comma delimited list of addresses to appear in the To: header; the email
+ * will be delivered to any of these addresses if it is also in the recipients
+ * list.<br>
+ * The recipients list will be used if this list is not supplied; if none of the
+ * lists is specified it will be &quot;unaltered&quot;.<br>
  * Such addresses can contain &quot;full names&quot;, like <i>Mr. John D. Smith
  * &lt;john.smith@xyz.com&gt;</i>.<br>
  * The list can include constants &quot;sender&quot;, &quot;from&quot;,
@@ -72,13 +101,13 @@ package org.apache.james.transport.mailets.redirect;
  * &quot;replyTo&quot; uses the ReplyTo header if available, otherwise the From
  * header if available, otherwise the Sender header if available, otherwise the
  * return-path; &quot;recipients&quot; is made equivalent to &quot;to&quot;; if
- * &quot;null&quot; is specified alone it will remove this header. Default:
- * &quot;unaltered&quot;.</td>
+ * &quot;null&quot; is specified alone it will remove this header.</td>
  * </tr>
  * <tr valign=top>
  * <td width="20%">&lt;sender&gt;</td>
  * <td width="80%">
- * A single email address to appear in the From: header and become the sender.<br>
+ * A single email address to appear in the From: and Return-Path: headers and
+ * become the sender.<br>
  * It can include constants &quot;sender&quot;, &quot;postmaster&quot; and
  * &quot;unaltered&quot;; &quot;sender&quot; is equivalent to
  * &quot;unaltered&quot;.<br>
@@ -109,7 +138,7 @@ package org.apache.james.transport.mailets.redirect;
  * <li>none&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
  * Neither body nor headers are appended</li>
  * </ul>
- * Default: &quot;unaltered&quot;.</td>
+ * Default: &quot;body&quot;.</td>
  * </tr>
  * <tr valign=top>
  * <td width="20%">&lt;attachment&gt;</td>
@@ -160,14 +189,17 @@ package org.apache.james.transport.mailets.redirect;
  * it will remove this header.<br>
  * Default: &quot;unaltered&quot;.</td>
  * </tr>
+ * </tr>
  * <tr valign=top>
  * <td width="20%">&lt;reversePath&gt;</td>
  * <td width="80%">
  * A single email address to appear in the Return-Path: header.<br>
- * It can include constants &quot;sender&quot;, &quot;postmaster&quot;
- * &quot;null&quot; and &quot;unaltered&quot;; if &quot;null&quot; is specified
- * then it will set it to <>, meaning &quot;null return path&quot;.<br>
- * Default: &quot;unaltered&quot;.</td>
+ * It can include constants &quot;sender&quot;, &quot;postmaster&quot; and
+ * &quot;null&quot;; if &quot;null&quot; is specified then it will set it to <>,
+ * meaning &quot;null return path&quot;.<br>
+ * Notice: the &quot;unaltered&quot; value is <i>not allowed</i>.<br>
+ * Default: the value of the <i>&lt;sender&gt;</i> parameter, if set, otherwise
+ * remains unaltered.</td>
  * </tr>
  * <tr valign=top>
  * <td width="20%">&lt;subject&gt;</td>
@@ -197,6 +229,16 @@ package org.apache.james.transport.mailets.redirect;
  * information to the mailet log.<br>
  * Default: false.</td>
  * </tr>
+ * <tr valign=top>
+ * <td width="20%">&lt;static&gt;</td>
+ * <td width="80%">
+ * true or false. If this is true it tells the mailet that it can reuse all the
+ * initial parameters (to, from, etc) without re-calculating their values. This
+ * will boost performance where a redirect task doesn't contain any dynamic
+ * values. If this is false, it tells the mailet to recalculate the values for
+ * each e-mail processed.<br>
+ * Default: false.</td>
+ * </tr>
  * </table>
  * 
  * <p>
@@ -205,7 +247,7 @@ package org.apache.james.transport.mailets.redirect;
  * 
  * <pre>
  * <code>
- *  &lt;mailet match=&quot;RecipientIs=test@localhost&quot; class=&quot;Resend&quot;&gt;
+ *  &lt;mailet match=&quot;RecipientIs=test@localhost&quot; class=&quot;Redirect&quot;&gt;
  *    &lt;recipients&gt;x@localhost, y@localhost, z@localhost&lt;/recipients&gt;
  *    &lt;to&gt;list@localhost&lt;/to&gt;
  *    &lt;sender&gt;owner@localhost&lt;/sender&gt;
@@ -226,7 +268,7 @@ package org.apache.james.transport.mailets.redirect;
  * 
  * <pre>
  * <code>
- *  &lt;mailet match=&quot;All&quot; class=&quot;Resend&quot;&gt;
+ *  &lt;mailet match=&quot;All&quot; class=&quot;Redirect&quot;&gt;
  *    &lt;recipients&gt;x@localhost&lt;/recipients&gt;
  *    &lt;sender&gt;postmaster&lt;/sender&gt;
  *    &lt;message xml:space="preserve"&gt;Message marked as spam:&lt;/message&gt;
@@ -236,40 +278,22 @@ package org.apache.james.transport.mailets.redirect;
  *    &lt;attachError&gt;TRUE&lt;/attachError&gt;
  *    &lt;replyTo&gt;postmaster&lt;/replyTo&gt;
  *    &lt;prefix&gt;[spam notification]&lt;/prefix&gt;
+ *    &lt;static&gt;TRUE&lt;/static&gt;
  *  &lt;/mailet&gt;
- * </code>
- * </pre>
- * 
- * <p>
- * The following example forwards the message without any modification, based on
- * the defaults:
- * </p>
- * 
- * <pre>
- * <code>
- *  &lt;mailet match=&quot;All&quot; class=&quot;Resend&quot/;&gt;
  * </code>
  * </pre>
  * <p>
  * <i>replyto</i> can be used instead of <i>replyTo</i>; such name is kept for
  * backward compatibility.
  * </p>
- * <p>
- * <b>WARNING: as the message (or a copy of it) is reinjected in the spool
- * without any modification, the preceding example is very likely to cause a
- * "configuration loop" in your system, unless some other mailet has previously
- * modified something (a header for instance) that could force the resent
- * message follow a different path so that it does not return here
- * unchanged.</b>
- * </p>
- * 
- * @since 2.2.0
  */
 
-public class Resend extends AbstractRedirect {
+public class Redirect extends AbstractRedirect {
 
     private static final String[] CONFIGURABLE_PARAMETERS = new String[] {
-            "debug", "passThrough", "fakeDomainCheck", "inline", "attachment", "message", "recipients", "to", "replyTo", "replyto", "reversePath", "sender", "subject", "prefix", "attachError", "isReply" };
+            "static", "debug", "passThrough", "fakeDomainCheck", "inline", "attachment", "message", "recipients", "to", "replyTo", "replyto", "reversePath", "sender", "subject", "prefix", "attachError", "isReply" };
+    private static final List<String> ALLOWED_SPECIALS = ImmutableList.of(
+            "postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null");
 
     @Override
     public String getMailetInfo() {
@@ -278,7 +302,7 @@ public class Resend extends AbstractRedirect {
 
     @Override
     protected InitParameters getInitParameters() {
-        return RedirectMailetInitParameters.from(this);
+        return RedirectMailetInitParameters.from(this, Optional.<TypeCode> absent(), Optional.of(TypeCode.BODY));
     }
 
     @Override
@@ -289,6 +313,66 @@ public class Resend extends AbstractRedirect {
     @Override
     protected boolean isNotifyMailet() {
         return false;
+    }
+
+    @Override
+    protected Collection<MailAddress> getRecipients() throws MessagingException {
+        String recipientsOrTo = getRecipientsOrTo();
+        if (recipientsOrTo == null) {
+            return null;
+        }
+        if (recipientsOrTo.isEmpty()) {
+            throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
+        }
+        ImmutableList.Builder<MailAddress> builder = ImmutableList.builder();
+        for (MailAddress address : new AddressExtractor(getMailetContext()).from(recipientsOrTo, ALLOWED_SPECIALS)) {
+            builder.add(address);
+        }
+        return builder.build();
+    }
+
+    private String getRecipientsOrTo() throws MessagingException {
+        return getInitParameter("recipients", getInitParameter("to"));
+    }
+
+    @Override
+    protected InternetAddress[] getTo() throws MessagingException {
+        String toOrRecipients = getToOrRecipients();
+        if (toOrRecipients == null) {
+            return null;
+        }
+        if (toOrRecipients.isEmpty()) {
+            throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
+        }
+        List<InternetAddress> list = Lists.newArrayList();
+        for (MailAddress address : new AddressExtractor(getMailetContext()).from(toOrRecipients, ALLOWED_SPECIALS)) {
+            list.add(address.toInternetAddress());
+        }
+        return list.toArray(new InternetAddress[list.size()]);
+    }
+
+    private String getToOrRecipients() throws MessagingException {
+        return getInitParameter("to", getInitParameter("recipients"));
+    }
+
+    @Override
+    protected MailAddress getReversePath() throws MessagingException {
+        String addressString = getInitParameter("reversePath");
+        if (addressString == null) {
+            return null;
+        }
+
+        List<MailAddress> mailAddress = new AddressExtractor(getMailetContext()).from(addressString, ImmutableList.of("postmaster", "sender", "null"));
+        return mailAddress.get(0);
+    }
+
+    @Override
+    protected MailAddress getReversePath(Mail originalMail) throws MessagingException {
+        MailAddress reversePath = super.getReversePath(originalMail);
+        if (reversePath != null) {
+            return reversePath;
+        }
+        return getSender(originalMail);
     }
 
 }

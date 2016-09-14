@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.transport.mailets.redirect;
+package org.apache.james.transport.mailets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,7 +28,7 @@ import java.net.UnknownHostException;
 import javax.mail.MessagingException;
 
 import org.apache.james.dnsservice.api.DNSService;
-import org.apache.james.transport.mailets.redirect.Resend;
+import org.apache.james.transport.mailets.Resend;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMailContext;
 import org.apache.mailet.base.test.FakeMailetConfig;

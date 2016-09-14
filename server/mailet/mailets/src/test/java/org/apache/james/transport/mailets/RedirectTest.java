@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.transport.mailets.redirect;
+package org.apache.james.transport.mailets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -31,6 +31,7 @@ import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.transport.mailets.Redirect;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailContext;

@@ -41,6 +41,7 @@ import javax.mail.internet.ParseException;
 import org.apache.james.core.MailImpl;
 import org.apache.james.core.MimeMessageUtil;
 import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.transport.mailets.Redirect;
 import org.apache.james.transport.mailets.utils.MimeMessageModifier;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;

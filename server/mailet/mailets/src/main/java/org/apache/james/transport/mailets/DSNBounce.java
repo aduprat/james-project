@@ -17,7 +17,7 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.transport.mailets.redirect;
+package org.apache.james.transport.mailets;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -34,6 +34,11 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.james.core.MailImpl;
+import org.apache.james.transport.mailets.redirect.AbstractRedirect;
+import org.apache.james.transport.mailets.redirect.InitParameters;
+import org.apache.james.transport.mailets.redirect.NotifyMailetInitParameters;
+import org.apache.james.transport.mailets.redirect.SpecialAddress;
+import org.apache.james.transport.mailets.redirect.TypeCode;
 import org.apache.james.transport.util.Patterns;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
