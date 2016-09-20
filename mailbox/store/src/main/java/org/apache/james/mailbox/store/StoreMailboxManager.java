@@ -195,7 +195,7 @@ public class StoreMailboxManager implements MailboxManager {
         if (quotaRootResolver == null) {
             quotaRootResolver = new DefaultQuotaRootResolver(mailboxSessionMapperFactory);
         }
-        if (quotaUpdater != null && quotaUpdater instanceof MailboxListener) {
+        if (shouldInitQuotaUpdaterListener()) {
             this.addGlobalListener((MailboxListener) quotaUpdater, null);
         }
         if (copyBatcher == null) {
@@ -208,6 +208,12 @@ public class StoreMailboxManager implements MailboxManager {
             MailboxSession session = null;
             this.addGlobalListener(new MailboxAnnotationListener(mailboxSessionMapperFactory), session);
         }
+    }
+
+    private boolean shouldInitQuotaUpdaterListener() {
+        return quotaUpdater != null 
+            && quotaUpdater instanceof MailboxListener
+            && !delegatingListener.isListeningTo((MailboxListener) quotaUpdater);
     }
 
     @Override

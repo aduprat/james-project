@@ -23,6 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
+import org.apache.james.mailbox.MailboxListener;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
@@ -32,6 +35,7 @@ import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.store.event.DefaultDelegatingMailboxListener;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
@@ -158,6 +162,25 @@ public class StoreMailboxManagerTest {
         MessageManager expected = storeMailboxManager.getMailbox(MAILBOX_ID, mockedMailboxSession);
 
         assertThat(expected.getId()).isEqualTo(MAILBOX_ID);
+    }
+
+    @Test
+    public void quotaUpdaterShouldBeInitializeOnlyOneTime() throws Exception {
+        MyDelegatingMailboxListener delegatingListener = new MyDelegatingMailboxListener();
+        storeMailboxManager.setDelegatingMailboxListener(delegatingListener);
+        storeMailboxManager.init();
+        int expectedListenersNumber = delegatingListener.getListeners().size();
+
+        storeMailboxManager.init();
+
+        assertThat(delegatingListener.getListeners().size()).isEqualTo(expectedListenersNumber);
+    }
+
+    private static class MyDelegatingMailboxListener extends DefaultDelegatingMailboxListener {
+
+        public List<MailboxListener> getListeners() {
+            return getMailboxListenerRegistry().getGlobalListeners();
+        }
     }
 }
 
