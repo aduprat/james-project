@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import org.apache.james.mailbox.MailboxListener;
+import org.apache.james.mailbox.MailboxListener.ListenerType;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
@@ -40,6 +41,8 @@ import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
+import org.apache.james.mailbox.store.quota.ListeningCurrentQuotaUpdater;
+import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -168,6 +171,14 @@ public class StoreMailboxManagerTest {
     public void quotaUpdaterShouldBeInitializeOnlyOneTime() throws Exception {
         MyDelegatingMailboxListener delegatingListener = new MyDelegatingMailboxListener();
         storeMailboxManager.setDelegatingMailboxListener(delegatingListener);
+
+        StoreCurrentQuotaManager storeCurrentQuotaManager = mock(StoreCurrentQuotaManager.class);
+        when(storeCurrentQuotaManager.getAssociatedListenerType())
+            .thenReturn(ListenerType.EACH_NODE);
+        ListeningCurrentQuotaUpdater quotaUpdater = new ListeningCurrentQuotaUpdater();
+        quotaUpdater.setCurrentQuotaManager(storeCurrentQuotaManager);
+        storeMailboxManager.setQuotaUpdater(quotaUpdater);
+
         storeMailboxManager.init();
         int expectedListenersNumber = delegatingListener.getListeners().size();
 
