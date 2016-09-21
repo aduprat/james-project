@@ -76,6 +76,7 @@ public class TemporaryFilesystemModule extends AbstractModule {
         copyResource(resourcesFolder, "pop3server.xml");
         copyResource(resourcesFolder, "recipientrewritetable.xml");
         copyResource(resourcesFolder, "smtpserver.xml");
+        copyResource(resourcesFolder, "usersrepository.xml");
     }
 
     private void copyResource(String resourcesFolder, String resourceName) throws FileNotFoundException, IOException {

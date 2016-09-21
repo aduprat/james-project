@@ -29,6 +29,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.utils.ExtendedServerProbe;
 import org.junit.rules.TemporaryFolder;
 
 public class TemporaryJamesServer {
@@ -62,5 +63,9 @@ public class TemporaryJamesServer {
 
     public void shutdown() {
         jamesServer.stop();
+    }
+
+    public ExtendedServerProbe getServerProbe() {
+        return jamesServer.serverProbe();
     }
 }
