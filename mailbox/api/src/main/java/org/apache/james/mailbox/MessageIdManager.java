@@ -17,48 +17,25 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.jmap.send;
+package org.apache.james.mailbox;
 
-import java.util.Objects;
+import javax.mail.Flags;
 
+import org.apache.james.mailbox.MessageManager.FlagsUpdateMode;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mailbox.model.MessageResult.FetchGroup;
 
-import com.google.common.base.Preconditions;
+import com.google.common.base.Optional;
 
-public class MailMetadata {
-    public static final String MAIL_METADATA_MESSAGE_ID_ATTRIBUTE = "org.apache.james.jmap.send.MailMetaData.messageId";
-    public static final String MAIL_METADATA_USERNAME_ATTRIBUTE = "org.apache.james.jmap.send.MailMetaData.username";
+public interface MessageIdManager {
 
-    private final MessageId messageId;
-    private final String username;
+    Optional<MessageResult> get(MessageId messageId);
 
-    public MailMetadata(MessageId messageId, String username) {
-        Preconditions.checkNotNull(messageId);
-        Preconditions.checkNotNull(username);
-        this.messageId = messageId;
-        this.username = username;
-    }
+    void setFlags(Flags newState, FlagsUpdateMode replace, MessageId messageId, MailboxSession mailboxSession);
 
-    public MessageId getMessageId() {
-        return messageId;
-    }
+    Optional<MessageResult> getMessages(MessageId messageId, FetchGroup minimal, MailboxSession mailboxSession);
 
-    public String getUsername() {
-        return username;
-    }
+    void expunge(MessageId messageId, MailboxSession mailboxSession);
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof MailMetadata) {
-            MailMetadata other = (MailMetadata) obj;
-            return Objects.equals(this.messageId, other.messageId)
-                && Objects.equals(this.username, other.username);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(messageId, username);
-    }
 }
