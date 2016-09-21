@@ -298,4 +298,9 @@ public class FakeMailContext implements MailetContext {
     public List<SentMail> getSentMails() {
         return sentMails;
     }
+
+    @Override
+    public Logger getLogger() {
+        return logger.orNull();
+    }
 }
