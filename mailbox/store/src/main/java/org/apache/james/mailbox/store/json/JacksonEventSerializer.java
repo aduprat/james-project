@@ -23,6 +23,8 @@ import java.io.IOException;
 
 import org.apache.james.mailbox.MailboxListener;
 import org.apache.james.mailbox.MessageUid;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageId.Factory;
 import org.apache.james.mailbox.store.event.EventSerializer;
 import org.apache.james.mailbox.store.json.event.EventConverter;
 import org.apache.james.mailbox.store.json.event.dto.EventDataTransferObject;
@@ -57,12 +59,14 @@ public class JacksonEventSerializer implements EventSerializer {
         return eventConverter.retrieveEvent(eventDataTransferObject);
     }
 
-    public static ObjectMapper configureObjectMapper(ObjectMapper objectMapper) {
+    public static ObjectMapper configureObjectMapper(ObjectMapper objectMapper, MessageId.Factory messageIdFactory) {
         SimpleModule module = new SimpleModule();
         module.addDeserializer(MessageUid.class, new MessageUidDeserializer());
         module.addKeyDeserializer(MessageUid.class, new MessageUidKeyDeserializer());
         module.addSerializer(MessageUid.class, new MessageUidSerializer());
         module.addKeySerializer(MessageUid.class, new MessageUidKeySerializer());
+        module.addSerializer(MessageId.class, new MessageIdSerializer());
+        module.addDeserializer(MessageId.class, new MessageIdDeserializer(messageIdFactory));
         objectMapper.registerModule(module);
         return objectMapper;
     }
@@ -99,6 +103,29 @@ public class JacksonEventSerializer implements EventSerializer {
         @Override
         public void serialize(MessageUid value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
             gen.writeFieldName(String.valueOf(value.asLong()));
+        }
+        
+    }
+
+    public static class MessageIdSerializer extends JsonSerializer<MessageId> {
+
+        @Override
+        public void serialize(MessageId value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
+            gen.writeString(String.valueOf(value.serialize()));
+        }
+        
+    }
+
+    public static class MessageIdDeserializer extends JsonDeserializer<MessageId> {
+        private final Factory factory;
+
+        public MessageIdDeserializer(MessageId.Factory factory) {
+            this.factory = factory;
+        }
+
+        @Override
+        public MessageId deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+            return factory.fromString(p.getValueAsString());
         }
         
     }

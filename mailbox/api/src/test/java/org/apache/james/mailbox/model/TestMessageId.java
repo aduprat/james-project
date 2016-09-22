@@ -22,7 +22,7 @@ package org.apache.james.mailbox.model;
 
 public class TestMessageId implements MessageId {
 
-public static class Factory implements MessageId.Factory {
+    public static class Factory implements MessageId.Factory {
         
         @Override
         public MessageId fromString(String serialized) {
