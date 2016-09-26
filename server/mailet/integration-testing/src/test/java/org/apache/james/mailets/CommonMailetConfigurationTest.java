@@ -20,11 +20,10 @@
 package org.apache.james.mailets;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 import org.apache.commons.net.imap.IMAPClient;
+import org.apache.commons.net.smtp.SMTPClient;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetContainer;
@@ -90,47 +89,40 @@ public class CommonMailetConfigurationTest {
         jamesServer.getServerProbe().addUser(recipient, PASSWORD);
         jamesServer.getServerProbe().createMailbox(MailboxConstants.USER_NAMESPACE, recipient, "INBOX");
 
-        try (SocketChannel socketChannel = SocketChannel.open();) {
-            sendMessage(socketChannel, from, recipient);
-            calmlyAwait.atMost(Duration.ONE_MINUTE).until(() -> messageHasBeenSent(socketChannel, recipient));
+        SMTPClient smtpClient = new SMTPClient();
+        try (SocketChannel socketChannel = SocketChannel.open()) {
+            smtpClient.connect(LOCALHOST_IP, SMTP_PORT);
+            sendMessage(smtpClient, from, recipient);
+
+            calmlyAwait.atMost(Duration.ONE_MINUTE).until(() -> messageHasBeenSent(smtpClient));
             calmlyAwait.atMost(Duration.ONE_MINUTE).until(() -> userReceivedMessage(recipient));
+        } finally {
+            smtpClient.disconnect();
         }
     }
 
-    private void sendMessage(SocketChannel socketChannel, String from, String recipient) {
+    private void sendMessage(SMTPClient smtpClient, String from, String recipient) {
         try {
-            String message = "ehlo james.org\r\n" +
-                    "mail from:<" + from + ">\r\n" +
-                    "rcpt to:<" + recipient + ">\r\n" +
-                    "data\r\n" +
-                    "subject: test\r\n" +
+            smtpClient.helo("james.org");
+            smtpClient.setSender(from);
+            smtpClient.rcpt("<" + recipient + ">");
+            smtpClient.sendShortMessageData("subject: test\r\n" +
                     "\r\n" +
                     "content\r\n" +
-                    ".\r\n";
-            socketChannel.connect(new InetSocketAddress(LOCALHOST_IP, SMTP_PORT));
-            socketChannel.write(ByteBuffer.wrap(message.getBytes()));
+                    ".\r\n");
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
     }
 
-    private boolean messageHasBeenSent(SocketChannel socketChannel, String recipient) throws IOException {
-        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(2048);
-        while (socketChannel.read(byteBuffer) != -1) {
-            byteBuffer.flip();
-            byte[] bytes = new byte[byteBuffer.remaining()];
-            byteBuffer.get(bytes);
-            String response = new String(bytes);
-            if (response.contains("250 2.6.0 Message received")) {
-                return true;
-            }
-        }
-        return false;
+    private boolean messageHasBeenSent(SMTPClient smtpClient) throws IOException {
+        return smtpClient.getReplyString()
+            .contains("250 2.6.0 Message received");
     }
 
     private boolean userReceivedMessage(String user) {
+        IMAPClient imapClient = new IMAPClient();
         try {
-            IMAPClient imapClient = new IMAPClient();
             imapClient.connect(LOCALHOST_IP, IMAP_PORT);
             imapClient.login(user, PASSWORD);
             imapClient.select("INBOX");
@@ -139,6 +131,12 @@ public class CommonMailetConfigurationTest {
             return replyString.contains("OK FETCH completed");
         } catch (IOException e) {
             throw Throwables.propagate(e);
+        } finally {
+            try {
+                imapClient.close();
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
         }
     }
 }
