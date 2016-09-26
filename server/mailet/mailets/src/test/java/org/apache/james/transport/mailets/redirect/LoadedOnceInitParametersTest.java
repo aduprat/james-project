@@ -23,13 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
-public class StaticInitParametersTest {
+public class LoadedOnceInitParametersTest {
 
     @Test
     public void fromShouldTakeValueFromInitParameters() {
         InitParameters expectedParameters = new MyInitParameters();
 
-        InitParameters parameters = StaticInitParameters.from(expectedParameters);
+        InitParameters parameters = LoadedOnceInitParameters.from(expectedParameters);
 
         assertThat(parameters.getPassThrough()).isEqualTo(expectedParameters.getPassThrough());
         assertThat(parameters.getFakeDomainCheck()).isEqualTo(expectedParameters.getFakeDomainCheck());

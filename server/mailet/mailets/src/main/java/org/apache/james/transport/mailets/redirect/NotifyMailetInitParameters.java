@@ -28,7 +28,7 @@ public class NotifyMailetInitParameters implements InitParameters {
     public static InitParameters from(GenericMailet mailet) {
         NotifyMailetInitParameters initParameters = new NotifyMailetInitParameters(mailet);
         if (initParameters.isStatic()) {
-            return StaticInitParameters.from(initParameters);
+            return LoadedOnceInitParameters.from(initParameters);
         }
         return initParameters;
     }

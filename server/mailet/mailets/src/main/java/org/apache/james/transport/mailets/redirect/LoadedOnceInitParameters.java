@@ -19,10 +19,10 @@
 
 package org.apache.james.transport.mailets.redirect;
 
-public class StaticInitParameters implements InitParameters {
+public class LoadedOnceInitParameters implements InitParameters {
 
-    public static StaticInitParameters from(InitParameters initParameters) {
-        return new StaticInitParameters(true,
+    public static LoadedOnceInitParameters from(InitParameters initParameters) {
+        return new LoadedOnceInitParameters(true,
                 initParameters.getPassThrough(),
                 initParameters.getFakeDomainCheck(),
                 initParameters.getInLineType(),
@@ -57,7 +57,7 @@ public class StaticInitParameters implements InitParameters {
     private final String replyTo;
     private final boolean debug;
 
-    private StaticInitParameters(boolean isStatic, boolean passThrough, boolean fakeDomainCheck, TypeCode inline, TypeCode attachment, String message,
+    private LoadedOnceInitParameters(boolean isStatic, boolean passThrough, boolean fakeDomainCheck, TypeCode inline, TypeCode attachment, String message,
             String subject, String prefix, boolean attachError, boolean isReply, String recipients, String to, String reversePath, String sender, String replyTo, boolean debug) {
         this.isStatic = isStatic;
         this.passThrough = passThrough;

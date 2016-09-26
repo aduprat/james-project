@@ -29,7 +29,7 @@ public class RedirectMailetInitParameters implements InitParameters {
     public static InitParameters from(GenericMailet mailet) {
         RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet, Optional.<TypeCode> absent(), Optional.<TypeCode> absent());
         if (initParameters.isStatic()) {
-            return StaticInitParameters.from(initParameters);
+            return LoadedOnceInitParameters.from(initParameters);
         }
         return initParameters;
     }
@@ -37,7 +37,7 @@ public class RedirectMailetInitParameters implements InitParameters {
     public static InitParameters from(GenericMailet mailet, Optional<TypeCode> defaultAttachmentType, Optional<TypeCode> defaultInLineType) {
         RedirectMailetInitParameters initParameters = new RedirectMailetInitParameters(mailet, defaultAttachmentType, defaultAttachmentType);
         if (initParameters.isStatic()) {
-            return StaticInitParameters.from(initParameters);
+            return LoadedOnceInitParameters.from(initParameters);
         }
         return initParameters;
     }
