@@ -62,7 +62,7 @@ public class CamelProcessor implements Processor {
         long start = System.currentTimeMillis();
         MessagingException ex = null;
         try {
-            MailetPipelineLogging.logIn(mailet.getMailetConfig().getMailetContext().getLogger(), mailet.getMailetInfo());
+            MailetPipelineLogging.logIn(mailet, mail);
             mailet.service(mail);
         } catch (MessagingException me) {
             ex = me;
@@ -87,7 +87,7 @@ public class CamelProcessor implements Processor {
             }
 
         } finally {
-            MailetPipelineLogging.logOut(mailet.getMailetConfig().getMailetContext().getLogger(), mailet.getMailetInfo());
+            MailetPipelineLogging.logOut(mailet, mail);
             List<MailetProcessorListener> listeners = processor.getListeners();
             long complete = System.currentTimeMillis() - start;
             for (MailetProcessorListener listener : listeners) {

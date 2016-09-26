@@ -19,15 +19,18 @@
 
 package org.apache.mailet.base;
 
-import org.slf4j.Logger;
+import org.apache.mailet.Mail;
+import org.apache.mailet.Mailet;
 
 public class MailetPipelineLogging {
 
-    public static void logIn(Logger logger, String mailetName) {
-        logger.debug("Entering mailet: {}", mailetName);
+    public static void logIn(Mailet mailet, Mail mail) {
+        mailet.getMailetConfig().getMailetContext().getLogger()
+            .debug("Entering mailet: {}\n\tmail state {}", mailet.getMailetInfo(), mail.getState());
     }
 
-    public static void logOut(Logger logger, String mailetName) {
-        logger.debug("End of mailet: {}", mailetName);
+    public static void logOut(Mailet mailet, Mail mail) {
+        mailet.getMailetConfig().getMailetContext().getLogger()
+            .debug("End of mailet: {}\n\tmail state {}", mailet.getMailetInfo(), mail.getState());
     }
 }
