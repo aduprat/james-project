@@ -130,5 +130,10 @@ public class StaticInitParametersTest {
         public boolean isStatic() {
             return true;
         }
+
+        @Override
+        public String asString() {
+            return InitParametersSerializer.serialize(this);
+        }
     }
 }

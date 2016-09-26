@@ -156,4 +156,9 @@ public class StaticInitParameters implements InitParameters {
     public boolean isStatic() {
         return isStatic;
     }
+
+    @Override
+    public String asString() {
+        return InitParametersSerializer.serialize(this);
+    }
 }

@@ -144,4 +144,9 @@ public class RedirectMailetInitParameters implements InitParameters {
     public boolean isStatic() {
         return mailet.getInitParameter("static", false);
     }
+
+    @Override
+    public String asString() {
+        return InitParametersSerializer.serialize(this);
+    }
 }
