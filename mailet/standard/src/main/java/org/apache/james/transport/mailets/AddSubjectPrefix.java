@@ -53,7 +53,7 @@ public class AddSubjectPrefix extends GenericMailet {
 
     @Override
     public void service(Mail mail) throws MessagingException {
-        new MimeMessageModifier().addSubjectPrefix(mail.getMessage(), subjectPrefix);
+        new MimeMessageModifier(mail.getMessage()).addSubjectPrefix(subjectPrefix);
     }
 
     @Override

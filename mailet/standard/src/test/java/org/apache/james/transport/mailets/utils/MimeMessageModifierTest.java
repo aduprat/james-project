@@ -26,24 +26,16 @@ import java.util.Properties;
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 
-import org.junit.Before;
 import org.junit.Test;
 
 public class MimeMessageModifierTest {
-
-    private MimeMessageModifier testee;
-
-    @Before
-    public void setup() {
-        testee = new MimeMessageModifier();
-    }
 
     @Test
     public void addSubjectPrefixShouldAddPrefixToSubjectWhenSubjectIsPresent() throws Exception {
         MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
         message.setSubject("subject");
 
-        testee.addSubjectPrefix(message, "my");
+        new MimeMessageModifier(message).addSubjectPrefix("my");
 
         assertThat(message.getSubject()).isEqualTo("my subject");
     }
@@ -52,7 +44,7 @@ public class MimeMessageModifierTest {
     public void addSubjectPrefixShouldSetPrefixAsSubjectWhenSubjectIsAbsent() throws Exception {
         MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
 
-        testee.addSubjectPrefix(message, "my");
+        new MimeMessageModifier(message).addSubjectPrefix("my");
 
         assertThat(message.getSubject()).isEqualTo("my");
     }

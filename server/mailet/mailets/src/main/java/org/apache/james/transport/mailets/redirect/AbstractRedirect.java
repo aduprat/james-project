@@ -524,7 +524,7 @@ public abstract class AbstractRedirect extends GenericMailet {
      */
     protected void setSubjectPrefix(Mail newMail, String subjectPrefix, Mail originalMail) throws MessagingException {
         if (isNotifyMailet()) {
-            new MimeMessageModifier().addSubjectPrefix(originalMail.getMessage(), subjectPrefix);
+            new MimeMessageModifier(originalMail.getMessage()).addSubjectPrefix(subjectPrefix);
         }
 
         String subject = getInitParameters().getSubject();

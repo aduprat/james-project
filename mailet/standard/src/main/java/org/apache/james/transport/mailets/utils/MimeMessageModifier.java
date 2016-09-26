@@ -27,7 +27,13 @@ import com.google.common.base.Joiner;
 
 public class MimeMessageModifier {
 
-    public void addSubjectPrefix(MimeMessage message, String subjectPrefix) throws MessagingException {
+    private final MimeMessage message;
+
+    public MimeMessageModifier(MimeMessage message) {
+        this.message = message;
+    }
+
+    public void addSubjectPrefix(String subjectPrefix) throws MessagingException {
         String newSubject = prefixSubject(message, subjectPrefix);
         replaceSubject(message, newSubject);
     }
