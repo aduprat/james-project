@@ -44,121 +44,198 @@ public class AddressExtractorTest {
     public ExpectedException expectedException = ExpectedException.none();
 
     private MailAddress postmaster;
-    private AddressExtractor testee;
+    private MailetContext mailetContext;
 
     @Before
     public void setup() throws Exception {
         postmaster = new MailAddress("postmaster", "james.org");
-        MailetContext mailetContext = mock(MailetContext.class);
+        mailetContext = mock(MailetContext.class);
         when(mailetContext.getPostmaster())
             .thenReturn(postmaster);
 
-        testee = new AddressExtractor(mailetContext);
     }
 
     @Test
-    public void fromShouldReturnListWhenParsingSucceed() throws Exception {
-        List<MailAddress> from = testee.from("user@james.org, user2@james.org", ImmutableList.<String> of());
+    public void extractShouldThrowWhenMailetContextIsNull() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(null)
+            .extract("user@james.org, user2@james.org");
+    }
 
-        assertThat(from).containsOnly(new MailAddress("user", "james.org"),
+    @Test
+    public void extractShouldThrowWhenAllowedSpecialsIsNotGiven() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(mailetContext)
+            .extract("user@james.org, user2@james.org");
+    }
+
+    @Test
+    public void extractShouldThrowWhenAllowedSpecialsIsNull() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(mailetContext)
+            .allowedSpecials(null)
+            .extract("user@james.org, user2@james.org");
+    }
+
+    @Test
+    public void getSpecialAddressShouldThrowWhenMailetContextIsNull() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(null)
+            .getSpecialAddress("user@james.org, user2@james.org");
+    }
+
+    @Test
+    public void getSpecialAddressShouldThrowWhenAllowedSpecialsIsNotGiven() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(mailetContext)
+            .getSpecialAddress("user@james.org, user2@james.org");
+    }
+
+    @Test
+    public void getSpecialAddressShouldThrowWhenAllowedSpecialsIsNull() throws Exception {
+        expectedException.expect(NullPointerException.class);
+        AddressExtractor.withContext(mailetContext)
+            .allowedSpecials(null)
+            .getSpecialAddress("user@james.org, user2@james.org");
+    }
+
+    @Test
+    public void extractShouldReturnListWhenParsingSucceed() throws Exception {
+        List<MailAddress> extract = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.<String> of())
+                .extract("user@james.org, user2@james.org");
+
+        assertThat(extract).containsOnly(new MailAddress("user", "james.org"),
                 new MailAddress("user2", "james.org"));
     }
 
     @Test
-    public void fromShouldReturnSpecialAddressesWhenAddressesAreSpecial() throws Exception {
-        List<MailAddress> from = testee.from("postmaster, to", ImmutableList.<String> of("postmaster", "to"));
+    public void extractShouldReturnSpecialAddressesWhenAddressesAreSpecial() throws Exception {
+        List<MailAddress> extract = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.<String> of("postmaster", "to"))
+                .extract("postmaster, to");
 
-        assertThat(from).containsOnly(new MailAddress("postmaster", "james.org"),
+        assertThat(extract).containsOnly(new MailAddress("postmaster", "james.org"),
                 new MailAddress("to", "address.marker"));
     }
 
     @Test
-    public void fromShouldThrowWhenParsingFail() throws Exception {
+    public void extractShouldThrowWhenParsingFail() throws Exception {
         expectedException.expect(MessagingException.class);
-        testee.from("user@james@org", ImmutableList.<String> of());
+        AddressExtractor.withContext(mailetContext)
+            .allowedSpecials(ImmutableList.<String> of())
+            .extract("user@james@org");
     }
 
     @Test
     public void getSpecialAddressShouldReturnAbsentWhenAddressIsNull() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress(null, ImmutableList.<String> of());
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.<String> of())
+                .getSpecialAddress(null);
         assertThat(specialAddress).isAbsent();
     }
 
     @Test
     public void getSpecialAddressShouldReturnAbsentWhenAddressIsEmpty() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("", ImmutableList.<String> of());
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.<String> of())
+                .getSpecialAddress("");
         assertThat(specialAddress).isAbsent();
     }
 
     @Test
     public void getSpecialAddressShouldReturnAbsentWhenAddressIsNotSpecial() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("user@james.org", ImmutableList.<String> of());
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.<String> of())
+                .getSpecialAddress("user@james.org");
         assertThat(specialAddress).isAbsent();
     }
 
     @Test
     public void getSpecialAddressShouldReturnPostmasterWhenAddressMatchesPostmasterSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("postmaster", ImmutableList.of("postmaster"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("postmaster"))
+                .getSpecialAddress("postmaster");
         assertThat(specialAddress).contains(postmaster);
     }
 
     @Test
     public void getSpecialAddressShouldReturnSenderWhenAddressMatchesSenderSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("sender", ImmutableList.of("sender"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("sender"))
+                .getSpecialAddress("sender");
         assertThat(specialAddress).contains(new MailAddress("sender", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnReversePathWhenAddressMatchesReversePathSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("reversepath", ImmutableList.of("reversepath"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("reversepath"))
+                .getSpecialAddress("reversepath");
         assertThat(specialAddress).contains(new MailAddress("reverse.path", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnFromWhenAddressMatchesFromSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("from", ImmutableList.of("from"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("from"))
+                .getSpecialAddress("from");
         assertThat(specialAddress).contains(new MailAddress("from", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnReplyToWhenAddressMatchesReplyToSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("replyto", ImmutableList.of("replyto"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("replyto"))
+                .getSpecialAddress("replyto");
         assertThat(specialAddress).contains(new MailAddress("reply.to", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnToWhenAddressMatchesToSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("to", ImmutableList.of("to"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("to"))
+                .getSpecialAddress("to");
         assertThat(specialAddress).contains(new MailAddress("to", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnRecipientsWhenAddressMatchesRecipientsSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("recipients", ImmutableList.of("recipients"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("recipients"))
+                .getSpecialAddress("recipients");
         assertThat(specialAddress).contains(new MailAddress("recipients", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnDeleteWhenAddressMatchesDeleteSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("delete", ImmutableList.of("delete"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("delete"))
+                .getSpecialAddress("delete");
         assertThat(specialAddress).contains(new MailAddress("delete", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnUnalteredWhenAddressMatchesUnalteredSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("unaltered", ImmutableList.of("unaltered"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("unaltered"))
+                .getSpecialAddress("unaltered");
         assertThat(specialAddress).contains(new MailAddress("unaltered", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldReturnNullWhenAddressMatchesNullSpecialAddress() throws Exception {
-        Optional<MailAddress> specialAddress = testee.getSpecialAddress("null", ImmutableList.of("null"));
+        Optional<MailAddress> specialAddress = AddressExtractor.withContext(mailetContext)
+                .allowedSpecials(ImmutableList.of("null"))
+                .getSpecialAddress("null");
         assertThat(specialAddress).contains(new MailAddress("null", "address.marker"));
     }
 
     @Test
     public void getSpecialAddressShouldThrowWhenSpecialAddressNotAllowed() throws Exception {
         expectedException.expect(MessagingException.class);
-        testee.getSpecialAddress("postmaster", ImmutableList.<String> of("notallowed"));
+        AddressExtractor.withContext(mailetContext)
+            .allowedSpecials(ImmutableList.<String> of("notallowed"))
+            .getSpecialAddress("postmaster");
     }
 }

@@ -31,36 +31,73 @@ import org.apache.mailet.MailetContext;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 public class AddressExtractor {
 
-    private final MailetContext mailetContext;
-
-    public AddressExtractor(MailetContext mailetContext) {
-        this.mailetContext = mailetContext;
+    public static Builder withContext(MailetContext mailetContext) {
+        return new Builder(mailetContext);
     }
 
-    public List<MailAddress> from(String addressList, List<String> allowedSpecials) throws MessagingException {
+    public static class Builder {
+
+        private MailetContext mailetContext;
+        private List<String> allowedSpecials;
+
+        public Builder(MailetContext mailetContext) {
+            this.mailetContext = mailetContext;
+        }
+
+        public Builder allowedSpecials(List<String> allowedSpecials) {
+            this.allowedSpecials = allowedSpecials;
+            return this;
+        }
+
+        public List<MailAddress> extract(String addressList) throws MessagingException {
+            checkParameters();
+            return new AddressExtractor(mailetContext, allowedSpecials).extract(addressList);
+        }
+
+        public Optional<MailAddress> getSpecialAddress(String addressString) throws MessagingException {
+            checkParameters();
+            return new AddressExtractor(mailetContext, allowedSpecials).getSpecialAddress(addressString);
+        }
+
+        private void checkParameters() {
+            Preconditions.checkNotNull(mailetContext, "'mailetContext' is mandatory");
+            Preconditions.checkNotNull(allowedSpecials, "'allowedSpecials' is mandatory");
+        }
+    }
+
+    private final MailetContext mailetContext;
+    private final List<String> allowedSpecials;
+
+    private AddressExtractor(MailetContext mailetContext, List<String> allowedSpecials) {
+        this.mailetContext = mailetContext;
+        this.allowedSpecials = allowedSpecials;
+    }
+
+    private List<MailAddress> extract(String addressList) throws MessagingException {
         try {
-            return toMailAddresses(ImmutableList.copyOf(InternetAddress.parse(addressList, false)), allowedSpecials);
+            return toMailAddresses(ImmutableList.copyOf(InternetAddress.parse(addressList, false)));
         } catch (AddressException e) {
             throw new MessagingException("Exception thrown parsing: " + addressList, e);
         }
     }
 
-    private List<MailAddress> toMailAddresses(List<InternetAddress> addresses, List<String> allowedSpecials) throws MessagingException {
+    private List<MailAddress> toMailAddresses(List<InternetAddress> addresses) throws MessagingException {
         ImmutableList.Builder<MailAddress> builder = ImmutableList.builder();
         for (InternetAddress address : addresses) {
-            builder.add(toMailAddress(address, allowedSpecials));
+            builder.add(toMailAddress(address));
         }
         return builder.build();
     }
 
-    private MailAddress toMailAddress(InternetAddress address, List<String> allowedSpecials) throws MessagingException {
+    private MailAddress toMailAddress(InternetAddress address) throws MessagingException {
         try {
-            Optional<MailAddress> specialAddress = getSpecialAddress(address.getAddress(), allowedSpecials);
+            Optional<MailAddress> specialAddress = getSpecialAddress(address.getAddress());
             if (specialAddress.isPresent()) {
                 return specialAddress.get();
             }
@@ -81,7 +118,7 @@ public class AddressExtractor {
      *         null
      * @throws MessagingException if is a special address not in the allowedSpecials list
      */
-    public Optional<MailAddress> getSpecialAddress(String addressString, List<String> allowedSpecials) throws MessagingException {
+    private Optional<MailAddress> getSpecialAddress(String addressString) throws MessagingException {
         if (Strings.isNullOrEmpty(addressString)) {
             return Optional.absent();
         }

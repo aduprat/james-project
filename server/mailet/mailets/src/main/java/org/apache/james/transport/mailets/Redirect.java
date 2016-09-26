@@ -325,7 +325,10 @@ public class Redirect extends AbstractRedirect {
             throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
         }
         ImmutableList.Builder<MailAddress> builder = ImmutableList.builder();
-        for (MailAddress address : new AddressExtractor(getMailetContext()).from(recipientsOrTo, ALLOWED_SPECIALS)) {
+        List<MailAddress> mailAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ALLOWED_SPECIALS)
+                .extract(recipientsOrTo);
+        for (MailAddress address : mailAddresses) {
             builder.add(address);
         }
         return builder.build();
@@ -345,7 +348,10 @@ public class Redirect extends AbstractRedirect {
             throw new MessagingException("Failed to initialize \"recipients\" list; empty <recipients> init parameter found.");
         }
         List<InternetAddress> list = Lists.newArrayList();
-        for (MailAddress address : new AddressExtractor(getMailetContext()).from(toOrRecipients, ALLOWED_SPECIALS)) {
+        List<MailAddress> mailAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ALLOWED_SPECIALS)
+                .extract(toOrRecipients);
+        for (MailAddress address : mailAddresses) {
             list.add(address.toInternetAddress());
         }
         return list.toArray(new InternetAddress[list.size()]);
@@ -362,7 +368,9 @@ public class Redirect extends AbstractRedirect {
             return null;
         }
 
-        List<MailAddress> mailAddress = new AddressExtractor(getMailetContext()).from(addressString, ImmutableList.of("postmaster", "sender", "null"));
+        List<MailAddress> mailAddress = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "null"))
+                .extract(addressString);
         return mailAddress.get(0);
     }
 

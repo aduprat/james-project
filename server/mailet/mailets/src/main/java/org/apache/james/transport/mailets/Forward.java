@@ -127,7 +127,9 @@ public class Forward extends AbstractRedirect {
 
     private MailAddress toMailAddress(InternetAddress address) throws MessagingException {
         try {
-            Optional<MailAddress> specialAddress = new AddressExtractor(getMailetContext()).getSpecialAddress(address.getAddress(), ALLOWED_SPECIALS);
+            Optional<MailAddress> specialAddress = AddressExtractor.withContext(getMailetContext())
+                    .allowedSpecials(ALLOWED_SPECIALS)
+                    .getSpecialAddress(address.getAddress());
             if (specialAddress.isPresent()) {
                 return specialAddress.get();
             }

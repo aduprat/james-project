@@ -198,8 +198,10 @@ public abstract class AbstractRedirect extends GenericMailet {
      */
     protected Collection<MailAddress> getRecipients() throws MessagingException {
         ImmutableList.Builder<MailAddress> builder = ImmutableList.builder();
-        List<String> allowedSpecials = ImmutableList.of("postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null");
-        for (MailAddress address : new AddressExtractor(getMailetContext()).from(getInitParameters().getRecipients(), allowedSpecials)) {
+        List<MailAddress> mailAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null"))
+                .extract(getInitParameters().getRecipients());
+        for (MailAddress address : mailAddresses) {
             builder.add(address);
         }
         return builder.build();
@@ -257,8 +259,10 @@ public abstract class AbstractRedirect extends GenericMailet {
             return null;
         }
         ImmutableList.Builder<InternetAddress> builder = ImmutableList.builder();
-        List<String> allowedSpecials = ImmutableList.of("postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null");
-        for (MailAddress address : new AddressExtractor(getMailetContext()).from(getInitParameters().getTo(), allowedSpecials)) {
+        List<MailAddress> mailAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "from", "replyTo", "reversePath", "unaltered", "recipients", "to", "null"))
+                .extract(getInitParameters().getTo());
+        for (MailAddress address : mailAddresses) {
             builder.add(address.toInternetAddress());
         }
         ImmutableList<InternetAddress> addresses = builder.build();
@@ -323,8 +327,9 @@ public abstract class AbstractRedirect extends GenericMailet {
             return null;
         }
 
-        List<String> allowedSpecials = ImmutableList.of("postmaster", "sender", "null", "unaltered");
-        List<MailAddress> extractAddresses = new AddressExtractor(getMailetContext()).from(replyTo, allowedSpecials);
+        List<MailAddress> extractAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "null", "unaltered"))
+                .extract(replyTo);
         if (extractAddresses.isEmpty()) {
             return null;
         }
@@ -390,8 +395,9 @@ public abstract class AbstractRedirect extends GenericMailet {
             return null;
         }
 
-        List<String> allowedSpecials = ImmutableList.of("postmaster", "sender", "null", "unaltered");
-        List<MailAddress> extractAddresses = new AddressExtractor(getMailetContext()).from(reversePath, allowedSpecials);
+        List<MailAddress> extractAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "null", "unaltered"))
+                .extract(reversePath);
         if (extractAddresses.isEmpty()) {
             return null;
         }
@@ -466,8 +472,9 @@ public abstract class AbstractRedirect extends GenericMailet {
             return null;
         }
 
-        List<String> allowedSpecials = ImmutableList.of("postmaster", "sender", "unaltered");
-        List<MailAddress> extractAddresses = new AddressExtractor(getMailetContext()).from(sender, allowedSpecials);
+        List<MailAddress> extractAddresses = AddressExtractor.withContext(getMailetContext())
+                .allowedSpecials(ImmutableList.of("postmaster", "sender", "unaltered"))
+                .extract(sender);
         if (extractAddresses.isEmpty()) {
             return null;
         }
