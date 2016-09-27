@@ -64,8 +64,10 @@ public class CassandraMailboxManagerTest {
             CASSANDRA.ensureAllTables();
             CassandraUidProvider uidProvider = new CassandraUidProvider(CASSANDRA.getConf());
             CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(CASSANDRA.getConf());
+            CassandraMessageIdProvider messageIdProvider = new CassandraMessageIdProvider();
             CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
                 modSeqProvider,
+                messageIdProvider,
                 CASSANDRA.getConf(),
                 CASSANDRA.getTypesProvider());
 

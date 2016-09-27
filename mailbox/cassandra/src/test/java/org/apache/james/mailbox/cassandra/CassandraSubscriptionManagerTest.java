@@ -39,6 +39,7 @@ public class CassandraSubscriptionManagerTest extends AbstractSubscriptionManage
             new CassandraMailboxSessionMapperFactory(
                 new CassandraUidProvider(cassandra.getConf()),
                 new CassandraModSeqProvider(cassandra.getConf()),
+                new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider()
             )

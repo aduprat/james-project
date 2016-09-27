@@ -29,11 +29,11 @@ import org.apache.james.mailbox.cassandra.mail.CassandraMailboxMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageMapper;
 import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
 import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageIdProvider;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.user.SubscriptionMapper;
@@ -50,13 +50,15 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     private final Session session;
     private final UidProvider uidProvider;
     private final ModSeqProvider modSeqProvider;
+    private final MessageIdProvider messageIdProvider;
     private final CassandraTypesProvider typesProvider;
     private int maxRetry;
 
     @Inject
-    public CassandraMailboxSessionMapperFactory(UidProvider uidProvider, ModSeqProvider modSeqProvider, Session session, CassandraTypesProvider typesProvider) {
+    public CassandraMailboxSessionMapperFactory(UidProvider uidProvider, ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider, Session session, CassandraTypesProvider typesProvider) {
         this.uidProvider = uidProvider;
         this.modSeqProvider = modSeqProvider;
+        this.messageIdProvider = messageIdProvider;
         this.session = session;
         this.maxRetry = DEFAULT_MAX_RETRY;
         this.typesProvider = typesProvider;
@@ -68,7 +70,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
 
     @Override
     public CassandraMessageMapper createMessageMapper(MailboxSession mailboxSession) {
-        return new CassandraMessageMapper(session, uidProvider, modSeqProvider, null, maxRetry, typesProvider, createAttachmentMapper(mailboxSession));
+        return new CassandraMessageMapper(session, uidProvider, modSeqProvider, messageIdProvider, null, maxRetry, typesProvider, createAttachmentMapper(mailboxSession));
     }
 
     @Override

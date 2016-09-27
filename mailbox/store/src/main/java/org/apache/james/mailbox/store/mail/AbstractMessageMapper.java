@@ -46,11 +46,13 @@ public abstract class AbstractMessageMapper extends TransactionalMapper implemen
     protected final MailboxSession mailboxSession;
     private final UidProvider uidProvider;
     private final ModSeqProvider modSeqProvider;
+    private final MessageIdProvider messageIdProvider;
 
-    public AbstractMessageMapper(MailboxSession mailboxSession, UidProvider uidProvider, ModSeqProvider modSeqProvider) {
+    public AbstractMessageMapper(MailboxSession mailboxSession, UidProvider uidProvider, ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider) {
         this.mailboxSession = mailboxSession;
         this.uidProvider = uidProvider;
         this.modSeqProvider = modSeqProvider;
+        this.messageIdProvider = messageIdProvider;
     }
     
     @Override

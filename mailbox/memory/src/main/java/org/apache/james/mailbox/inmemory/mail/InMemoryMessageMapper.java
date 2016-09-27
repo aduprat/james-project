@@ -38,6 +38,7 @@ import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.store.SimpleMessageMetaData;
 import org.apache.james.mailbox.store.mail.AbstractMessageMapper;
+import org.apache.james.mailbox.store.mail.MessageIdProvider;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
@@ -50,8 +51,8 @@ public class InMemoryMessageMapper extends AbstractMessageMapper {
     private static final int INITIAL_SIZE = 256;
 
     public InMemoryMessageMapper(MailboxSession session, UidProvider uidProvider,
-            ModSeqProvider modSeqProvider) {
-        super(session, uidProvider, modSeqProvider);
+            ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider) {
+        super(session, uidProvider, modSeqProvider, messageIdProvider);
         this.mailboxByUid = new ConcurrentHashMap<InMemoryId, Map<MessageUid, MailboxMessage>>(INITIAL_SIZE);
     }
 

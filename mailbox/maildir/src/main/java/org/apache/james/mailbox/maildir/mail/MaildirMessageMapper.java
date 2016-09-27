@@ -59,7 +59,7 @@ public class MaildirMessageMapper extends AbstractMessageMapper {
     private final static int BUF_SIZE = 2048;
 
     public MaildirMessageMapper(MailboxSession session, MaildirStore maildirStore) {
-        super(session, maildirStore, maildirStore);
+        super(session, maildirStore, maildirStore, maildirStore);
         this.maildirStore = maildirStore;
     }
 

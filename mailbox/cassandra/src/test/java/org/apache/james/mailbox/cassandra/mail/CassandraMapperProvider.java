@@ -22,6 +22,7 @@ import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
+import org.apache.james.mailbox.cassandra.CassandraMessageIdProvider;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAnnotationModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAttachmentModule;
@@ -55,6 +56,7 @@ public class CassandraMapperProvider implements MapperProvider {
         return new CassandraMailboxSessionMapperFactory(
             new CassandraUidProvider(cassandra.getConf()),
             new CassandraModSeqProvider(cassandra.getConf()),
+            new CassandraMessageIdProvider(),
             cassandra.getConf(),
             cassandra.getTypesProvider()
         ).getMailboxMapper(new MockMailboxSession("benwa"));
@@ -65,6 +67,7 @@ public class CassandraMapperProvider implements MapperProvider {
         return new CassandraMailboxSessionMapperFactory(
             new CassandraUidProvider(cassandra.getConf()),
             new CassandraModSeqProvider(cassandra.getConf()),
+            new CassandraMessageIdProvider(),
             cassandra.getConf(),
             cassandra.getTypesProvider()
         ).getMessageMapper(new MockMailboxSession("benwa"));
@@ -75,6 +78,7 @@ public class CassandraMapperProvider implements MapperProvider {
         return new CassandraMailboxSessionMapperFactory(
                 new CassandraUidProvider(cassandra.getConf()),
                 new CassandraModSeqProvider(cassandra.getConf()),
+                new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider()
             ).getAttachmentMapper(new MockMailboxSession("benwa"));
@@ -105,6 +109,7 @@ public class CassandraMapperProvider implements MapperProvider {
         return new CassandraMailboxSessionMapperFactory(
                 new CassandraUidProvider(cassandra.getConf()),
                 new CassandraModSeqProvider(cassandra.getConf()),
+                new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider()
             ).getAnnotationMapper(new MockMailboxSession("benwa"));

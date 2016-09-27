@@ -95,6 +95,7 @@ import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.SimpleMessageMetaData;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
+import org.apache.james.mailbox.store.mail.MessageIdProvider;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
@@ -124,16 +125,18 @@ public class CassandraMessageMapper implements MessageMapper {
 
     private final Session session;
     private final ModSeqProvider modSeqProvider;
+    private final MessageIdProvider messageIdProvider;
     private final MailboxSession mailboxSession;
     private final UidProvider uidProvider;
     private final CassandraTypesProvider typesProvider;
     private final int maxRetries;
     private final AttachmentMapper attachmentMapper;
 
-    public CassandraMessageMapper(Session session, UidProvider uidProvider, ModSeqProvider modSeqProvider, MailboxSession mailboxSession, int maxRetries, CassandraTypesProvider typesProvider, AttachmentMapper attachmentMapper) {
+    public CassandraMessageMapper(Session session, UidProvider uidProvider, ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider, MailboxSession mailboxSession, int maxRetries, CassandraTypesProvider typesProvider, AttachmentMapper attachmentMapper) {
         this.session = session;
         this.uidProvider = uidProvider;
         this.modSeqProvider = modSeqProvider;
+        this.messageIdProvider = messageIdProvider;
         this.mailboxSession = mailboxSession;
         this.maxRetries = maxRetries;
         this.typesProvider = typesProvider;

@@ -27,6 +27,7 @@ import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
+import org.apache.james.mailbox.cassandra.CassandraMessageIdProvider;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAttachmentModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraMailboxCounterModule;
@@ -58,6 +59,7 @@ public class CassandraMailboxManagerAttachmentTest extends AbstractMailboxManage
         mailboxSessionMapperFactory = new CassandraMailboxSessionMapperFactory(
                 new CassandraUidProvider(cassandra.getConf()),
                 new CassandraModSeqProvider(cassandra.getConf()),
+                new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider());
         Authenticator noAuthenticator = null;

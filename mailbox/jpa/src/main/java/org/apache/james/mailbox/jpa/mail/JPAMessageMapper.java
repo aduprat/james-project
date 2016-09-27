@@ -43,6 +43,7 @@ import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageRange.Type;
 import org.apache.james.mailbox.store.SimpleMessageMetaData;
 import org.apache.james.mailbox.store.mail.AbstractMessageMapper;
+import org.apache.james.mailbox.store.mail.MessageIdProvider;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
@@ -60,8 +61,8 @@ public class JPAMessageMapper extends AbstractMessageMapper implements MessageMa
     protected EntityManager entityManager;
 
     public JPAMessageMapper(MailboxSession session, UidProvider uidProvider,
-            ModSeqProvider modSeqProvider, EntityManagerFactory entityManagerFactory) {
-        super(session, uidProvider, modSeqProvider);
+            ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider, EntityManagerFactory entityManagerFactory) {
+        super(session, uidProvider, modSeqProvider, messageIdProvider);
         this.entityManagerFactory = entityManagerFactory;
     }
 

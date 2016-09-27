@@ -28,8 +28,12 @@ import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.JVMMailboxPathLocker;
+import org.apache.james.mailbox.store.mail.DefaultMessageIdProvider;
+import org.apache.james.mailbox.store.mail.MessageIdProvider;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
@@ -38,7 +42,7 @@ import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 
-public class MaildirStore implements UidProvider, ModSeqProvider {
+public class MaildirStore implements UidProvider, ModSeqProvider, MessageIdProvider {
 
     public static final String PATH_USER = "%user";
     public static final String PATH_DOMAIN = "%domain";
@@ -295,5 +299,10 @@ public class MaildirStore implements UidProvider, ModSeqProvider {
      */
     public void setMessageNameStrictParse(boolean messageNameStrictParse) {
         this.messageNameStrictParse = messageNameStrictParse;
+    }
+
+    @Override
+    public MessageId from(MailboxId mailboxId, MessageUid messageUid) {
+        return new DefaultMessageIdProvider().from(mailboxId, messageUid);
     }
 }
