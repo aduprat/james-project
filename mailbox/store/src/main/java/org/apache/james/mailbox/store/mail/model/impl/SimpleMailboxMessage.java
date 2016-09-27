@@ -32,6 +32,8 @@ import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
@@ -108,6 +110,11 @@ public class SimpleMailboxMessage extends DelegatingMailboxMessage {
 
     public MessageUid getUid() {
         return uid;
+    }
+
+    @Override
+    public MessageId getMessageId() {
+        return new DefaultMessageId(getMailboxId(), getUid());
     }
 
     public boolean isAnswered() {

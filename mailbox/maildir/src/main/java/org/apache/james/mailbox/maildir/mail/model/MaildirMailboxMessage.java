@@ -28,6 +28,8 @@ import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.maildir.MaildirFolder;
 import org.apache.james.mailbox.maildir.MaildirId;
 import org.apache.james.mailbox.maildir.MaildirMessageName;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 
@@ -82,6 +84,11 @@ public class MaildirMailboxMessage extends DelegatingMailboxMessage {
     @Override
     public void setUid(MessageUid uid) {
         this.uid = uid;
+    }
+
+    @Override
+    public MessageId getMessageId() {
+        return new DefaultMessageId(getMailboxId(), getUid());
     }
 
 
