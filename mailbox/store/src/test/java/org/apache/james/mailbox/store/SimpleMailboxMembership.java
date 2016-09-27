@@ -38,6 +38,7 @@ import javax.mail.Flags;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
@@ -57,12 +58,14 @@ public class SimpleMailboxMembership implements MailboxMessage {
     public boolean draft = false;
     public boolean flagged = false;
     public boolean seen = false;
+    private MessageId messageId;
 
     public SimpleMailboxMembership(TestId mailboxId, MessageUid uid, long modSeq, Date internalDate, int size, 
             Flags flags, byte[] body, Map<String, String> headers) throws Exception {
         super();
         this.mailboxId = mailboxId;
         this.uid = uid;
+        this.messageId = new DefaultMessageId(getMailboxId(), getUid());
         this.internalDate = internalDate;
         this.size = size;
         this.body = body;
@@ -263,8 +266,13 @@ public class SimpleMailboxMembership implements MailboxMessage {
     }
 
     @Override
-    public DefaultMessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+    public MessageId getMessageId() {
+        return messageId;
+    }
+
+    @Override
+    public void setMessageId(MessageId messageId) {
+        this.messageId = messageId;
     }
 
     @Override

@@ -95,6 +95,7 @@ public class HBaseMailboxMessage implements MailboxMessage {
     /** Meta data for this message */
     private final List<Property> properties;
     private final List<String> userFlags;
+    private MessageId messageId;
     
     /**
      * Create a copy of the given message.
@@ -104,6 +105,7 @@ public class HBaseMailboxMessage implements MailboxMessage {
         this.conf = conf;
         this.mailboxId = mailboxId;
         this.uid = uid;
+        this.messageId = new DefaultMessageId(getMailboxId(), getUid());
         this.modSeq = modSeq;
         this.userFlags = new ArrayList<String>();
         setFlags(original.createFlags());
@@ -235,7 +237,12 @@ public class HBaseMailboxMessage implements MailboxMessage {
 
     @Override
     public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+        return messageId;
+    }
+
+    @Override
+    public void setMessageId(MessageId messageId) {
+        this.messageId = messageId;
     }
 
     @Override

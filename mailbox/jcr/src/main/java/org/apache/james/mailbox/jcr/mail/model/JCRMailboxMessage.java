@@ -79,6 +79,8 @@ public class JCRMailboxMessage implements MailboxMessage, JCRImapConstants, Pers
     private boolean seen;
     private String[] userFlags;
     private long modSeq;
+
+    private MessageId messageId;
     
     private static final String TOSTRING_SEPARATOR = " ";
 
@@ -139,6 +141,7 @@ public class JCRMailboxMessage implements MailboxMessage, JCRImapConstants, Pers
         this.size = message.getFullContentOctets();
         setFlags(message.createFlags());
         this.uid = uid;
+        this.messageId = new DefaultMessageId(getMailboxId(), getUid());
         this.modSeq = modSeq;
         this.logger = logger;
         try {
@@ -376,7 +379,12 @@ public class JCRMailboxMessage implements MailboxMessage, JCRImapConstants, Pers
 
     @Override
     public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+        return messageId;
+    }
+
+    @Override
+    public void setMessageId(MessageId messageId) {
+        this.messageId = messageId;
     }
 
     @Override

@@ -227,6 +227,7 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage {
     @ElementJoinColumns({ @ElementJoinColumn(name = "MAILBOX_ID", referencedColumnName = "MAILBOX_ID"),
             @ElementJoinColumn(name = "MAIL_UID", referencedColumnName = "MAIL_UID") })
     private List<JPAUserFlag> userFlags;
+    private MessageId messageId;
 
     public AbstractJPAMailboxMessage(JPAMailbox mailbox, Date internalDate, Flags flags, long contentOctets,
             int bodyStartOctet, PropertyBuilder propertyBuilder) {
@@ -267,6 +268,7 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage {
         super();
         this.mailbox = mailbox;
         this.uid = uid.asLong();
+        this.messageId = new DefaultMessageId(getMailboxId(), getUid());
         this.modSeq = modSeq;
         this.userFlags = new ArrayList<JPAUserFlag>();
         setFlags(original.createFlags());
@@ -506,7 +508,12 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage {
 
     @Override
     public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+        return messageId;
+    }
+
+    @Override
+    public void setMessageId(MessageId messageId) {
+        this.messageId = messageId;
     }
 
     @Override

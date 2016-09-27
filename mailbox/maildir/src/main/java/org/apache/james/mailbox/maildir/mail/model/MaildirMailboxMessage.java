@@ -43,6 +43,7 @@ public class MaildirMailboxMessage extends DelegatingMailboxMessage {
     private boolean seen;
     private final Mailbox mailbox;
     private MessageUid uid;
+    private MessageId messageId;
     protected boolean newMessage;
     private long modSeq;
     
@@ -52,6 +53,7 @@ public class MaildirMailboxMessage extends DelegatingMailboxMessage {
         this.mailbox = mailbox;
         setUid(messageUid);
         setModSeq(messageName.getFile().lastModified());
+        setMessageId(new DefaultMessageId(getMailboxId(), getUid()));
         Flags flags = messageName.getFlags();
         
         // Set the flags for the message and respect if its RECENT
@@ -88,9 +90,13 @@ public class MaildirMailboxMessage extends DelegatingMailboxMessage {
 
     @Override
     public MessageId getMessageId() {
-        return new DefaultMessageId(getMailboxId(), getUid());
+        return messageId;
     }
 
+    @Override
+    public void setMessageId(MessageId messageId) {
+        this.messageId = messageId;
+    }
 
     @Override
     public void setFlags(Flags flags) {

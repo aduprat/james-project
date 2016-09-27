@@ -51,6 +51,8 @@ public interface MailboxMessage extends Message, Comparable<MailboxMessage> {
 
     MessageId getMessageId();
 
+    void setMessageId(MessageId messageId);
+
     /**
      * Set the mod-sequence for the message. This must be called before the message is added to the store 
      * or any flags are changed. This must be unique / sequential.
