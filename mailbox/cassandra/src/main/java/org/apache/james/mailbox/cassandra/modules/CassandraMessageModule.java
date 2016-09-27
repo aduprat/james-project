@@ -29,7 +29,6 @@ import static com.datastax.driver.core.DataType.timestamp;
 import static com.datastax.driver.core.DataType.timeuuid;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.james.backends.cassandra.components.CassandraIndex;
@@ -39,6 +38,7 @@ import org.apache.james.backends.cassandra.components.CassandraType;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable;
 
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
+import com.google.common.collect.ImmutableList;
 
 public class CassandraMessageModule implements CassandraModule {
 
@@ -47,12 +47,26 @@ public class CassandraMessageModule implements CassandraModule {
     private final List<CassandraType> types;
 
     public CassandraMessageModule() {
-        tables = Collections.singletonList(
-            new CassandraTable(CassandraMessageTable.TABLE_NAME,
-                SchemaBuilder.createTable(CassandraMessageTable.TABLE_NAME)
+        tables = ImmutableList.of(
+            new CassandraTable(CassandraMessageTable.MESSAGE_ID_TABLE,
+                SchemaBuilder.createTable(CassandraMessageTable.MESSAGE_ID_TABLE)
                     .ifNotExists()
                     .addPartitionKey(CassandraMessageTable.MAILBOX_ID, timeuuid())
                     .addClusteringColumn(CassandraMessageTable.IMAP_UID, bigint())
+                    .addColumn(CassandraMessageTable.MESSAGE_ID, text())),
+            new CassandraTable(CassandraMessageTable.IMAP_UID_TABLE,
+                    SchemaBuilder.createTable(CassandraMessageTable.IMAP_UID_TABLE)
+                        .ifNotExists()
+                        .addPartitionKey(CassandraMessageTable.MESSAGE_ID, text())
+                        .addClusteringColumn(CassandraMessageTable.MAILBOX_ID, timeuuid())
+                        .addColumn(CassandraMessageTable.IMAP_UID, bigint())),
+
+            new CassandraTable(CassandraMessageTable.TABLE_NAME,
+                SchemaBuilder.createTable(CassandraMessageTable.TABLE_NAME)
+                    .ifNotExists()
+                    .addPartitionKey(CassandraMessageTable.MESSAGE_ID, text())
+                    .addColumn(CassandraMessageTable.MAILBOX_ID, timeuuid())
+                    .addColumn(CassandraMessageTable.IMAP_UID, bigint())
                     .addColumn(CassandraMessageTable.INTERNAL_DATE, timestamp())
                     .addColumn(CassandraMessageTable.BODY_START_OCTET, cint())
                     .addColumn(CassandraMessageTable.BODY_OCTECTS, bigint())
