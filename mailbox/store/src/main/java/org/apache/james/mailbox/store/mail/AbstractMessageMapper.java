@@ -101,7 +101,9 @@ public abstract class AbstractMessageMapper extends TransactionalMapper implemen
 
     @Override
     public MessageMetaData add(Mailbox mailbox, MailboxMessage message) throws MailboxException {
-        message.setUid(uidProvider.nextUid(mailboxSession, mailbox));
+        MessageUid messageUid = uidProvider.nextUid(mailboxSession, mailbox);
+        message.setUid(messageUid);
+        message.setMessageId(messageIdProvider.from(mailbox.getMailboxId(), messageUid));
         
         // if a mailbox does not support mod-sequences the provider may be null
         if (modSeqProvider != null) {
@@ -121,6 +123,7 @@ public abstract class AbstractMessageMapper extends TransactionalMapper implemen
         if (modSeqProvider != null) {
             modSeq = modSeqProvider.nextModSeq(mailboxSession, mailbox);
         }
+        original.setMessageId(messageIdProvider.from(mailbox.getMailboxId(), uid));
         final MessageMetaData metaData = copy(mailbox, uid, modSeq, original);  
         
         return metaData;
