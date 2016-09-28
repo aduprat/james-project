@@ -74,8 +74,8 @@ public class JacksonEventSerializer implements EventSerializer {
     public static class MessageUidDeserializer extends JsonDeserializer<MessageUid> {
 
         @Override
-        public MessageUid deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
-            return MessageUid.of(Long.parseLong(p.getValueAsString()));
+        public MessageUid deserialize(JsonParser parser, DeserializationContext context) throws IOException, JsonProcessingException {
+            return MessageUid.of(Long.parseLong(parser.getValueAsString()));
         }
         
     }
@@ -83,8 +83,8 @@ public class JacksonEventSerializer implements EventSerializer {
     public static class MessageUidSerializer extends JsonSerializer<MessageUid> {
 
         @Override
-        public void serialize(MessageUid value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-            gen.writeString(String.valueOf(value.asLong()));
+        public void serialize(MessageUid value, JsonGenerator generator, SerializerProvider serializers) throws IOException, JsonProcessingException {
+            generator.writeString(String.valueOf(value.asLong()));
         }
         
     }
@@ -92,7 +92,7 @@ public class JacksonEventSerializer implements EventSerializer {
     public static class MessageUidKeyDeserializer extends KeyDeserializer {
 
         @Override
-        public Object deserializeKey(String key, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+        public Object deserializeKey(String key, DeserializationContext context) throws IOException, JsonProcessingException {
             return MessageUid.of(Long.parseLong(key));
         }
         
@@ -101,8 +101,8 @@ public class JacksonEventSerializer implements EventSerializer {
     public static class MessageUidKeySerializer extends JsonSerializer<MessageUid> {
 
         @Override
-        public void serialize(MessageUid value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-            gen.writeFieldName(String.valueOf(value.asLong()));
+        public void serialize(MessageUid value, JsonGenerator generator, SerializerProvider serializers) throws IOException, JsonProcessingException {
+            generator.writeFieldName(String.valueOf(value.asLong()));
         }
         
     }
@@ -110,8 +110,8 @@ public class JacksonEventSerializer implements EventSerializer {
     public static class MessageIdSerializer extends JsonSerializer<MessageId> {
 
         @Override
-        public void serialize(MessageId value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
-            gen.writeString(String.valueOf(value.serialize()));
+        public void serialize(MessageId value, JsonGenerator generator, SerializerProvider serializers) throws IOException, JsonProcessingException {
+            generator.writeString(String.valueOf(value.serialize()));
         }
         
     }
@@ -124,7 +124,7 @@ public class JacksonEventSerializer implements EventSerializer {
         }
 
         @Override
-        public MessageId deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+        public MessageId deserialize(JsonParser p, DeserializationContext context) throws IOException, JsonProcessingException {
             return factory.fromString(p.getValueAsString());
         }
         
