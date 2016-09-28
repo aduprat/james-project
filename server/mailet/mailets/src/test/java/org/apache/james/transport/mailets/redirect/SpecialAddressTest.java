@@ -73,11 +73,11 @@ public class SpecialAddressTest {
 
     @Test
     public void isSpecialAddressShouldReturnTrueWhenMatchingSpecialDomain() throws Exception {
-        assertThat(SpecialAddress.isSpecialAddress(new MailAddress("user", "address.marker")));
+        assertThat(SpecialAddress.isSpecialAddress(new MailAddress("user", "address.marker"))).isTrue();
     }
 
     @Test
     public void isSpecialAddressShouldReturnFalseWhenNotMatchingSpecialDomain() throws Exception {
-        assertThat(SpecialAddress.isSpecialAddress(new MailAddress("user", "james.org")));
+        assertThat(SpecialAddress.isSpecialAddress(new MailAddress("user", "james.org"))).isFalse();
     }
 }
