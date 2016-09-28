@@ -24,12 +24,12 @@ import org.apache.mailet.Mailet;
 
 public class MailetPipelineLogging {
 
-    public static void logIn(Mailet mailet, Mail mail) {
+    public static void logBeginOfMailetProcess(Mailet mailet, Mail mail) {
         mailet.getMailetConfig().getMailetContext().getLogger()
             .debug("Entering mailet: {}\n\tmail state {}", mailet.getMailetInfo(), mail.getState());
     }
 
-    public static void logOut(Mailet mailet, Mail mail) {
+    public static void logEndOfMailetProcess(Mailet mailet, Mail mail) {
         mailet.getMailetConfig().getMailetContext().getLogger()
             .debug("End of mailet: {}\n\tmail state {}", mailet.getMailetInfo(), mail.getState());
     }
