@@ -25,7 +25,9 @@ import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.cassandra.mail.CassandraAnnotationMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
+import org.apache.james.mailbox.cassandra.mail.CassandraImapUidDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxMapper;
+import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageMapper;
 import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -52,14 +54,19 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     private final ModSeqProvider modSeqProvider;
     private final MessageIdProvider messageIdProvider;
     private final CassandraTypesProvider typesProvider;
+    private final CassandraMessageIdDAO messageIdDAO;
+    private final CassandraImapUidDAO imapUidDAO;
     private int maxRetry;
 
     @Inject
-    public CassandraMailboxSessionMapperFactory(UidProvider uidProvider, ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider, Session session, CassandraTypesProvider typesProvider) {
+    public CassandraMailboxSessionMapperFactory(UidProvider uidProvider, ModSeqProvider modSeqProvider, MessageIdProvider messageIdProvider, Session session, CassandraTypesProvider typesProvider,
+            CassandraMessageIdDAO messageIdDAO, CassandraImapUidDAO imapUidDAO) {
         this.uidProvider = uidProvider;
         this.modSeqProvider = modSeqProvider;
         this.messageIdProvider = messageIdProvider;
         this.session = session;
+        this.messageIdDAO = messageIdDAO;
+        this.imapUidDAO = imapUidDAO;
         this.maxRetry = DEFAULT_MAX_RETRY;
         this.typesProvider = typesProvider;
     }
@@ -70,7 +77,8 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
 
     @Override
     public CassandraMessageMapper createMessageMapper(MailboxSession mailboxSession) {
-        return new CassandraMessageMapper(session, uidProvider, modSeqProvider, messageIdProvider, null, maxRetry, typesProvider, createAttachmentMapper(mailboxSession));
+        return new CassandraMessageMapper(session, uidProvider, modSeqProvider, messageIdProvider, null, maxRetry, typesProvider, createAttachmentMapper(mailboxSession),
+                messageIdDAO, imapUidDAO);
     }
 
     @Override
