@@ -144,7 +144,9 @@ public abstract class AbstractRecipientRewriteTableMailet extends GenericMailet 
 
             MailAddress nextMap = new MailAddress(rcpt.asString());
             if (getMailetContext().isLocalServer(nextMap.getDomain())) {
-                localRecipients.add(nextMap);
+                if (getMailetContext().isLocalEmail(nextMap)) {
+                    localRecipients.add(nextMap);
+                }
             } else {
                 remoteRecipients.add(nextMap);
             }
