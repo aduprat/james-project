@@ -163,6 +163,16 @@ public class GuiceServerProbe implements ExtendedServerProbe {
     }
 
     @Override
+    public void addAliasDomainMapping(String aliasDomain, String realDomain) throws Exception {
+        recipientRewriteTable.addAliasDomainMapping(aliasDomain, realDomain);
+    }
+
+    @Override
+    public void removeAliasDomainMapping(String aliasDomain, String realDomain) throws Exception {
+        recipientRewriteTable.removeAliasDomainMapping(aliasDomain, realDomain);
+    }
+
+    @Override
     public void copyMailbox(String srcBean, String dstBean) throws Exception {
         throw new NotImplementedException();
     }

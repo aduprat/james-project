@@ -218,6 +218,16 @@ public class JmxServerProbe implements ServerProbe {
     }
 
     @Override
+    public void addAliasDomainMapping(String aliasDomain, String realDomain) throws Exception {
+        virtualUserTableProxy.addDomainMapping(aliasDomain, realDomain);
+    }
+
+    @Override
+    public void removeAliasDomainMapping(String aliasDomain, String realDomain) throws Exception {
+        virtualUserTableProxy.removeDomainMapping(aliasDomain, realDomain);
+    }
+
+    @Override
     public void copyMailbox(String srcBean, String dstBean) throws Exception {
         mailboxCopierManagement.copy(srcBean, dstBean);
     }

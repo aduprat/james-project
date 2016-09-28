@@ -179,6 +179,10 @@ public interface ServerProbe extends Closeable {
      */
     void removeRegexMapping(String user, String domain, String regex) throws Exception;
 
+    void addAliasDomainMapping(String aliasDomain, String realDomain) throws Exception;
+
+    void removeAliasDomainMapping(String aliasDomain, String realDomain) throws Exception;
+
     /**
      * Copy Mailbox.
      *
