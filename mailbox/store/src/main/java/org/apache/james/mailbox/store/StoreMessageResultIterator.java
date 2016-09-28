@@ -204,7 +204,6 @@ public class StoreMessageResultIterator implements MessageResultIterator {
         private long modSeq = -1;
 
 
-
         public UnloadedMessageResult(MailboxMessage message, MailboxException exception) {
             super();
             internalDate = message.getInternalDate();
