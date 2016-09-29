@@ -29,6 +29,7 @@ import org.apache.james.mailbox.cassandra.mail.CassandraImapUidDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMailboxMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdDAO;
+import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageMapper;
 import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -87,7 +88,8 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
 
     @Override
     public MessageIdMapper createMessageIdMapper(MailboxSession mailboxSession) throws MailboxException {
-        return null;
+        return new CassandraMessageIdMapper(getAttachmentMapper(mailboxSession), getMailboxMapper(mailboxSession),
+                imapUidDAO, messageIdDAO, messageDAO);
     }
 
     @Override
