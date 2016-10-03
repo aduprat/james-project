@@ -108,7 +108,7 @@ public class DefaultDelegatingMailboxListener implements DelegatingMailboxListen
     }
 
     @Override
-    public boolean isListeningTo(MailboxListener mailboxListener) {
+    public boolean isRegistered(MailboxListener mailboxListener) {
         return registry.isListeningTo(mailboxListener);
     }
 

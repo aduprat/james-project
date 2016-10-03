@@ -235,7 +235,7 @@ public class BroadcastDelegatingMailboxListenerTest {
         });
         broadcastDelegatingMailboxListener.addGlobalListener(mockedListener, null);
 
-        assertThat(broadcastDelegatingMailboxListener.isListeningTo(mockedListener)).isTrue();
+        assertThat(broadcastDelegatingMailboxListener.isRegistered(mockedListener)).isTrue();
     }
 
     @Test
@@ -249,13 +249,13 @@ public class BroadcastDelegatingMailboxListenerTest {
         });
         broadcastDelegatingMailboxListener.addListener(MAILBOX_PATH, mockedListener, null);
 
-        assertThat(broadcastDelegatingMailboxListener.isListeningTo(mockedListener)).isTrue();
+        assertThat(broadcastDelegatingMailboxListener.isRegistered(mockedListener)).isTrue();
     }
 
     @Test
     public void isListeningToShouldReturnFalseWhenNotListeningToListener() throws Exception {
         MailboxListener mockedListener = mock(MailboxListener.class);
 
-        assertThat(broadcastDelegatingMailboxListener.isListeningTo(mockedListener)).isFalse();
+        assertThat(broadcastDelegatingMailboxListener.isRegistered(mockedListener)).isFalse();
     }
 }

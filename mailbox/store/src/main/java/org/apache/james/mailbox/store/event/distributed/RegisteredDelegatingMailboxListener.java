@@ -175,7 +175,7 @@ public class RegisteredDelegatingMailboxListener implements DistributedDelegatin
     }
 
     @Override
-    public boolean isListeningTo(MailboxListener mailboxListener) {
+    public boolean isRegistered(MailboxListener mailboxListener) {
         return mailboxListenerRegistry.isListeningTo(mailboxListener);
     }
 

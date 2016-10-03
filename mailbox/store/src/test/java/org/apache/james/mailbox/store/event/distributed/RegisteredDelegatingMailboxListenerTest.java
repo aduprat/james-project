@@ -287,7 +287,7 @@ public class RegisteredDelegatingMailboxListenerTest {
         });
         testee.addGlobalListener(mockedListener, null);
 
-        assertThat(testee.isListeningTo(mockedListener)).isTrue();
+        assertThat(testee.isRegistered(mockedListener)).isTrue();
     }
 
     @Test
@@ -301,13 +301,13 @@ public class RegisteredDelegatingMailboxListenerTest {
         });
         testee.addListener(MAILBOX_PATH, mockedListener, null);
 
-        assertThat(testee.isListeningTo(mockedListener)).isTrue();
+        assertThat(testee.isRegistered(mockedListener)).isTrue();
     }
 
     @Test
     public void isListeningToShouldReturnFalseWhenNotListeningToListener() throws Exception {
         MailboxListener mockedListener = mock(MailboxListener.class);
 
-        assertThat(testee.isListeningTo(mockedListener)).isFalse();
+        assertThat(testee.isRegistered(mockedListener)).isFalse();
     }
 }

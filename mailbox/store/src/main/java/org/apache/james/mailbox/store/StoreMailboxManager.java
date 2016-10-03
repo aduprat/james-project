@@ -213,7 +213,7 @@ public class StoreMailboxManager implements MailboxManager {
     private boolean shouldInitQuotaUpdaterListener() {
         return quotaUpdater != null 
             && quotaUpdater instanceof MailboxListener
-            && !delegatingListener.isListeningTo((MailboxListener) quotaUpdater);
+            && !delegatingListener.isRegistered((MailboxListener) quotaUpdater);
     }
 
     @Override
