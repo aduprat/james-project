@@ -59,6 +59,7 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
                 new CassandraImapUidDAO(cassandra.getConf())
             ).getMailboxMapper(new MockMailboxSession("benwa"));
@@ -72,6 +73,7 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
                 new CassandraImapUidDAO(cassandra.getConf())
             ).getMessageMapper(new MockMailboxSession("benwa"));
@@ -85,6 +87,7 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
                 new CassandraImapUidDAO(cassandra.getConf())
             ).getAttachmentMapper(new MockMailboxSession("benwa"));
@@ -118,6 +121,7 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraMessageIdProvider(),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
                 new CassandraImapUidDAO(cassandra.getConf())
             ).getAnnotationMapper(new MockMailboxSession("benwa"));

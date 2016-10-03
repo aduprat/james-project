@@ -21,6 +21,7 @@ package org.apache.james.mailbox.cassandra;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mailbox.cassandra.mail.CassandraImapUidDAO;
+import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
@@ -67,6 +68,7 @@ public class CassandraMailboxManagerTest {
             CassandraUidProvider uidProvider = new CassandraUidProvider(CASSANDRA.getConf());
             CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(CASSANDRA.getConf());
             CassandraMessageIdProvider messageIdProvider = new CassandraMessageIdProvider();
+            CassandraMessageDAO messageDAO = new CassandraMessageDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider());
             CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(CASSANDRA.getConf());
             CassandraImapUidDAO imapUidDAO = new CassandraImapUidDAO(CASSANDRA.getConf());
             CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
@@ -74,6 +76,7 @@ public class CassandraMailboxManagerTest {
                 messageIdProvider,
                 CASSANDRA.getConf(),
                 CASSANDRA.getTypesProvider(),
+                messageDAO,
                 messageIdDAO,
                 imapUidDAO);
 
