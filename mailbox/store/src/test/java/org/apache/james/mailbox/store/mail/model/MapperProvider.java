@@ -24,12 +24,15 @@ import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 
 public interface MapperProvider {
     MailboxMapper createMailboxMapper() throws MailboxException;
 
     MessageMapper createMessageMapper() throws MailboxException;
+
+    MessageIdMapper createMessageIdMapper() throws MailboxException;
 
     AttachmentMapper createAttachmentMapper() throws MailboxException;
 

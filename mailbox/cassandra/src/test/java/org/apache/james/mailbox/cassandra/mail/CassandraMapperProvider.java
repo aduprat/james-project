@@ -36,6 +36,7 @@ import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MapperProvider;
 
@@ -77,6 +78,20 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraMessageIdDAO(cassandra.getConf()),
                 new CassandraImapUidDAO(cassandra.getConf())
             ).getMessageMapper(new MockMailboxSession("benwa"));
+    }
+
+    @Override
+    public  MessageIdMapper createMessageIdMapper() throws MailboxException {
+        return new CassandraMailboxSessionMapperFactory(
+                new CassandraUidProvider(cassandra.getConf()),
+                new CassandraModSeqProvider(cassandra.getConf()),
+                new CassandraMessageIdProvider(),
+                cassandra.getConf(),
+                cassandra.getTypesProvider(),
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
+                new CassandraMessageIdDAO(cassandra.getConf()),
+                new CassandraImapUidDAO(cassandra.getConf())
+            ).getMessageIdMapper(new MockMailboxSession("benwa"));
     }
 
     @Override

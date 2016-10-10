@@ -9,6 +9,7 @@ import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MapperProvider;
 
@@ -28,6 +29,11 @@ public class InMemoryMapperProvider implements MapperProvider {
     @Override
     public MessageMapper createMessageMapper() throws MailboxException {
         return new InMemoryMailboxSessionMapperFactory().createMessageMapper(new MockMailboxSession("user"));
+    }
+
+    @Override
+    public MessageIdMapper createMessageIdMapper() throws MailboxException {
+        return new InMemoryMailboxSessionMapperFactory().createMessageIdMapper(new MockMailboxSession("user"));
     }
 
     @Override
