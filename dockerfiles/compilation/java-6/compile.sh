@@ -58,7 +58,7 @@ if [ $? -eq 0 ]; then
 fi
 
 ## Generate the mailetdocs
-mvn org.apache.james:mailetdocs-maven-plugin:2.5.1-SNAPSHOT:aggregate
+mvn org.apache.james:mailetdocs-maven-plugin:aggregate
 
 if [ $? -eq 0 ]; then
    if [ ! -d "$DESTINATION/mailetdocs" ]; then
