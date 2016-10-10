@@ -30,6 +30,7 @@ import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.NoopAttachmentMapper;
 import org.apache.james.mailbox.store.mail.model.NoopMessageId;
@@ -58,6 +59,11 @@ public class MaildirMailboxSessionMapperFactory extends
     public MessageMapper createMessageMapper(MailboxSession session)
             throws MailboxException {
         return new MaildirMessageMapper(session, store);
+    }
+
+    @Override
+    public MessageIdMapper createMessageIdMapper(MailboxSession session) throws MailboxException {
+        throw new NotImplementedException();
     }
 
     @Override
