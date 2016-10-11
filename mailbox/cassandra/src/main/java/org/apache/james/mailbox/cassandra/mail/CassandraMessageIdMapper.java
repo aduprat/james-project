@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -79,5 +80,10 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
         return imapUidDAO.retrieve(messageId, Optional.empty())
             .findFirst()
             .orElseThrow(() -> new MailboxException("Message not found: " + messageId));
+    }
+
+    @Override
+    public void delete(MessageId messageId) {
+        throw new NotImplementedException();
     }
 }

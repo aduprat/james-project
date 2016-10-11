@@ -27,4 +27,6 @@ import org.apache.james.mailbox.store.mail.model.Message;
 public interface MessageIdMapper {
 
     List<Message> find(List<MessageId> messageIds, FetchType fetchType);
+
+    void delete(MessageId messageId);
 }
