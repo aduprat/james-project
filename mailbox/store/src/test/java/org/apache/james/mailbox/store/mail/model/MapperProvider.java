@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.store.mail.model;
 
+import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
@@ -42,6 +43,8 @@ public interface MapperProvider {
     MailboxId generateId();
 
     MessageId generateMessageId();
+
+    MessageUid generateMessageUid();
 
     void clearMapper() throws MailboxException;
 

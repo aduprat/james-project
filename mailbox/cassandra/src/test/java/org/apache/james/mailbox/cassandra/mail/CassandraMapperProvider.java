@@ -20,8 +20,10 @@ package org.apache.james.mailbox.cassandra.mail;
 
 import java.util.UUID;
 
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
+import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
@@ -120,6 +122,11 @@ public class CassandraMapperProvider implements MapperProvider {
     @Override
     public MessageId generateMessageId() {
         return CassandraMessageId.of(UUID.randomUUID());
+    }
+
+    @Override
+    public MessageUid generateMessageUid() {
+        return MessageUid.of(RandomUtils.nextLong());
     }
 
     @Override

@@ -28,8 +28,11 @@ import javax.mail.Flags;
 import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.exception.MailboxNotFoundException;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
@@ -52,13 +55,17 @@ import com.google.common.collect.ImmutableList;
  */
 @Contract(MapperProvider.class)
 public class MessageIdMapperTest<T extends MapperProvider> {
-    
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
+
     private final static char DELIMITER = ':';
     private static final int BODY_START = 16;
     private final static long UID_VALIDITY = 42;
 
     private IProducer<T> producer;
     private MessageMapper messageMapper;
+    private MailboxMapper mailboxMapper;
     private MessageIdMapper sut;
 
     private SimpleMailbox benwaInboxMailbox;
@@ -80,6 +87,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
         this.mapperProvider.ensureMapperPrepared();
         this.sut = mapperProvider.createMessageIdMapper();
         this.messageMapper = mapperProvider.createMessageMapper();
+        this.mailboxMapper = mapperProvider.createMailboxMapper();
 
         benwaInboxMailbox = createMailbox(new MailboxPath("#private", "benwa", "INBOX"));
         benwaWorkMailbox = createMailbox( new MailboxPath("#private", "benwa", "INBOX"+DELIMITER+"work"));
@@ -97,7 +105,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
 
     @ContractTest
     public void findShouldReturnEmptyWhenIdListIsEmpty() throws MailboxException {
-        assertThat(sut.find(ImmutableList.<MessageId> of(), FetchType.Full)).isEmpty();;
+        assertThat(sut.find(ImmutableList.<MessageId> of(), FetchType.Full)).isEmpty();
     }
 
     @ContractTest
@@ -122,13 +130,99 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     }
 
     @ContractTest
+    public void findMailboxesShouldReturnEmptyWhenMessageDoesntExist() throws MailboxException {
+        assertThat(sut.findMailboxes(mapperProvider.generateMessageId())).isEmpty();
+    }
+
+    @ContractTest
+    public void findMailboxesShouldOneMailboxWhenMessageExistsInOneMailbox() throws MailboxException {
+        saveMessages();
+        List<MailboxId> mailboxes = sut.findMailboxes(message1.getMessageId());
+        assertThat(mailboxes).containsOnly(benwaInboxMailbox.getMailboxId());
+    }
+
+    @ContractTest
+    public void findMailboxesShouldTwoMailboxesWhenMessageExistsInTwoMailboxes() throws MailboxException {
+        saveMessages();
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        List<MailboxId> mailboxes = sut.findMailboxes(message1.getMessageId());
+        assertThat(mailboxes).containsOnly(benwaInboxMailbox.getMailboxId(), benwaWorkMailbox.getMailboxId());
+    }
+
+    @ContractTest
+    public void saveShouldSaveAMessage() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+        List<Message> messages = sut.find(ImmutableList.of(message1.getMessageId()), FetchType.Full);
+        assertThat(messages).containsOnly(message1);
+    }
+
+    @ContractTest
+    public void saveShouldThrowWhenMailboxDoesntExist() throws Exception {
+        SimpleMailbox notPersistedMailbox = new SimpleMailbox(new MailboxPath("#private", "benwa", "mybox"), UID_VALIDITY);
+        notPersistedMailbox.setMailboxId(mapperProvider.generateId());
+        SimpleMailboxMessage message = createMessage(notPersistedMailbox, "Subject: Test \n\nBody\n.\n", BODY_START, new PropertyBuilder());
+        message.setMessageId(mapperProvider.generateMessageId());
+        message.setUid(mapperProvider.generateMessageUid());
+
+        expectedException.expect(MailboxNotFoundException.class);
+        sut.save(message);
+    }
+
+    @ContractTest
+    public void saveShouldSaveMessageAnotherIndicesWhenMessageAlreadyInMailbox() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        List<MailboxId> mailboxes = sut.findMailboxes(message1.getMessageId());
+        assertThat(mailboxes).containsOnly(benwaInboxMailbox.getMailboxId(), benwaWorkMailbox.getMailboxId());
+    }
+
+    @ContractTest
     public void deleteShouldNotThrowWhenUnknownMessage() {
         sut.delete(message1.getMessageId());
     }
 
-    private SimpleMailbox createMailbox(MailboxPath mailboxPath) {
+    @ContractTest
+    public void deleteShouldDeleteAMessage() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId);
+
+        List<Message> messages = sut.find(ImmutableList.of(messageId), FetchType.Full);
+        assertThat(messages).isEmpty();
+    }
+
+    @ContractTest
+    public void deleteShouldDeleteMessageIndicesWhenStoredInTwoMailboxes() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId);
+
+        List<MailboxId> mailboxes = sut.findMailboxes(messageId);
+        assertThat(mailboxes).isEmpty();
+    }
+
+    private SimpleMailbox createMailbox(MailboxPath mailboxPath) throws MailboxException {
         SimpleMailbox mailbox = new SimpleMailbox(mailboxPath, UID_VALIDITY);
         mailbox.setMailboxId(mapperProvider.generateId());
+        mailboxMapper.save(mailbox);
         return mailbox;
     }
     

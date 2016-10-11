@@ -20,13 +20,21 @@ package org.apache.james.mailbox.store.mail;
 
 import java.util.List;
 
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.exception.MailboxNotFoundException;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Message;
 
 public interface MessageIdMapper {
 
     List<Message> find(List<MessageId> messageIds, FetchType fetchType);
+
+    List<MailboxId> findMailboxes(MessageId messageId);
+
+    void save(MailboxMessage mailboxMessage) throws MailboxNotFoundException, MailboxException;
 
     void delete(MessageId messageId);
 }

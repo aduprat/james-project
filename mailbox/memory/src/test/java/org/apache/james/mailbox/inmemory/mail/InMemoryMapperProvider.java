@@ -3,6 +3,7 @@ package org.apache.james.mailbox.inmemory.mail;
 import java.util.Random;
 
 import org.apache.commons.lang.math.RandomUtils;
+import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
@@ -52,6 +53,11 @@ public class InMemoryMapperProvider implements MapperProvider {
     @Override
     public MessageId generateMessageId() {
         return InMemoryMessageId.of(RandomUtils.nextLong());
+    }
+
+    @Override
+    public MessageUid generateMessageUid() {
+        return MessageUid.of(RandomUtils.nextLong());
     }
 
     @Override

@@ -26,10 +26,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
+import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.exception.MailboxNotFoundException;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
+import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
@@ -42,12 +46,15 @@ import com.google.common.base.Throwables;
 public class CassandraMessageIdMapper implements MessageIdMapper {
 
     private final AttachmentMapper attachmentMapper;
+    private final MailboxMapper mailboxMapper;
     private final CassandraImapUidDAO imapUidDAO;
     private final CassandraMessageIdDAO messageIdDAO;
     private final CassandraMessageDAO messageDAO;
 
-    public CassandraMessageIdMapper(AttachmentMapper attachmentMapper, CassandraImapUidDAO imapUidDAO, CassandraMessageIdDAO messageIdDAO, CassandraMessageDAO messageDAO) {
+    public CassandraMessageIdMapper(AttachmentMapper attachmentMapper, MailboxMapper mailboxMapper,
+            CassandraImapUidDAO imapUidDAO, CassandraMessageIdDAO messageIdDAO, CassandraMessageDAO messageDAO) {
         this.attachmentMapper = attachmentMapper;
+        this.mailboxMapper = mailboxMapper;
         this.imapUidDAO = imapUidDAO;
         this.messageIdDAO = messageIdDAO;
         this.messageDAO = messageDAO;
@@ -81,6 +88,21 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
         return imapUidDAO.retrieve(messageId, Optional.empty())
             .findFirst()
             .orElseThrow(() -> new MailboxException("Message not found: " + messageId));
+    }
+
+    @Override
+    public List<MailboxId> findMailboxes(MessageId messageId) {
+        return imapUidDAO.retrieve((CassandraMessageId) messageId, Optional.empty())
+            .map(UniqueMessageId::getMailboxId)
+            .collect(Guavate.toImmutableList());
+    }
+
+    @Override
+    public void save(MailboxMessage mailboxMessage) throws MailboxNotFoundException, MailboxException {
+        CassandraId mailboxId = (CassandraId) mailboxMessage.getMailboxId();
+        imapUidDAO.insert(mailboxMessage.getMessageId(), mailboxId, mailboxMessage.getUid());
+        messageIdDAO.insert(mailboxId, mailboxMessage.getUid(), mailboxMessage.getMessageId());
+        messageDAO.save(mailboxMapper.findMailboxById(mailboxId), mailboxMessage);
     }
 
     @Override
