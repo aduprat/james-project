@@ -121,6 +121,11 @@ public class MessageIdMapperTest<T extends MapperProvider> {
         assertThat(messages).containsOnly(message1, message4, message3);
     }
 
+    @ContractTest
+    public void deleteShouldNotThrowWhenUnknownMessage() {
+        sut.delete(message1.getMessageId());
+    }
+
     private SimpleMailbox createMailbox(MailboxPath mailboxPath) {
         SimpleMailbox mailbox = new SimpleMailbox(mailboxPath, UID_VALIDITY);
         mailbox.setMailboxId(mapperProvider.generateId());
