@@ -77,6 +77,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.UDTValue;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Select.Where;
 import com.google.common.io.ByteStreams;
@@ -203,5 +204,11 @@ public class CassandraMessageDAO {
             return selectStatement;
         }
         return selectStatement.limit(max);
+    }
+
+    public void delete(CassandraMessageId messageId) {
+        session.execute(QueryBuilder.delete()
+            .from(TABLE_NAME)
+            .where(eq(MESSAGE_ID, messageId.serialize())));
     }
 }

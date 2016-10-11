@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -44,11 +43,13 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
 
     private final AttachmentMapper attachmentMapper;
     private final CassandraImapUidDAO imapUidDAO;
+    private final CassandraMessageIdDAO messageIdDAO;
     private final CassandraMessageDAO messageDAO;
 
-    public CassandraMessageIdMapper(AttachmentMapper attachmentMapper, CassandraImapUidDAO imapUidDAO, CassandraMessageDAO messageDAO) {
+    public CassandraMessageIdMapper(AttachmentMapper attachmentMapper, CassandraImapUidDAO imapUidDAO, CassandraMessageIdDAO messageIdDAO, CassandraMessageDAO messageDAO) {
         this.attachmentMapper = attachmentMapper;
         this.imapUidDAO = imapUidDAO;
+        this.messageIdDAO = messageIdDAO;
         this.messageDAO = messageDAO;
     }
 
@@ -84,6 +85,14 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
 
     @Override
     public void delete(MessageId messageId) {
-        throw new NotImplementedException();
+        CassandraMessageId cassandraMessageId = (CassandraMessageId) messageId;
+        imapUidDAO.retrieve(cassandraMessageId, Optional.empty())
+            .forEach(uniqueMessageId -> deleteIds(uniqueMessageId));
+        messageDAO.delete(cassandraMessageId);
+    }
+
+    private void deleteIds(UniqueMessageId uniqueMessageId) {
+        imapUidDAO.delete(uniqueMessageId.getMessageId(), uniqueMessageId.getMailboxId());
+        messageIdDAO.delete(uniqueMessageId.getMailboxId(), uniqueMessageId.getMessageUid());
     }
 }
