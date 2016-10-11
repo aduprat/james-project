@@ -18,10 +18,13 @@
  ****************************************************************/
 package org.apache.james.mailbox.cassandra.mail;
 
+import java.util.UUID;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
+import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.CassandraMessageIdProvider;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraAnnotationModule;
@@ -33,6 +36,7 @@ import org.apache.james.mailbox.cassandra.modules.CassandraModSeqModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraUidModule;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.mock.MockMailboxSession;
+import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
@@ -111,6 +115,11 @@ public class CassandraMapperProvider implements MapperProvider {
     @Override
     public CassandraId generateId() {
         return CassandraId.timeBased();
+    }
+
+    @Override
+    public MessageId generateMessageId() {
+        return CassandraMessageId.of(UUID.randomUUID());
     }
 
     @Override
