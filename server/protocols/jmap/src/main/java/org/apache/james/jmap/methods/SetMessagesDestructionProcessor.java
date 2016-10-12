@@ -19,10 +19,10 @@
 
 package org.apache.james.jmap.methods;
 
+import java.util.List;
 import java.util.function.Function;
 
 import javax.inject.Inject;
-import javax.mail.Flags;
 
 import org.apache.james.jmap.exceptions.MessageNotFoundException;
 import org.apache.james.jmap.model.SetError;
@@ -30,16 +30,17 @@ import org.apache.james.jmap.model.SetMessagesRequest;
 import org.apache.james.jmap.model.SetMessagesResponse;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
-import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroupImpl;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.steveash.guavate.Guavate;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
 
 public class SetMessagesDestructionProcessor implements SetMessagesProcessor {
 
@@ -64,8 +65,8 @@ public class SetMessagesDestructionProcessor implements SetMessagesProcessor {
     private Function<? super MessageId, SetMessagesResponse> delete(MailboxSession mailboxSession) {
         return (messageId) -> {
             try {
-                checkThatMessageExists(messageId, mailboxSession);
-                removeMessage(messageId, mailboxSession);
+                List<MessageResult> messages = checkThatMessageExists(messageId, mailboxSession);
+                messageIdManager.delete(messageId, toMailboxIds(messages), mailboxSession);
                 return SetMessagesResponse.builder().destroyed(messageId).build();
             } catch (MessageNotFoundException e) {
                 return SetMessagesResponse.builder().notDestroyed(messageId,
@@ -86,15 +87,17 @@ public class SetMessagesDestructionProcessor implements SetMessagesProcessor {
         };
     }
 
-    private void checkThatMessageExists(MessageId messageId, MailboxSession mailboxSession) throws MailboxException, MessageNotFoundException {
-        Optional<MessageResult> messages = messageIdManager.getMessages(messageId, FetchGroupImpl.MINIMAL, mailboxSession);
-        if (!messages.isPresent()) {
-            throw new MessageNotFoundException();
-        }
+    private List<MailboxId> toMailboxIds(List<MessageResult> messages) {
+        return messages.stream()
+            .map(MessageResult::getMailboxId)
+            .collect(Guavate.toImmutableList());
     }
 
-    private void removeMessage(MessageId messageId, MailboxSession mailboxSession) throws MailboxException {
-        messageIdManager.setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, messageId, mailboxSession);
-        messageIdManager.expunge(messageId, mailboxSession);
+    private List<MessageResult> checkThatMessageExists(MessageId messageId, MailboxSession mailboxSession) throws MailboxException, MessageNotFoundException {
+        List<MessageResult> messages = messageIdManager.getMessages(ImmutableList.of(messageId), FetchGroupImpl.MINIMAL, mailboxSession);
+        if (messages.isEmpty()) {
+            throw new MessageNotFoundException();
+        }
+        return messages;
     }
 }
