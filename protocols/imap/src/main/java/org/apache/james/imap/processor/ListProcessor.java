@@ -39,6 +39,7 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MailboxMetaData.Children;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -150,6 +151,11 @@ public class ListProcessor extends AbstractMailboxProcessor<ListRequest> {
                      */
                     public MailboxPath getPath() {
                         return rootPath;
+                    }
+
+                    @Override
+                    public MailboxId getId() {
+                        return null;
                     }
                     
                 });
