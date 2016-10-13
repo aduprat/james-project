@@ -79,6 +79,7 @@ import org.apache.james.mailbox.FlagsBuilder;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraId;
+import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.mail.utils.MessageDeletedDuringFlagsUpdateException;
 import org.apache.james.mailbox.cassandra.table.CassandraMailboxCountersTable;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable;
@@ -310,14 +311,15 @@ public class CassandraMessageMapper implements MessageMapper {
     private MailboxMessage message(Row row, FetchType fetchType) {
         SimpleMailboxMessage message =
             new SimpleMailboxMessage(
-                row.getDate(INTERNAL_DATE),
-                row.getLong(FULL_CONTENT_OCTETS),
-                row.getInt(BODY_START_OCTET),
-                buildContent(row, fetchType),
-                getFlags(row),
-                getPropertyBuilder(row),
-                CassandraId.of(row.getUUID(MAILBOX_ID)),
-                getAttachments(row, fetchType));
+                    new CassandraMessageId.Factory().generate(),
+                    row.getDate(INTERNAL_DATE),
+                    row.getLong(FULL_CONTENT_OCTETS),
+                    row.getInt(BODY_START_OCTET),
+                    buildContent(row, fetchType),
+                    getFlags(row),
+                    getPropertyBuilder(row),
+                    CassandraId.of(row.getUUID(MAILBOX_ID)),
+                    getAttachments(row, fetchType));
         message.setUid(MessageUid.of(row.getLong(IMAP_UID)));
         message.setModSeq(row.getLong(MOD_SEQ));
         return message;

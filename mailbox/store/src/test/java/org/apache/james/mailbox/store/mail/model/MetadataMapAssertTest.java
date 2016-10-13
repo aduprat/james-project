@@ -49,7 +49,7 @@ public class MetadataMapAssertTest {
 
     @Before
     public void setUp() {
-        message1 = new SimpleMailboxMessage(DATE, HEADER_STRING.length() + BODY_STRING.length(),
+        message1 = new SimpleMailboxMessage(new TestMessageId.Factory().generate(), DATE, HEADER_STRING.length() + BODY_STRING.length(),
             HEADER_STRING.length(), new SharedByteArrayInputStream((HEADER_STRING + BODY_STRING).getBytes()), new Flags(), new PropertyBuilder(), MAILBOX_ID);
         message1.setUid(UID);
         message1.setModSeq(MODSEQ);
