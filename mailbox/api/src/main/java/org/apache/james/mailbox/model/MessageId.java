@@ -23,6 +23,8 @@ public interface MessageId {
 
     public interface Factory {
         MessageId fromString(String serialized);
+
+        MessageId generate();
     }
 
     String serialize();

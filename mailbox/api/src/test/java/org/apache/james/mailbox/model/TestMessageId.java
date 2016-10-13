@@ -19,6 +19,8 @@
 
 package org.apache.james.mailbox.model;
 
+import org.apache.commons.lang.math.RandomUtils;
+
 import com.google.common.base.Objects;
 
 public class TestMessageId implements MessageId {
@@ -28,6 +30,11 @@ public class TestMessageId implements MessageId {
         @Override
         public MessageId fromString(String serialized) {
             return of(Long.valueOf(serialized));
+        }
+
+        @Override
+        public MessageId generate() {
+            return of(RandomUtils.nextLong());
         }
     }
     

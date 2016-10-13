@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.james.mailbox.inmemory;
 
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.james.mailbox.model.MessageId;
 
 public class InMemoryMessageId implements MessageId {
@@ -27,6 +28,11 @@ public class InMemoryMessageId implements MessageId {
         @Override
         public MessageId fromString(String serialized) {
             return of(Long.valueOf(serialized));
+        }
+
+        @Override
+        public MessageId generate() {
+            return of(RandomUtils.nextLong());
         }
     }
     

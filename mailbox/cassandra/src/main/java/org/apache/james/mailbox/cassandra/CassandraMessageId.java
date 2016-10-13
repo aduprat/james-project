@@ -23,6 +23,8 @@ import java.util.UUID;
 
 import org.apache.james.mailbox.model.MessageId;
 
+import com.datastax.driver.core.utils.UUIDs;
+
 public class CassandraMessageId implements MessageId {
 
     public static class Factory implements MessageId.Factory {
@@ -30,6 +32,11 @@ public class CassandraMessageId implements MessageId {
         @Override
         public MessageId fromString(String serialized) {
             return of(serialized);
+        }
+
+        @Override
+        public MessageId generate() {
+            return of(UUIDs.timeBased());
         }
     }
 
