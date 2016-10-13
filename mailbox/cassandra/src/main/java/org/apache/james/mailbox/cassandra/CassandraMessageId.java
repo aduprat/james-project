@@ -25,6 +25,14 @@ import org.apache.james.mailbox.model.MessageId;
 
 public class CassandraMessageId implements MessageId {
 
+    public static class Factory implements MessageId.Factory {
+
+        @Override
+        public MessageId fromString(String serialized) {
+            return of(serialized);
+        }
+    }
+
     public static CassandraMessageId of(UUID uuid) {
         return new CassandraMessageId(uuid);
     }
