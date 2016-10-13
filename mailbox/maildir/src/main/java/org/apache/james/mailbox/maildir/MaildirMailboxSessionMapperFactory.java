@@ -25,22 +25,26 @@ import org.apache.james.mailbox.exception.SubscriptionException;
 import org.apache.james.mailbox.maildir.mail.MaildirMailboxMapper;
 import org.apache.james.mailbox.maildir.mail.MaildirMessageMapper;
 import org.apache.james.mailbox.maildir.user.MaildirSubscriptionMapper;
+import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.NoopAttachmentMapper;
+import org.apache.james.mailbox.store.mail.model.NoopMessageId;
 import org.apache.james.mailbox.store.user.SubscriptionMapper;
 
 public class MaildirMailboxSessionMapperFactory extends
         MailboxSessionMapperFactory {
 
     private final MaildirStore store;
+    private final NoopMessageId.Factory messageIdFactory;
 
     
     public MaildirMailboxSessionMapperFactory(MaildirStore store) {
         this.store = store;
+        this.messageIdFactory = new NoopMessageId.Factory();
     }
     
     
@@ -73,6 +77,12 @@ public class MaildirMailboxSessionMapperFactory extends
     public AnnotationMapper createAnnotationMapper(MailboxSession session)
             throws MailboxException {
         throw new NotImplementedException();
+    }
+
+
+    @Override
+    public MessageId.Factory getMessageIdFactory() {
+        return messageIdFactory;
     }
 
 }

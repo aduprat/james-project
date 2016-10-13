@@ -443,7 +443,7 @@ public class StoreMessageManager implements org.apache.james.mailbox.MessageMana
      * @throws MailboxException
      */
     protected MailboxMessage createMessage(Date internalDate, int size, int bodyStartOctet, SharedInputStream content, Flags flags, PropertyBuilder propertyBuilder, List<MessageAttachment> attachments) throws MailboxException {
-        return new SimpleMailboxMessage(internalDate, size, bodyStartOctet, content, flags, propertyBuilder, getMailboxEntity().getMailboxId(), attachments);
+        return new SimpleMailboxMessage(mapperFactory.getMessageIdFactory().generate(), internalDate, size, bodyStartOctet, content, flags, propertyBuilder, getMailboxEntity().getMailboxId(), attachments);
     }
 
     /**
