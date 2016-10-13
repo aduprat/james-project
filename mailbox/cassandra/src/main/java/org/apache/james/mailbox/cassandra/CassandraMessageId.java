@@ -19,11 +19,13 @@
 
 package org.apache.james.mailbox.cassandra;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import org.apache.james.mailbox.model.MessageId;
 
 import com.datastax.driver.core.utils.UUIDs;
+import com.google.common.base.MoreObjects;
 
 public class CassandraMessageId implements MessageId {
 
@@ -61,5 +63,26 @@ public class CassandraMessageId implements MessageId {
 
     public UUID get() {
         return uuid;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof CassandraMessageId) {
+            CassandraMessageId other = (CassandraMessageId) o;
+            return Objects.equals(uuid, other.uuid);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(uuid);
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+            .add("uuid", uuid)
+            .toString();
     }
 }
