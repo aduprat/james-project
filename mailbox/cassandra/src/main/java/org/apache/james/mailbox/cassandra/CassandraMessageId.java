@@ -32,12 +32,12 @@ public class CassandraMessageId implements MessageId {
     public static class Factory implements MessageId.Factory {
 
         @Override
-        public MessageId fromString(String serialized) {
+        public CassandraMessageId fromString(String serialized) {
             return of(serialized);
         }
 
         @Override
-        public MessageId generate() {
+        public CassandraMessageId generate() {
             return of(UUIDs.timeBased());
         }
     }
