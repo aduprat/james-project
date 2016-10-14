@@ -34,7 +34,6 @@ import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MESSA
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -43,7 +42,6 @@ import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.model.MessageRange;
-import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
@@ -56,58 +54,58 @@ public class CassandraMessageIdDAO {
     private static final String IMAP_UID_LTE = IMAP_UID + "_LTE";
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
-    private final PreparedStatement deleteStatement;
-    private final PreparedStatement insertStatement;
-    private final PreparedStatement selectStatement;
-    private final PreparedStatement selectAllUidsStatement;
-    private final PreparedStatement selectUidGteStatement;
-    private final PreparedStatement selectUidRangeStatement;
+    private final PreparedStatement delete;
+    private final PreparedStatement insert;
+    private final PreparedStatement select;
+    private final PreparedStatement selectAllUids;
+    private final PreparedStatement selectUidGte;
+    private final PreparedStatement selectUidRange;
 
     public CassandraMessageIdDAO(Session session) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
-        this.deleteStatement = deleteStatement(session);
-        this.insertStatement = insertStatement(session);
-        this.selectStatement = selectStatement(session);
-        this.selectAllUidsStatement = selectAllUidsStatement(session);
-        this.selectUidGteStatement = selectUidGteStatement(session);
-        this.selectUidRangeStatement = selectUidRangeStatement(session);
+        this.delete = prepareDelete(session);
+        this.insert = prepareInsert(session);
+        this.select = prepareSelect(session);
+        this.selectAllUids = prepareSelectAllUids(session);
+        this.selectUidGte = prepareSelectUidGte(session);
+        this.selectUidRange = prepareSelectUidRange(session);
     }
 
-    private PreparedStatement deleteStatement(Session session) {
+    private PreparedStatement prepareDelete(Session session) {
         return session.prepare(QueryBuilder.delete()
                 .from(TABLE_NAME)
                 .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
                 .and(eq(IMAP_UID, bindMarker(IMAP_UID))));
     }
 
-    private PreparedStatement insertStatement(Session session) {
+    private PreparedStatement prepareInsert(Session session) {
         return session.prepare(insertInto(TABLE_NAME)
                 .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
                 .value(IMAP_UID, bindMarker(IMAP_UID))
                 .value(MESSAGE_ID, bindMarker(MESSAGE_ID)));
     }
 
-    private PreparedStatement selectStatement(Session session) {
+    private PreparedStatement prepareSelect(Session session) {
         return session.prepare(select(MESSAGE_ID)
                 .from(TABLE_NAME)
                 .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
                 .and(eq(IMAP_UID, bindMarker(IMAP_UID))));
     }
 
-    private PreparedStatement selectAllUidsStatement(Session session) {
+    private PreparedStatement prepareSelectAllUids(Session session) {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
 
-    private PreparedStatement selectUidGteStatement(Session session) {
+    private PreparedStatement prepareSelectUidGte(Session session) {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
                 .and(gte(IMAP_UID, bindMarker(IMAP_UID))));
     }
 
-    private PreparedStatement selectUidRangeStatement(Session session) {
+    private PreparedStatement prepareSelectUidRange(Session session) {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MAILBOX_ID, bindMarker(MAILBOX_ID)))
@@ -116,81 +114,77 @@ public class CassandraMessageIdDAO {
     }
 
     public CompletableFuture<Void> delete(CassandraId mailboxId, MessageUid uid) {
-        return cassandraAsyncExecutor.executeVoid(deleteStatement.bind()
+        return cassandraAsyncExecutor.executeVoid(delete.bind()
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
                 .setLong(IMAP_UID, uid.asLong()));
     }
 
     public CompletableFuture<Void> insert(CassandraId mailboxId, MessageUid uid, CassandraMessageId messageId) {
-        return cassandraAsyncExecutor.executeVoid(insertStatement.bind()
+        return cassandraAsyncExecutor.executeVoid(insert.bind()
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
                 .setLong(IMAP_UID, uid.asLong())
                 .setUUID(MESSAGE_ID, messageId.get()));
     }
 
     public CompletableFuture<Optional<CassandraMessageId>> retrieve(CassandraId mailboxId, MessageUid uid) {
-        return selectOneRow(mailboxId, uid).thenApply(asOptionalOfCassandraMessageId());
+        return selectOneRow(mailboxId, uid).thenApply(this::asOptionalOfCassandraMessageId);
     }
 
-    private Function<ResultSet, Optional<CassandraMessageId>> asOptionalOfCassandraMessageId() {
-        return (resultSet) -> {
-            if (resultSet.isExhausted()) {
-                return Optional.empty();
-            }
-            return Optional.of(CassandraMessageId.of(resultSet.one()
-                    .getUUID(MESSAGE_ID)));
-        };
+    private Optional<CassandraMessageId> asOptionalOfCassandraMessageId(ResultSet resultSet) {
+        if (resultSet.isExhausted()) {
+            return Optional.empty();
+        }
+        return Optional.of(CassandraMessageId.of(resultSet.one().getUUID(MESSAGE_ID)));
     }
 
     private CompletableFuture<ResultSet> selectOneRow(CassandraId mailboxId, MessageUid uid) {
         return cassandraAsyncExecutor.execute(
-                selectStatement.bind()
+                select.bind()
                     .setUUID(MAILBOX_ID, mailboxId.asUuid())
                     .setLong(IMAP_UID, uid.asLong()));
     }
 
-    public List<CassandraMessageId> retrieveMessageIds(CassandraId mailboxId, MessageRange set, FetchType fetchType) {
+    public List<CassandraMessageId> retrieveMessageIds(CassandraId mailboxId, MessageRange set) {
         switch (set.getType()) {
         case ALL:
-            return toMessageIds(selectAll(mailboxId));
+            return toMessageIds(selectAll(mailboxId)).join();
         case FROM:
-            return toMessageIds(selectFrom(mailboxId, set.getUidFrom()));
+            return toMessageIds(selectFrom(mailboxId, set.getUidFrom())).join();
         case RANGE:
-            return toMessageIds(selectRange(mailboxId, set.getUidFrom(), set.getUidTo()));
+            return toMessageIds(selectRange(mailboxId, set.getUidFrom(), set.getUidTo())).join();
         case ONE:
-            return toMessageIds(selectMessage(mailboxId, set.getUidFrom()));
+            return toMessageIds(selectOneRow(mailboxId, set.getUidFrom())).join();
         }
         throw new UnsupportedOperationException();
     }
 
     private CompletableFuture<ResultSet> selectAll(CassandraId mailboxId) {
         return cassandraAsyncExecutor.execute(
-                selectAllUidsStatement.bind()
+                selectAllUids.bind()
                     .setUUID(MAILBOX_ID, mailboxId.asUuid()));
     }
 
     private CompletableFuture<ResultSet> selectFrom(CassandraId mailboxId, MessageUid uid) {
         return cassandraAsyncExecutor.execute(
-                selectUidGteStatement.bind()
+                selectUidGte.bind()
                     .setUUID(MAILBOX_ID, mailboxId.asUuid())
                     .setLong(IMAP_UID, uid.asLong()));
     }
 
     private CompletableFuture<ResultSet> selectRange(CassandraId mailboxId, MessageUid from, MessageUid to) {
         return cassandraAsyncExecutor.execute(
-                selectUidRangeStatement.bind()
+                selectUidRange.bind()
                     .setUUID(MAILBOX_ID, mailboxId.asUuid())
                     .setLong(IMAP_UID_GTE, from.asLong())
                     .setLong(IMAP_UID_LTE, to.asLong()));
     }
 
-    private CompletableFuture<ResultSet> selectMessage(CassandraId mailboxId, MessageUid messageUid) {
-        return selectOneRow(mailboxId, messageUid);
-    }
-
-    private List<CassandraMessageId> toMessageIds(CompletableFuture<ResultSet> completableFuture) {
-        return CassandraUtils.convertToStream(completableFuture.join())
-            .map(row -> CassandraMessageId.of(row.getUUID(MESSAGE_ID)))
-            .collect(Collectors.toList());
+    private CompletableFuture<List<CassandraMessageId>> toMessageIds(CompletableFuture<ResultSet> completableFuture) {
+        return completableFuture
+            .thenApply(resultSet ->  { 
+                return CassandraUtils.convertToStream(resultSet)
+                    .map(row -> CassandraMessageId.of(row.getUUID(MESSAGE_ID)))
+                    .collect(Collectors.toList());
+            });
     }
 }

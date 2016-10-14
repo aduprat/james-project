@@ -29,24 +29,24 @@ import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.modules.CassandraMessageModule;
 import org.apache.james.mailbox.model.MessageRange;
-import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import com.datastax.driver.core.utils.UUIDs;
 
 public class CassandraMessageIdDAOTest {
 
     private CassandraCluster cassandra;
 
+    private CassandraMessageId.Factory messageIdFactory;
     private CassandraMessageIdDAO testee;
+
 
     @Before
     public void setUp() {
         cassandra = CassandraCluster.create(new CassandraMessageModule());
         cassandra.ensureAllTables();
 
+        messageIdFactory = new CassandraMessageId.Factory();
         testee = new CassandraMessageIdDAO(cassandra.getConf());
     }
 
@@ -65,7 +65,7 @@ public class CassandraMessageIdDAOTest {
     public void deleteShouldDeleteWhenRowExists() {
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
         testee.insert(mailboxId, messageUid, messageId).join();
         Optional<CassandraMessageId> insertedMessages = testee.retrieve(mailboxId, messageUid).join();
         assertThat(insertedMessages.get()).isEqualTo(messageId);
@@ -77,8 +77,28 @@ public class CassandraMessageIdDAOTest {
     }
 
     @Test
+    public void deleteShouldDeleteOnlyConcernedRowWhenMultipleRowExists() {
+        CassandraId mailboxId = CassandraId.timeBased();
+        MessageUid messageUid = MessageUid.of(1);
+        MessageUid messageUid2 = MessageUid.of(2);
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
+        testee.insert(mailboxId, messageUid, messageId).join();
+        testee.insert(mailboxId, messageUid2, messageId2).join();
+        List<CassandraMessageId> insertedMessages = testee.retrieveMessageIds(mailboxId, MessageRange.all());
+        assertThat(insertedMessages).containsOnly(messageId, messageId2);
+
+        testee.delete(mailboxId, messageUid).join();
+
+        Optional<CassandraMessageId> message = testee.retrieve(mailboxId, messageUid).join();
+        assertThat(message.isPresent()).isFalse();
+        Optional<CassandraMessageId> messageNotDeleted = testee.retrieve(mailboxId, messageUid2).join();
+        assertThat(messageNotDeleted.isPresent()).isTrue();
+    }
+
+    @Test
     public void insertShouldInsert() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -90,7 +110,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void retrieveShouldRetrieveWhenKeyMatches() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         testee.insert(mailboxId, messageUid, messageId).join();
@@ -102,24 +122,24 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void retrieveMessageIdsShouldRetrieveAllWhenRangeAll() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId2 = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         MessageUid messageUid2 = MessageUid.of(2);
         testee.insert(mailboxId, messageUid, messageId).join();
         testee.insert(mailboxId, messageUid2, messageId2).join();
 
-        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.all(), FetchType.Full);
+        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.all());
 
         assertThat(messages).containsOnly(messageId, messageId2);
     }
 
     @Test
     public void retrieveMessageIdsShouldRetrieveSomeWhenRangeFrom() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId2 = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId3 = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
+        CassandraMessageId messageId3 = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         MessageUid messageUid2 = MessageUid.of(2);
@@ -128,17 +148,17 @@ public class CassandraMessageIdDAOTest {
         testee.insert(mailboxId, messageUid2, messageId2).join();
         testee.insert(mailboxId, messageUid3, messageId3).join();
 
-        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.from(messageUid2), FetchType.Full);
+        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.from(messageUid2));
 
         assertThat(messages).containsOnly(messageId2, messageId3);
     }
 
     @Test
     public void retrieveMessageIdsShouldRetrieveSomeWhenRange() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId2 = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId3 = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId4 = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
+        CassandraMessageId messageId3 = messageIdFactory.generate();
+        CassandraMessageId messageId4 = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         MessageUid messageUid2 = MessageUid.of(2);
@@ -149,16 +169,16 @@ public class CassandraMessageIdDAOTest {
         testee.insert(mailboxId, messageUid3, messageId3).join();
         testee.insert(mailboxId, messageUid4, messageId4).join();
 
-        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.range(messageUid2, messageUid3), FetchType.Full);
+        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.range(messageUid2, messageUid3));
 
         assertThat(messages).containsOnly(messageId2, messageId3);
     }
 
     @Test
     public void retrieveMessageIdsShouldRetrieveOneWhenRangeOne() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId2 = CassandraMessageId.of(UUIDs.timeBased());
-        CassandraMessageId messageId3 = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.generate();
+        CassandraMessageId messageId2 = messageIdFactory.generate();
+        CassandraMessageId messageId3 = messageIdFactory.generate();
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         MessageUid messageUid2 = MessageUid.of(2);
@@ -167,7 +187,7 @@ public class CassandraMessageIdDAOTest {
         testee.insert(mailboxId, messageUid2, messageId2).join();
         testee.insert(mailboxId, messageUid3, messageId3).join();
 
-        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.one(messageUid2), FetchType.Full);
+        List<CassandraMessageId> messages = testee.retrieveMessageIds(mailboxId, MessageRange.one(messageUid2));
 
         assertThat(messages).containsOnly(messageId2);
     }
