@@ -144,7 +144,7 @@ public class CassandraMessageMapper implements MessageMapper {
     @Override
     public Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange set, FetchType ftype, int max) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set, ftype), ftype, Optional.of(max)).join())
+        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set), ftype, Optional.of(max)).join())
             .map(row -> message(row, ftype))
             .sorted(Comparator.comparing(MailboxMessage::getUid))
             .iterator();
@@ -153,7 +153,7 @@ public class CassandraMessageMapper implements MessageMapper {
     @Override
     public List<MessageUid> findRecentMessageUidsInMailbox(Mailbox mailbox) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, MessageRange.all(), FetchType.Metadata), FetchType.Metadata, Optional.empty()).join())
+        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, MessageRange.all()), FetchType.Metadata, Optional.empty()).join())
             .filter(row -> row.getBool(RECENT))
             .flatMap((row) -> imapUidDAO.retrieve(CassandraMessageId.of(row.getUUID(MESSAGE_ID)), Optional.ofNullable(mailboxId)))
             .map(ComposedMessageId::getUid)
@@ -164,7 +164,7 @@ public class CassandraMessageMapper implements MessageMapper {
     @Override
     public MessageUid findFirstUnseenMessageUid(Mailbox mailbox) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, MessageRange.all(), FetchType.Metadata), FetchType.Metadata, Optional.empty()).join())
+        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, MessageRange.all()), FetchType.Metadata, Optional.empty()).join())
             .filter(row -> !row.getBool(SEEN))
             .flatMap((row) -> imapUidDAO.retrieve(CassandraMessageId.of(row.getUUID(MESSAGE_ID)), Optional.ofNullable(mailboxId)))
             .map(ComposedMessageId::getUid)
@@ -176,7 +176,7 @@ public class CassandraMessageMapper implements MessageMapper {
     @Override
     public Map<MessageUid, MessageMetaData> expungeMarkedForDeletionInMailbox(Mailbox mailbox, MessageRange set) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set, FetchType.Metadata), FetchType.Metadata, Optional.empty()).join())
+        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set), FetchType.Metadata, Optional.empty()).join())
             .filter(row -> row.getBool(DELETED))
             .map(row -> message(row, FetchType.Metadata))
             .peek((message) -> delete(mailbox, message))
@@ -219,7 +219,7 @@ public class CassandraMessageMapper implements MessageMapper {
     @Override
     public Iterator<UpdatedFlags> updateFlags(Mailbox mailbox, FlagsUpdateCalculator flagUpdateCalculator, MessageRange set) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set, FetchType.Metadata), FetchType.Metadata, Optional.empty()).join())
+        return CassandraUtils.convertToStream(messageDAO.retrieveMessages(messageIdDAO.retrieveMessageIds(mailboxId, set), FetchType.Metadata, Optional.empty()).join())
             .map((row) -> updateFlagsOnMessage(mailbox, flagUpdateCalculator, row))
             .filter(Optional::isPresent)
             .map(Optional::get)
