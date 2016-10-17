@@ -22,7 +22,7 @@ package org.apache.james.mailbox.cassandra;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.mailbox.AbstractSubscriptionManagerTest;
 import org.apache.james.mailbox.SubscriptionManager;
-import org.apache.james.mailbox.cassandra.mail.CassandraImapUidDAO;
+import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdToImapUidDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageIdDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
@@ -46,7 +46,7 @@ public class CassandraSubscriptionManagerTest extends AbstractSubscriptionManage
                 cassandra.getTypesProvider(),
                 new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraImapUidDAO(cassandra.getConf())
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
             )
         );
     }

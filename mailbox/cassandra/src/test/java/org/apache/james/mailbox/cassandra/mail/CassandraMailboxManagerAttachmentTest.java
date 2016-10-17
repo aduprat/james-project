@@ -62,7 +62,7 @@ public class CassandraMailboxManagerAttachmentTest extends AbstractMailboxManage
                 cassandra.getTypesProvider(),
                 new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
                 new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraImapUidDAO(cassandra.getConf()));
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf()));
         Authenticator noAuthenticator = null;
         mailboxManager = new CassandraMailboxManager(mailboxSessionMapperFactory, noAuthenticator, new NoMailboxPathLocker(), new MessageParser());
         mailboxManager.init();

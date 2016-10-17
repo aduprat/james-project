@@ -19,14 +19,20 @@
 
 package org.apache.james.mailbox.model;
 
-import org.apache.commons.lang.math.RandomUtils;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Objects;
 
 public class TestMessageId implements MessageId {
 
     public static class Factory implements MessageId.Factory {
-        
+
+        private AtomicLong atomicLong;
+
+        public Factory() {
+            atomicLong = new AtomicLong();
+        }
+
         @Override
         public MessageId fromString(String serialized) {
             return of(Long.valueOf(serialized));
@@ -34,7 +40,7 @@ public class TestMessageId implements MessageId {
 
         @Override
         public MessageId generate() {
-            return of(RandomUtils.nextLong());
+            return of(atomicLong.incrementAndGet());
         }
     }
     

@@ -37,18 +37,18 @@ import org.junit.Test;
 import com.datastax.driver.core.utils.UUIDs;
 import com.github.steveash.guavate.Guavate;
 
-public class CassandraImapUidDAOTest {
+public class CassandraMessageIdToImapUidDAOTest {
 
     private CassandraCluster cassandra;
 
-    private CassandraImapUidDAO testee;
+    private CassandraMessageIdToImapUidDAO testee;
 
     @Before
     public void setUp() {
         cassandra = CassandraCluster.create(new CassandraMessageModule());
         cassandra.ensureAllTables();
 
-        testee = new CassandraImapUidDAO(cassandra.getConf());
+        testee = new CassandraMessageIdToImapUidDAO(cassandra.getConf());
     }
 
     @After
@@ -68,14 +68,28 @@ public class CassandraImapUidDAOTest {
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
         testee.insert(messageId, mailboxId, messageUid).join();
-        ComposedMessageId expectedComposedMessageId = new ComposedMessageId(mailboxId, messageId, messageUid);
-        Stream<ComposedMessageId> insertedMessages = testee.retrieve(messageId, Optional.of(mailboxId));
-        assertThat(insertedMessages.collect(Guavate.toImmutableList())).containsOnly(expectedComposedMessageId);
 
         testee.delete(messageId, mailboxId).join();
 
-        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId));
+        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId)).join();
         assertThat(messages.collect(Guavate.toImmutableList())).isEmpty();
+    }
+
+    @Test
+    public void deleteShouldDeleteOnlyConcernedRowWhenMultipleRowExists() {
+        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraId mailboxId = CassandraId.timeBased();
+        CassandraId mailboxId2 = CassandraId.timeBased();
+        MessageUid messageUid = MessageUid.of(1);
+        MessageUid messageUid2 = MessageUid.of(2);
+        testee.insert(messageId, mailboxId, messageUid).join();
+        testee.insert(messageId, mailboxId2, messageUid2).join();
+
+        testee.delete(messageId, mailboxId).join();
+
+        ComposedMessageId expectedComposedMessageId = new ComposedMessageId(mailboxId2, messageId, messageUid2);
+        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.empty()).join();
+        assertThat(messages.collect(Guavate.toImmutableList())).containsOnly(expectedComposedMessageId);
     }
 
     @Test
@@ -87,7 +101,7 @@ public class CassandraImapUidDAOTest {
         testee.insert(messageId, mailboxId, messageUid).join();
 
         ComposedMessageId expectedComposedMessageId = new ComposedMessageId(mailboxId, messageId, messageUid);
-        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId));
+        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId)).join();
         assertThat(messages.collect(Guavate.toImmutableList())).containsOnly(expectedComposedMessageId);
     }
 
@@ -99,7 +113,7 @@ public class CassandraImapUidDAOTest {
         testee.insert(messageId, mailboxId, messageUid).join();
 
         ComposedMessageId expectedComposedMessageId = new ComposedMessageId(mailboxId, messageId, messageUid);
-        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId));
+        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.of(mailboxId)).join();
 
         assertThat(messages.collect(Guavate.toImmutableList())).containsOnly(expectedComposedMessageId);
     }
@@ -116,7 +130,7 @@ public class CassandraImapUidDAOTest {
 
         ComposedMessageId expectedComposedMessageId = new ComposedMessageId(mailboxId, messageId, messageUid);
         ComposedMessageId expectedComposedMessageId2 = new ComposedMessageId(mailboxId2, messageId, messageUid2);
-        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.empty());
+        Stream<ComposedMessageId> messages = testee.retrieve(messageId, Optional.empty()).join();
 
         assertThat(messages.collect(Guavate.toImmutableList())).containsOnly(expectedComposedMessageId, expectedComposedMessageId2);
     }

@@ -23,8 +23,8 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
-import static org.apache.james.mailbox.cassandra.table.CassandraImapUidTable.FIELDS;
-import static org.apache.james.mailbox.cassandra.table.CassandraImapUidTable.TABLE_NAME;
+import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.FIELDS;
+import static org.apache.james.mailbox.cassandra.table.MessageIdToImapUid.TABLE_NAME;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.IMAP_UID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MAILBOX_ID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageIds.MESSAGE_ID;
@@ -42,46 +42,47 @@ import org.apache.james.mailbox.model.ComposedMessageId;
 
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 
-public class CassandraImapUidDAO {
+public class CassandraMessageIdToImapUidDAO {
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
-    private final PreparedStatement deleteStatement;
-    private final PreparedStatement insertStatement;
-    private final PreparedStatement selectAllStatement;
-    private final PreparedStatement selectStatement;
+    private final PreparedStatement delete;
+    private final PreparedStatement insert;
+    private final PreparedStatement selectAll;
+    private final PreparedStatement select;
 
-    public CassandraImapUidDAO(Session session) {
+    public CassandraMessageIdToImapUidDAO(Session session) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
-        this.deleteStatement = deleteStatement(session);
-        this.insertStatement = insertStatement(session);
-        this.selectAllStatement = selectAllStatement(session);
-        this.selectStatement = selectStatement(session);
+        this.delete = prepareDelete(session);
+        this.insert = prepareInsert(session);
+        this.selectAll = prepareSelectAll(session);
+        this.select = prepareSelect(session);
     }
 
-    private PreparedStatement deleteStatement(Session session) {
+    private PreparedStatement prepareDelete(Session session) {
         return session.prepare(QueryBuilder.delete()
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID)))
                 .and(eq(MAILBOX_ID, bindMarker(MAILBOX_ID))));
     }
 
-    private PreparedStatement insertStatement(Session session) {
+    private PreparedStatement prepareInsert(Session session) {
         return session.prepare(insertInto(TABLE_NAME)
                 .value(MESSAGE_ID, bindMarker(MESSAGE_ID))
                 .value(MAILBOX_ID, bindMarker(MAILBOX_ID))
                 .value(IMAP_UID, bindMarker(IMAP_UID)));
     }
 
-    private PreparedStatement selectAllStatement(Session session) {
+    private PreparedStatement prepareSelectAll(Session session) {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID))));
     }
 
-    private PreparedStatement selectStatement(Session session) {
+    private PreparedStatement prepareSelect(Session session) {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID)))
@@ -89,33 +90,40 @@ public class CassandraImapUidDAO {
     }
 
     public CompletableFuture<Void> delete(CassandraMessageId messageId, CassandraId mailboxId) {
-        return cassandraAsyncExecutor.executeVoid(deleteStatement.bind()
+        return cassandraAsyncExecutor.executeVoid(delete.bind()
                 .setUUID(MESSAGE_ID, messageId.get())
                 .setUUID(MAILBOX_ID, mailboxId.asUuid()));
     }
 
     public CompletableFuture<Void> insert(CassandraMessageId messageId, CassandraId mailboxId, MessageUid uid) {
-        return cassandraAsyncExecutor.executeVoid(insertStatement.bind()
+        return cassandraAsyncExecutor.executeVoid(insert.bind()
                 .setUUID(MESSAGE_ID, messageId.get())
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
                 .setLong(IMAP_UID, uid.asLong()));
     }
 
-    public Stream<ComposedMessageId> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
-        return CassandraUtils.convertToStream(selectStatement(messageId, mailboxId).join())
-            .map(row -> new ComposedMessageId(
-                    CassandraId.of(row.getUUID(MAILBOX_ID)),
-                    CassandraMessageId.of(row.getUUID(MESSAGE_ID)),
-                    MessageUid.of(row.getLong(IMAP_UID))));
+    public CompletableFuture<Stream<ComposedMessageId>> retrieve(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
+        return selectStatement(messageId, mailboxId)
+                .thenApply(resultSet -> {
+                    return CassandraUtils.convertToStream(resultSet)
+                            .map(this::toComposedMessageId);
+                });
+    }
+
+    private ComposedMessageId toComposedMessageId(Row row) {
+        return new ComposedMessageId(
+                CassandraId.of(row.getUUID(MAILBOX_ID)),
+                CassandraMessageId.of(row.getUUID(MESSAGE_ID)),
+                MessageUid.of(row.getLong(IMAP_UID)));
     }
 
     private CompletableFuture<ResultSet> selectStatement(CassandraMessageId messageId, Optional<CassandraId> mailboxId) {
         if (mailboxId.isPresent()) {
-            return cassandraAsyncExecutor.execute(selectStatement.bind()
+            return cassandraAsyncExecutor.execute(select.bind()
                 .setUUID(MESSAGE_ID, messageId.get())
                 .setUUID(MAILBOX_ID, mailboxId.get().asUuid()));
         }
-        return cassandraAsyncExecutor.execute(selectAllStatement.bind()
+        return cassandraAsyncExecutor.execute(selectAll.bind()
                 .setUUID(MESSAGE_ID, messageId.get()));
     }
 }

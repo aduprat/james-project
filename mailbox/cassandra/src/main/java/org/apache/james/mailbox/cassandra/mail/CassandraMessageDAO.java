@@ -67,12 +67,15 @@ import javax.mail.Flags.Flag;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.backends.cassandra.utils.CassandraConstants;
+import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable.Attachments;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable.Properties;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.Cid;
+import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
@@ -80,26 +83,34 @@ import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 import com.datastax.driver.core.querybuilder.Select.Where;
+import com.github.steveash.guavate.Guavate;
+import com.google.common.base.Throwables;
 import com.google.common.io.ByteStreams;
 
 public class CassandraMessageDAO {
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final CassandraTypesProvider typesProvider;
+    private final AttachmentMapper attachmentMapper;
+    private final CassandraMessageIdToImapUidDAO messageIdToImapUidDAO;
     private final PreparedStatement insertStatement;
     private final PreparedStatement updateStatement;
     private final PreparedStatement deleteStatement;
 
     @Inject
-    public CassandraMessageDAO(Session session, CassandraTypesProvider typesProvider) {
+    public CassandraMessageDAO(Session session, CassandraTypesProvider typesProvider, AttachmentMapper attachmentMapper, 
+            CassandraMessageIdToImapUidDAO messageIdToImapUidDAO) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.typesProvider = typesProvider;
+        this.attachmentMapper = attachmentMapper;
+        this.messageIdToImapUidDAO = messageIdToImapUidDAO;
         this.insertStatement = insertStatement(session);
         this.updateStatement = updateStatement(session);
         this.deleteStatement = deleteStatement(session);
@@ -234,8 +245,11 @@ public class CassandraMessageDAO {
                     .orElse(false));
     }
     
-    public CompletableFuture<ResultSet> retrieveMessages(List<CassandraMessageId> messageIds, FetchType fetchType, Optional<Integer> limit) {
-        return cassandraAsyncExecutor.execute(buildQuery(messageIds, fetchType, limit));
+    public CompletableFuture<List<MailboxMessage>> retrieveMessages(List<CassandraMessageId> messageIds, FetchType fetchType, Optional<Integer> limit) {
+        return cassandraAsyncExecutor.execute(buildQuery(messageIds, fetchType, limit))
+                .thenApply(rs -> CassandraUtils.convertToStream(rs)
+                        .map(row -> message(row, fetchType))
+                        .collect(Guavate.toImmutableList()));
     }
     
     private Where buildQuery(List<CassandraMessageId> messageIds, FetchType fetchType, Optional<Integer> limit) {
@@ -248,6 +262,27 @@ public class CassandraMessageDAO {
             where.limit(limit.get());
         }
         return where;
+    }
+
+    private MailboxMessage message(Row row, FetchType fetchType) {
+        try {
+            ComposedMessageId messageId = retrieveComposedMessageId(CassandraMessageId.of(row.getUUID(MESSAGE_ID)));
+
+            return CassandraMessageRowHandler.builder()
+                        .row(row)
+                        .messageId(messageId)
+                        .loadingAttachmentsFunction(attachmentMapper::getAttachments)
+                        .build()
+                    .toMailboxMessage(fetchType);
+        } catch (MailboxException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    private ComposedMessageId retrieveComposedMessageId(CassandraMessageId messageId) throws MailboxException {
+        return messageIdToImapUidDAO.retrieve(messageId, Optional.empty()).join()
+            .findFirst()
+            .orElseThrow(() -> new MailboxException("Message not found: " + messageId));
     }
 
     public CompletableFuture<ResultSet> selectMessageData(List<CassandraMessageId> messageIds, FetchType fetchType) {

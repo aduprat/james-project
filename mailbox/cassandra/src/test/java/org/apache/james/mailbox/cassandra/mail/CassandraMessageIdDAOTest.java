@@ -67,8 +67,6 @@ public class CassandraMessageIdDAOTest {
         MessageUid messageUid = MessageUid.of(1);
         CassandraMessageId messageId = messageIdFactory.generate();
         testee.insert(mailboxId, messageUid, messageId).join();
-        Optional<CassandraMessageId> insertedMessages = testee.retrieve(mailboxId, messageUid).join();
-        assertThat(insertedMessages.get()).isEqualTo(messageId);
 
         testee.delete(mailboxId, messageUid).join();
 
@@ -85,8 +83,6 @@ public class CassandraMessageIdDAOTest {
         CassandraMessageId messageId2 = messageIdFactory.generate();
         testee.insert(mailboxId, messageUid, messageId).join();
         testee.insert(mailboxId, messageUid2, messageId2).join();
-        List<CassandraMessageId> insertedMessages = testee.retrieveMessageIds(mailboxId, MessageRange.all());
-        assertThat(insertedMessages).containsOnly(messageId, messageId2);
 
         testee.delete(mailboxId, messageUid).join();
 

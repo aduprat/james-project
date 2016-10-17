@@ -24,23 +24,23 @@ import org.apache.james.mailbox.store.user.SubscriptionMapper;
 public class CachingMailboxSessionMapperFactory extends
         MailboxSessionMapperFactory {
 
-	private final MailboxSessionMapperFactory underlying;
-	private final MailboxByPathCache mailboxByPathCache;
-	private final MailboxMetadataCache mailboxMetadataCache;
+    private final MailboxSessionMapperFactory underlying;
+    private final MailboxByPathCache mailboxByPathCache;
+    private final MailboxMetadataCache mailboxMetadataCache;
     private final NoopMessageId.Factory messageIdFactory;
 
-	public CachingMailboxSessionMapperFactory(MailboxSessionMapperFactory underlying, MailboxByPathCache mailboxByPathCache, MailboxMetadataCache mailboxMetadataCache) {
-		this.underlying = underlying;
-		this.mailboxByPathCache = mailboxByPathCache;
-		this.mailboxMetadataCache = mailboxMetadataCache;
-		this.messageIdFactory = new NoopMessageId.Factory();
-	}
-	
-	@Override
-	public MessageMapper createMessageMapper(MailboxSession session)
-			throws MailboxException {
-		return new CachingMessageMapper(underlying.createMessageMapper(session), mailboxMetadataCache);
-	}
+    public CachingMailboxSessionMapperFactory(MailboxSessionMapperFactory underlying, MailboxByPathCache mailboxByPathCache, MailboxMetadataCache mailboxMetadataCache) {
+        this.underlying = underlying;
+        this.mailboxByPathCache = mailboxByPathCache;
+        this.mailboxMetadataCache = mailboxMetadataCache;
+        this.messageIdFactory = new NoopMessageId.Factory();
+    }
+    
+    @Override
+    public MessageMapper createMessageMapper(MailboxSession session)
+            throws MailboxException {
+        return new CachingMessageMapper(underlying.createMessageMapper(session), mailboxMetadataCache);
+    }
 
     @Override
     public MessageIdMapper createMessageIdMapper(MailboxSession session) throws MailboxException {

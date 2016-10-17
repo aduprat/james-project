@@ -35,7 +35,7 @@ import org.apache.james.backends.cassandra.components.CassandraIndex;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraTable;
 import org.apache.james.backends.cassandra.components.CassandraType;
-import org.apache.james.mailbox.cassandra.table.CassandraImapUidTable;
+import org.apache.james.mailbox.cassandra.table.MessageIdToImapUid;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageIdTable;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageIds;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable;
@@ -57,8 +57,8 @@ public class CassandraMessageModule implements CassandraModule {
                     .addPartitionKey(CassandraMessageIds.MAILBOX_ID, timeuuid())
                     .addClusteringColumn(CassandraMessageIds.IMAP_UID, bigint())
                     .addColumn(CassandraMessageIds.MESSAGE_ID, timeuuid())),
-            new CassandraTable(CassandraImapUidTable.TABLE_NAME,
-                SchemaBuilder.createTable(CassandraImapUidTable.TABLE_NAME)
+            new CassandraTable(MessageIdToImapUid.TABLE_NAME,
+                SchemaBuilder.createTable(MessageIdToImapUid.TABLE_NAME)
                     .ifNotExists()
                     .addPartitionKey(CassandraMessageIds.MESSAGE_ID, timeuuid())
                     .addClusteringColumn(CassandraMessageIds.MAILBOX_ID, timeuuid())

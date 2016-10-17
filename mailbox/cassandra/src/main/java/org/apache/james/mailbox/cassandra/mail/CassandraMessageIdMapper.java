@@ -48,12 +48,12 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
 
     private final AttachmentMapper attachmentMapper;
     private final MailboxMapper mailboxMapper;
-    private final CassandraImapUidDAO imapUidDAO;
+    private final CassandraMessageIdToImapUidDAO imapUidDAO;
     private final CassandraMessageIdDAO messageIdDAO;
     private final CassandraMessageDAO messageDAO;
 
     public CassandraMessageIdMapper(AttachmentMapper attachmentMapper, MailboxMapper mailboxMapper,
-            CassandraImapUidDAO imapUidDAO, CassandraMessageIdDAO messageIdDAO, CassandraMessageDAO messageDAO) {
+            CassandraMessageIdToImapUidDAO imapUidDAO, CassandraMessageIdDAO messageIdDAO, CassandraMessageDAO messageDAO) {
         this.attachmentMapper = attachmentMapper;
         this.mailboxMapper = mailboxMapper;
         this.imapUidDAO = imapUidDAO;
@@ -86,14 +86,14 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
     }
 
     private ComposedMessageId retrieveUniqueMessageId(CassandraMessageId messageId) throws MailboxException {
-        return imapUidDAO.retrieve(messageId, Optional.empty())
+        return imapUidDAO.retrieve(messageId, Optional.empty()).join()
             .findFirst()
             .orElseThrow(() -> new MailboxException("Message not found: " + messageId));
     }
 
     @Override
     public List<MailboxId> findMailboxes(MessageId messageId) {
-        return imapUidDAO.retrieve((CassandraMessageId) messageId, Optional.empty())
+        return imapUidDAO.retrieve((CassandraMessageId) messageId, Optional.empty()).join()
             .map(ComposedMessageId::getMailboxId)
             .collect(Guavate.toImmutableList());
     }
@@ -111,7 +111,7 @@ public class CassandraMessageIdMapper implements MessageIdMapper {
     public void delete(MessageId messageId) {
         CassandraMessageId cassandraMessageId = (CassandraMessageId) messageId;
         messageDAO.delete(cassandraMessageId).join();
-        imapUidDAO.retrieve(cassandraMessageId, Optional.empty())
+        imapUidDAO.retrieve(cassandraMessageId, Optional.empty()).join()
             .forEach(uniqueMessageId -> deleteIds(uniqueMessageId));
     }
 
