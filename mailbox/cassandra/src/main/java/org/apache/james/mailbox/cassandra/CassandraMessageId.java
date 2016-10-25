@@ -35,14 +35,10 @@ public class CassandraMessageId implements MessageId {
         public CassandraMessageId generate() {
             return of(UUIDs.timeBased());
         }
-    }
 
-    public static CassandraMessageId of(UUID uuid) {
-        return new CassandraMessageId(uuid);
-    }
-    
-    public static CassandraMessageId of(String serialized) {
-        return of(UUID.fromString(serialized));
+        public CassandraMessageId of(UUID uuid) {
+            return new CassandraMessageId(uuid);
+        }
     }
 
     private final UUID uuid;

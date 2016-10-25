@@ -54,6 +54,7 @@ import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
+import org.apache.james.mailbox.cassandra.CassandraMessageId.Factory;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
 
@@ -69,6 +70,7 @@ public class CassandraMessageIdToImapUidDAO {
     private static final String MOD_SEQ_CONDITION = "modSeqCondition";
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
+    private final Factory messageIdFactory;
     private final PreparedStatement delete;
     private final PreparedStatement insert;
     private final PreparedStatement update;
@@ -76,8 +78,9 @@ public class CassandraMessageIdToImapUidDAO {
     private final PreparedStatement select;
 
     @Inject
-    public CassandraMessageIdToImapUidDAO(Session session) {
+    public CassandraMessageIdToImapUidDAO(Session session, CassandraMessageId.Factory messageIdFactory) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
+        this.messageIdFactory = messageIdFactory;
         this.delete = prepareDelete(session);
         this.insert = prepareInsert(session);
         this.update = prepareUpdate(session);
@@ -197,7 +200,7 @@ public class CassandraMessageIdToImapUidDAO {
         return ComposedMessageIdWithMetaData.builder()
                 .composedMessageId(new ComposedMessageId(
                     CassandraId.of(row.getUUID(MAILBOX_ID)),
-                    CassandraMessageId.of(row.getUUID(MESSAGE_ID)),
+                    messageIdFactory.of(row.getUUID(MESSAGE_ID)),
                     MessageUid.of(row.getLong(IMAP_UID))))
                 .flags(new FlagsExtractor(row).getFlags())
                 .modSeq(row.getLong(MOD_SEQ))

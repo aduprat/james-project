@@ -18,6 +18,10 @@
  ****************************************************************/
 package org.apache.james.mailbox.cassandra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.UUID;
+
 import org.junit.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
@@ -28,5 +32,34 @@ public class CassandraMessageIdTest {
     public void beanShouldRespectBeanContract() {
         EqualsVerifier.forClass(CassandraMessageId.class)
             .verify();
+    }
+
+    @Test
+    public void generateShouldReturnAValidCassandraMesssageId() {
+        CassandraMessageId.Factory testee = new CassandraMessageId.Factory();
+
+        CassandraMessageId cassandraMessageId = testee.generate();
+        assertThat(cassandraMessageId.serialize()).isNotNull();
+    }
+
+    @Test
+    public void ofShouldReturnAValidCassandraMesssageId() {
+        CassandraMessageId.Factory testee = new CassandraMessageId.Factory();
+
+        UUID expectedUuid = UUID.randomUUID();
+        CassandraMessageId cassandraMessageId = testee.of(expectedUuid);
+
+        assertThat(cassandraMessageId.get()).isEqualTo(expectedUuid);
+    }
+
+    @Test
+    public void serializeShouldReturnTheUuidAsString() {
+        CassandraMessageId.Factory testee = new CassandraMessageId.Factory();
+
+        UUID uuid = UUID.randomUUID();
+        CassandraMessageId cassandraMessageId = testee.of(uuid);
+
+        String expected = uuid.toString();
+        assertThat(cassandraMessageId.serialize()).isEqualTo(expected);
     }
 }
