@@ -54,7 +54,7 @@ public class CassandraMessageIdDAOTest {
         cassandra.ensureAllTables();
 
         messageIdFactory = new CassandraMessageId.Factory();
-        testee = new CassandraMessageIdDAO(cassandra.getConf());
+        testee = new CassandraMessageIdDAO(cassandra.getConf(), messageIdFactory);
     }
 
     @After
@@ -134,7 +134,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldReturnTrueWhenOldModSeqMatches() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -152,7 +152,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldReturnTrueWhenOldModSeqDoesntMatch() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -170,7 +170,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateModSeq() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -195,7 +195,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateAnsweredFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -220,7 +220,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateDeletedFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -245,7 +245,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateDraftFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -270,7 +270,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateFlaggedFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -295,7 +295,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateRecentFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -320,7 +320,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateSeenFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -345,7 +345,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateUserFlag() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
@@ -370,7 +370,7 @@ public class CassandraMessageIdDAOTest {
 
     @Test
     public void updateShouldUpdateUserFlags() {
-        CassandraMessageId messageId = CassandraMessageId.of(UUIDs.timeBased());
+        CassandraMessageId messageId = messageIdFactory.of(UUIDs.timeBased());
         CassandraId mailboxId = CassandraId.timeBased();
         MessageUid messageUid = MessageUid.of(1);
 
