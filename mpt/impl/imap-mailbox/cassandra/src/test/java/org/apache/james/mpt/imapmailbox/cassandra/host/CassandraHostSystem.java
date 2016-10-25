@@ -90,14 +90,15 @@ public class CassandraHostSystem extends JamesImapHostSystem {
         CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(session);
         CassandraUidProvider uidProvider = new CassandraUidProvider(session);
         CassandraTypesProvider typesProvider = new CassandraTypesProvider(mailboxModule, session);
-        CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(session);
-        CassandraMessageDAO messageDAO = new CassandraMessageDAO(session, typesProvider);
-        CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(session);
+        CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
+        CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(session, messageIdFactory);
+        CassandraMessageDAO messageDAO = new CassandraMessageDAO(session, typesProvider, messageIdFactory);
+        CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(session, messageIdFactory);
 
         CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider, modSeqProvider, 
                 session, typesProvider, messageDAO, messageIdDAO, imapUidDAO);
         
-        mailboxManager = new CassandraMailboxManager(mapperFactory, userManager, new JVMMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory()); 
+        mailboxManager = new CassandraMailboxManager(mapperFactory, userManager, new JVMMailboxPathLocker(), new MessageParser(), messageIdFactory); 
         QuotaRootResolver quotaRootResolver = new DefaultQuotaRootResolver(mapperFactory);
 
         CassandraPerUserMaxQuotaManager perUserMaxQuotaManager = new CassandraPerUserMaxQuotaManager(session);

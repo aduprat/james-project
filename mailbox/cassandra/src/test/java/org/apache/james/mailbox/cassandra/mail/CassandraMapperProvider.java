@@ -45,6 +45,7 @@ import org.apache.james.mailbox.store.mail.model.MapperProvider;
 
 public class CassandraMapperProvider implements MapperProvider {
 
+    private static final CassandraMessageId.Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
     private static final CassandraCluster cassandra = CassandraCluster.create(new CassandraModuleComposite(
         new CassandraAclModule(),
         new CassandraMailboxModule(),
@@ -57,7 +58,7 @@ public class CassandraMapperProvider implements MapperProvider {
 
     @Override
     public MessageId generateMessageId() {
-        return new CassandraMessageId.Factory().generate();
+        return MESSAGE_ID_FACTORY.generate();
     }
     
     @Override
@@ -67,9 +68,9 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraModSeqProvider(cassandra.getConf()),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
-                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
-                new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdDAO(cassandra.getConf(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf(), MESSAGE_ID_FACTORY)
             ).getMailboxMapper(new MockMailboxSession("benwa"));
     }
 
@@ -80,9 +81,9 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraModSeqProvider(cassandra.getConf()),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
-                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
-                new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdDAO(cassandra.getConf(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf(), MESSAGE_ID_FACTORY)
             ).getMessageMapper(new MockMailboxSession("benwa"));
     }
 
@@ -93,9 +94,9 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraModSeqProvider(cassandra.getConf()),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
-                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
-                new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdDAO(cassandra.getConf(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf(), MESSAGE_ID_FACTORY)
             ).getMessageIdMapper(new MockMailboxSession("benwa"));
     }
 
@@ -106,9 +107,9 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraModSeqProvider(cassandra.getConf()),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
-                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
-                new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdDAO(cassandra.getConf(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf(), MESSAGE_ID_FACTORY)
             ).getAttachmentMapper(new MockMailboxSession("benwa"));
     }
 
@@ -144,9 +145,9 @@ public class CassandraMapperProvider implements MapperProvider {
                 new CassandraModSeqProvider(cassandra.getConf()),
                 cassandra.getConf(),
                 cassandra.getTypesProvider(),
-                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider()),
-                new CassandraMessageIdDAO(cassandra.getConf()),
-                new CassandraMessageIdToImapUidDAO(cassandra.getConf())
+                new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdDAO(cassandra.getConf(), MESSAGE_ID_FACTORY),
+                new CassandraMessageIdToImapUidDAO(cassandra.getConf(), MESSAGE_ID_FACTORY)
             ).getAnnotationMapper(new MockMailboxSession("benwa"));
     }
 }

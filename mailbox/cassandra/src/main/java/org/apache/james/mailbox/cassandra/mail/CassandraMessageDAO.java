@@ -59,6 +59,7 @@ import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.cassandra.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMessageId;
+import org.apache.james.mailbox.cassandra.CassandraMessageId.Factory;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable.Attachments;
 import org.apache.james.mailbox.cassandra.table.CassandraMessageTable.Properties;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -77,6 +78,7 @@ import org.apache.james.mailbox.store.mail.model.impl.SimpleProperty;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
@@ -95,13 +97,15 @@ public class CassandraMessageDAO {
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final CassandraTypesProvider typesProvider;
+    private final Factory messageIdFactory;
     private final PreparedStatement insert;
     private final PreparedStatement delete;
 
     @Inject
-    public CassandraMessageDAO(Session session, CassandraTypesProvider typesProvider) {
+    public CassandraMessageDAO(Session session, CassandraTypesProvider typesProvider, CassandraMessageId.Factory messageIdFactory) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.typesProvider = typesProvider;
+        this.messageIdFactory = messageIdFactory;
         this.insert = prepareInsert(session);
         this.delete = prepareDelete(session);
     }
@@ -148,21 +152,17 @@ public class CassandraMessageDAO {
                     .map(this::toUDT)
                     .collect(Collectors.toList()));
 
-            setTextualLineCount(boundStatement, message.getTextualLineCount());
-
-            return cassandraAsyncExecutor.executeVoid(boundStatement);
+            return cassandraAsyncExecutor.executeVoid(setTextualLineCount(boundStatement, message.getTextualLineCount()));
 
         } catch (IOException e) {
             throw new MailboxException("Error saving mail", e);
         }
     }
 
-    private void setTextualLineCount(BoundStatement boundStatement, Long textualLineCount) {
-        if (Optional.ofNullable(textualLineCount).isPresent()) {
-            boundStatement.setLong(TEXTUAL_LINE_COUNT, textualLineCount);
-        } else {
-            boundStatement.setToNull(TEXTUAL_LINE_COUNT);
-        }
+    private BoundStatement setTextualLineCount(BoundStatement boundStatement, Long textualLineCount) {
+        return Optional.ofNullable(textualLineCount)
+            .map(value -> boundStatement.setLong(TEXTUAL_LINE_COUNT, value))
+            .orElseGet(() -> boundStatement.setToNull(TEXTUAL_LINE_COUNT));
     }
 
     private UDTValue toUDT(MessageAttachment messageAttachment) {
@@ -179,9 +179,17 @@ public class CassandraMessageDAO {
     }
     
     public List<MailboxMessage> retrieveMessages(List<ComposedMessageIdWithMetaData> messageIds, CassandraId mailboxId, FetchType fetchType, Optional<Integer> limit, Function<List<AttachmentId>, List<Attachment>> attachmentsFunction) {
-        return CassandraUtils.convertToStream(cassandraAsyncExecutor.execute(buildSelectQueryWithLimit(buildQuery(messageIds, fetchType), limit)).join())
+        return CassandraUtils.convertToStream(retrieveMessages(messageIds, fetchType, limit).join())
                 .map(row -> message(row, messageIds, fetchType, attachmentsFunction))
                 .collect(Guavate.toImmutableList());
+    }
+
+    private CompletableFuture<ResultSet> retrieveMessages(List<ComposedMessageIdWithMetaData> messageIds, FetchType fetchType, Optional<Integer> limit) {
+        return cassandraAsyncExecutor.execute(
+                buildSelectQueryWithLimit(
+                        buildQuery(messageIds, fetchType), 
+                        limit)
+                );
     }
     
     private Where buildQuery(List<ComposedMessageIdWithMetaData> messageIds, FetchType fetchType) {
@@ -197,7 +205,7 @@ public class CassandraMessageDAO {
 
     private MailboxMessage message(Row row, List<ComposedMessageIdWithMetaData> messageIds, FetchType fetchType, Function<List<AttachmentId>, List<Attachment>> attachmentsFunction) {
         try {
-            ComposedMessageIdWithMetaData messageIdWithMetaData = retrieveComposedMessageId(CassandraMessageId.of(row.getUUID(MESSAGE_ID)), messageIds);
+            ComposedMessageIdWithMetaData messageIdWithMetaData = retrieveComposedMessageId(messageIdFactory.of(row.getUUID(MESSAGE_ID)), messageIds);
             ComposedMessageId messageId = messageIdWithMetaData.getComposedMessageId();
 
             SimpleMailboxMessage message =

@@ -67,9 +67,10 @@ public class CassandraMailboxManagerTest {
             CASSANDRA.ensureAllTables();
             CassandraUidProvider uidProvider = new CassandraUidProvider(CASSANDRA.getConf());
             CassandraModSeqProvider modSeqProvider = new CassandraModSeqProvider(CASSANDRA.getConf());
-            CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(CASSANDRA.getConf());
-            CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(CASSANDRA.getConf());
-            CassandraMessageDAO messageDAO = new CassandraMessageDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider());
+            CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
+            CassandraMessageIdDAO messageIdDAO = new CassandraMessageIdDAO(CASSANDRA.getConf(), messageIdFactory);
+            CassandraMessageIdToImapUidDAO imapUidDAO = new CassandraMessageIdToImapUidDAO(CASSANDRA.getConf(), messageIdFactory);
+            CassandraMessageDAO messageDAO = new CassandraMessageDAO(CASSANDRA.getConf(), CASSANDRA.getTypesProvider(), messageIdFactory);
             CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
                 modSeqProvider,
                 CASSANDRA.getConf(),
@@ -78,7 +79,7 @@ public class CassandraMailboxManagerTest {
                 messageIdDAO,
                 imapUidDAO);
 
-            CassandraMailboxManager manager = new CassandraMailboxManager(mapperFactory, null, new NoMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory());
+            CassandraMailboxManager manager = new CassandraMailboxManager(mapperFactory, null, new NoMailboxPathLocker(), new MessageParser(), messageIdFactory);
             try {
                 manager.init();
             } catch (MailboxException e) {
