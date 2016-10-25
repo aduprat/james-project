@@ -48,11 +48,6 @@ import org.xenei.junit.contract.IProducer;
 
 import com.google.common.collect.ImmutableList;
 
-/**
- * Generic purpose tests for your implementation MailboxMapper.
- * 
- * You then just need to instantiate your mailbox mapper and an IdGenerator.
- */
 @Contract(MapperProvider.class)
 public class MessageIdMapperTest<T extends MapperProvider> {
 
@@ -135,7 +130,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     }
 
     @ContractTest
-    public void findMailboxesShouldOneMailboxWhenMessageExistsInOneMailbox() throws MailboxException {
+    public void findMailboxesShouldReturnOneMailboxWhenMessageExistsInOneMailbox() throws MailboxException {
         saveMessages();
         List<MailboxId> mailboxes = sut.findMailboxes(message1.getMessageId());
         assertThat(mailboxes).containsOnly(benwaInboxMailbox.getMailboxId());
