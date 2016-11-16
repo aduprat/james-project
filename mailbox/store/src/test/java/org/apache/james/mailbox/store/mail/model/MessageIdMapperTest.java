@@ -23,15 +23,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.mail.Flags;
+import javax.mail.Flags.Flag;
 import javax.mail.util.SharedByteArrayInputStream;
 
+import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
@@ -39,6 +43,7 @@ import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
+import org.assertj.core.data.MapEntry;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
@@ -298,6 +303,90 @@ public class MessageIdMapperTest<T extends MapperProvider> {
 
         List<MailboxId> mailboxes = sut.findMailboxes(messageId);
         assertThat(mailboxes).isEmpty();
+    }
+
+    @ContractTest
+    public void setFlagsShouldReturnUpdatedFlagsWhenMessageIsInOneMailbox() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        MessageId messageId = message1.getMessageId();
+        Flags newFlags = new Flags(Flag.ANSWERED);
+        Map<MailboxId, UpdatedFlags> flags = sut.setFlags(newFlags, MessageManager.FlagsUpdateMode.REMOVE, messageId);
+
+        int modSeq = 1;
+        UpdatedFlags expectedUpdatedFlags = new UpdatedFlags(message1.getUid(), modSeq, new Flags(), newFlags);
+        assertThat(flags).containsOnly(MapEntry.entry(benwaInboxMailbox.getMailboxId(), expectedUpdatedFlags));
+    }
+
+    @ContractTest
+    public void setFlagsShouldAddFlagsWhenAddUpdateMode() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        MessageId messageId = message1.getMessageId();
+        Flags initialFlags = new Flags(Flag.RECENT);
+        sut.setFlags(initialFlags, MessageManager.FlagsUpdateMode.REMOVE, messageId);
+
+        Map<MailboxId, UpdatedFlags> flags = sut.setFlags(new Flags(Flag.ANSWERED), MessageManager.FlagsUpdateMode.ADD, messageId);
+
+        Flags newFlags = new Flags();
+        newFlags.add(Flag.RECENT);
+        newFlags.add(Flag.ANSWERED);
+        int modSeq = 2;
+        UpdatedFlags expectedUpdatedFlags = new UpdatedFlags(message1.getUid(), modSeq, initialFlags, newFlags);
+        assertThat(flags).containsOnly(MapEntry.entry(benwaInboxMailbox.getMailboxId(), expectedUpdatedFlags));
+    }
+
+    @ContractTest
+    public void setFlagsShouldReturnUpdatedFlagsWhenMessageIsInTwoMailbox() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        Flags newFlags = new Flags(Flag.ANSWERED);
+        Map<MailboxId, UpdatedFlags> flags = sut.setFlags(newFlags, MessageManager.FlagsUpdateMode.REMOVE, messageId);
+
+        int modSeq = 1;
+        UpdatedFlags expectedUpdatedFlags = new UpdatedFlags(message1.getUid(), modSeq, new Flags(), newFlags);
+        UpdatedFlags expectedUpdatedFlags2 = new UpdatedFlags(message1InOtherMailbox.getUid(), modSeq, new Flags(), newFlags);
+        assertThat(flags).containsOnly(MapEntry.entry(benwaInboxMailbox.getMailboxId(), expectedUpdatedFlags),
+                MapEntry.entry(benwaWorkMailbox.getMailboxId(), expectedUpdatedFlags2));
+    }
+
+    @ContractTest
+    public void setFlagsShouldUpdateFlagsWhenMessageIsInOneMailbox() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        MessageId messageId = message1.getMessageId();
+        sut.setFlags(new Flags(Flag.ANSWERED), MessageManager.FlagsUpdateMode.REMOVE, messageId);
+
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(messageId), MessageMapper.FetchType.Body);
+        assertThat(messages).hasSize(1);
+        assertThat(messages.get(0).isAnswered()).isTrue();
+    }
+
+    @ContractTest
+    public void setFlagsShouldUpdateFlagsWhenMessageIsInTwoMailbox() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        sut.setFlags(new Flags(Flag.ANSWERED), MessageManager.FlagsUpdateMode.REMOVE, messageId);
+
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(messageId), MessageMapper.FetchType.Body);
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(0).isAnswered()).isTrue();
+        assertThat(messages.get(1).isAnswered()).isTrue();
     }
 
     private SimpleMailbox createMailbox(MailboxPath mailboxPath) throws MailboxException {
