@@ -240,6 +240,66 @@ public class MessageIdMapperTest<T extends MapperProvider> {
         assertThat(mailboxes).isEmpty();
     }
 
+    @ContractTest
+    public void deleteWithMailboxIdsShouldNotDeleteAMessage() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId);
+
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(messageId), FetchType.Full);
+        assertThat(messages).isEmpty();
+    }
+
+    @ContractTest
+    public void deleteWithMailboxIdsShouldNotDeleteIndicesWhenMailboxIdsIsEmpty() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId, ImmutableList.<MailboxId> of());
+
+        List<MailboxId> mailboxes = sut.findMailboxes(messageId);
+        assertThat(mailboxes).containsOnly(benwaInboxMailbox.getMailboxId(), benwaWorkMailbox.getMailboxId());
+    }
+
+    @ContractTest
+    public void deleteWithMailboxIdsShouldDeleteOneIndexWhenMailboxIdsContainsOneElement() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId, ImmutableList.of(benwaInboxMailbox.getMailboxId()));
+
+        List<MailboxId> mailboxes = sut.findMailboxes(messageId);
+        assertThat(mailboxes).containsOnly(benwaWorkMailbox.getMailboxId());
+    }
+
+    @ContractTest
+    public void deleteWithMailboxIdsShouldDeleteIndicesWhenMailboxIdsContainsMultipleElements() throws Exception {
+        message1.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1);
+
+        SimpleMailboxMessage message1InOtherMailbox = SimpleMailboxMessage.copy(benwaWorkMailbox.getMailboxId(), message1);
+        message1InOtherMailbox.setUid(mapperProvider.generateMessageUid());
+        sut.save(message1InOtherMailbox);
+
+        MessageId messageId = message1.getMessageId();
+        sut.delete(messageId, ImmutableList.of(benwaInboxMailbox.getMailboxId(), benwaWorkMailbox.getMailboxId()));
+
+        List<MailboxId> mailboxes = sut.findMailboxes(messageId);
+        assertThat(mailboxes).isEmpty();
+    }
+
     private SimpleMailbox createMailbox(MailboxPath mailboxPath) throws MailboxException {
         SimpleMailbox mailbox = new SimpleMailbox(mailboxPath, UID_VALIDITY);
         mailbox.setMailboxId(mapperProvider.generateId());
