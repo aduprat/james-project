@@ -106,21 +106,21 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     @ContractTest
     public void findShouldReturnOneMessageWhenIdListContainsOne() throws MailboxException {
         saveMessages();
-        List<Message> messages = sut.find(ImmutableList.of(message1.getMessageId()), FetchType.Full);
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(message1.getMessageId()), FetchType.Full);
         assertThat(messages).containsOnly(message1);
     }
 
     @ContractTest
     public void findShouldReturnMultipleMessagesWhenIdContainsMultiple() throws MailboxException {
         saveMessages();
-        List<Message> messages = sut.find(ImmutableList.of(message1.getMessageId(), message2.getMessageId(), message3.getMessageId()), FetchType.Full);
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(message1.getMessageId(), message2.getMessageId(), message3.getMessageId()), FetchType.Full);
         assertThat(messages).containsOnly(message1, message2, message3);
     }
 
     @ContractTest
     public void findShouldReturnMultipleMessagesWhenIdContainsMultipleInDifferentMailboxes() throws MailboxException {
         saveMessages();
-        List<Message> messages = sut.find(ImmutableList.of(message1.getMessageId(), message4.getMessageId(), message3.getMessageId()), FetchType.Full);
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(message1.getMessageId(), message4.getMessageId(), message3.getMessageId()), FetchType.Full);
         assertThat(messages).containsOnly(message1, message4, message3);
     }
 
@@ -152,7 +152,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     public void saveShouldSaveAMessage() throws Exception {
         message1.setUid(mapperProvider.generateMessageUid());
         sut.save(message1);
-        List<Message> messages = sut.find(ImmutableList.of(message1.getMessageId()), FetchType.Full);
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(message1.getMessageId()), FetchType.Full);
         assertThat(messages).containsOnly(message1);
     }
 
@@ -205,7 +205,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
         MessageId messageId = message1.getMessageId();
         sut.delete(messageId);
 
-        List<Message> messages = sut.find(ImmutableList.of(messageId), FetchType.Full);
+        List<MailboxMessage> messages = sut.find(ImmutableList.of(messageId), FetchType.Full);
         assertThat(messages).isEmpty();
     }
 
