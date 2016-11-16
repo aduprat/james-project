@@ -19,14 +19,12 @@
 
 package org.apache.james.jmap.memory.cucumber;
 
+import org.apache.james.JmapJamesServer;
 import org.apache.james.MemoryJamesServer;
-import org.apache.james.jmap.methods.integration.cucumber.MainStepdefs;
-import org.apache.james.jmap.methods.integration.cucumber.UserStepdefs;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Stage;
-import com.google.inject.TypeLiteral;
 
 import cucumber.api.guice.CucumberModules;
 import cucumber.runtime.java.guice.InjectorSource;
@@ -36,10 +34,7 @@ public class MemoryInjectorSource implements InjectorSource {
     @Override
     public Injector getInjector() {
         return Guice.createInjector(Stage.PRODUCTION, CucumberModules.SCENARIO, binder -> {
-            binder.bind(new TypeLiteral<MainStepdefs<?>>() {}).to(new TypeLiteral<MainStepdefs<MemoryJamesServer>>() {});
-            binder.bind(new TypeLiteral<UserStepdefs<?>>() {}).to(new TypeLiteral<UserStepdefs<MemoryJamesServer>>() {});
-            binder.bind(new TypeLiteral<MainStepdefs>() {}).to(new TypeLiteral<MainStepdefs<MemoryJamesServer>>() {});
-            binder.bind(new TypeLiteral<UserStepdefs>() {}).to(new TypeLiteral<UserStepdefs<MemoryJamesServer>>() {});
+            binder.bind(JmapJamesServer.class).to(MemoryJamesServer.class);
         });
     }
 }
