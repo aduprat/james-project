@@ -28,6 +28,7 @@ import javax.mail.internet.InternetAddress;
 import org.apache.james.transport.mailets.redirect.AbstractRedirect;
 import org.apache.james.transport.mailets.redirect.AddressExtractor;
 import org.apache.james.transport.mailets.redirect.InitParameters;
+import org.apache.james.transport.mailets.redirect.ProcessRedirectNotifyMailet;
 import org.apache.james.transport.mailets.redirect.RedirectMailetInitParameters;
 import org.apache.james.transport.mailets.redirect.TypeCode;
 import org.apache.james.transport.mailets.utils.MimeMessageModifier;
@@ -205,5 +206,10 @@ public class Forward extends AbstractRedirect {
     @Override
     protected MimeMessageModifier getMimeMessageModifier(Mail newMail, Mail originalMail) throws MessagingException {
         return new MimeMessageModifier(newMail.getMessage());
+    }
+
+    @Override
+    public void service(Mail originalMail) throws MessagingException {
+        ProcessRedirectNotifyMailet.from(this).service(originalMail);
     }
 }
