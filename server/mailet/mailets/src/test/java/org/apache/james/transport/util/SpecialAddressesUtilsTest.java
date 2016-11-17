@@ -31,7 +31,11 @@ import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.transport.mailets.redirect.InitParameters;
+import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
+import org.apache.james.transport.mailets.utils.MimeMessageModifier;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetContext;
@@ -42,9 +46,112 @@ import org.apache.mailet.base.test.FakeMail;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 
 public class SpecialAddressesUtilsTest {
+
+    private static class FakeRedirectNotifyMailet extends GenericMailet implements RedirectNotify {
+        private final MailetContext mailetContext;
+
+        private FakeRedirectNotifyMailet(MailetContext mailetContext) {
+            this.mailetContext = mailetContext;
+        }
+
+        @Override
+        public MailetContext getMailetContext() {
+            return mailetContext;
+        }
+
+        @Override
+        public void service(Mail mail) throws MessagingException {
+        }
+
+        @Override
+        public InitParameters getInitParameters() {
+            return null;
+        }
+
+        @Override
+        public String[] getAllowedInitParameters() {
+            return null;
+        }
+
+        @Override
+        public void setDNSService(DNSService dns) {
+            
+        }
+
+        @Override
+        public DNSService getDNSService() {
+            return null;
+        }
+
+        @Override
+        public String getMessage(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public List<MailAddress> getRecipients() throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public List<MailAddress> getRecipients(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public List<InternetAddress> getTo() throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public List<MailAddress> getTo(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getReplyTo() throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getReplyTo(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getReversePath() throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getReversePath(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getSender() throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MailAddress getSender(Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public Optional<String> getSubjectPrefix(Mail newMail, String subjectPrefix, Mail originalMail) throws MessagingException {
+            return null;
+        }
+
+        @Override
+        public MimeMessageModifier getMimeMessageModifier(Mail newMail, Mail originalMail) throws MessagingException {
+            return null;
+        }
+    }
 
     private MailAddress postmaster;
     private SpecialAddressesUtils testee;
@@ -56,17 +163,7 @@ public class SpecialAddressesUtilsTest {
         when(mailetContext.getPostmaster())
             .thenReturn(postmaster);
 
-        testee = SpecialAddressesUtils.from(new GenericMailet() {
-            
-            @Override
-            public MailetContext getMailetContext() {
-                return mailetContext;
-            }
-
-            @Override
-            public void service(Mail mail) throws MessagingException {
-            }
-        });
+        testee = SpecialAddressesUtils.from(new FakeRedirectNotifyMailet(mailetContext));
     }
 
     @Test
