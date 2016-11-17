@@ -44,10 +44,10 @@ public class AlteredMailUtils {
 
     public static class Builder {
 
-        private AbstractRedirect mailet;
+        private RedirectNotify mailet;
         private Mail originalMail;
 
-        public Builder mailet(AbstractRedirect mailet) {
+        public Builder mailet(RedirectNotify mailet) {
             this.mailet = mailet;
             return this;
         }
@@ -64,10 +64,10 @@ public class AlteredMailUtils {
         }
     }
 
-    private final AbstractRedirect mailet;
+    private final RedirectNotify mailet;
     private final Mail originalMail;
 
-    private AlteredMailUtils(AbstractRedirect mailet, Mail originalMail) {
+    private AlteredMailUtils(RedirectNotify mailet, Mail originalMail) {
         this.mailet = mailet;
         this.originalMail = originalMail;
     }

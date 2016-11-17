@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.apache.james.transport.mailets.redirect.AbstractRedirect;
+import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMail;
@@ -31,12 +31,12 @@ import org.junit.Test;
 
 public class SenderUtilsTest {
 
-    private AbstractRedirect mailet;
+    private RedirectNotify mailet;
     private SenderUtils testee;
 
     @Before
     public void setup() {
-        mailet = mock(AbstractRedirect.class);
+        mailet = mock(RedirectNotify.class);
         testee = SenderUtils.from(mailet);
     }
 

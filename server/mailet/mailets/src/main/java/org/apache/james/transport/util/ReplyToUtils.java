@@ -20,20 +20,20 @@ package org.apache.james.transport.util;
 
 import javax.mail.MessagingException;
 
-import org.apache.james.transport.mailets.redirect.AbstractRedirect;
+import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 
 public class ReplyToUtils {
 
-    public static ReplyToUtils from(AbstractRedirect mailet) {
+    public static ReplyToUtils from(RedirectNotify mailet) {
         return new ReplyToUtils(mailet);
     }
 
-    private final AbstractRedirect mailet;
+    private final RedirectNotify mailet;
 
-    private ReplyToUtils(AbstractRedirect mailet) {
+    private ReplyToUtils(RedirectNotify mailet) {
         this.mailet = mailet;
     }
 

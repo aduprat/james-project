@@ -42,14 +42,14 @@ public class AlteredMailUtilsTest {
         expectedException.expect(NullPointerException.class);
         expectedException.expectMessage("'originalMail' is mandatory");
         AlteredMailUtils.builder()
-            .mailet(mock(AbstractRedirect.class))
+            .mailet(mock(RedirectNotify.class))
             .build();
     }
 
     @Test
     public void buildShouldWorkWhenEverythingProvided() {
         AlteredMailUtils.builder()
-            .mailet(mock(AbstractRedirect.class))
+            .mailet(mock(RedirectNotify.class))
             .originalMail(mock(Mail.class))
             .build();
     }
