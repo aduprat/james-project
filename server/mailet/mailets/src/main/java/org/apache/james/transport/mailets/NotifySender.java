@@ -34,6 +34,7 @@ import org.apache.james.transport.mailets.utils.MimeMessageModifier;
 import org.apache.james.transport.mailets.utils.MimeMessageUtils;
 import org.apache.james.transport.util.RecipientsUtils;
 import org.apache.james.transport.util.ReplyToUtils;
+import org.apache.james.transport.util.SenderUtils;
 import org.apache.james.transport.util.SpecialAddressesUtils;
 import org.apache.james.transport.util.TosUtils;
 import org.apache.mailet.Mail;
@@ -200,9 +201,14 @@ public class NotifySender extends AbstractRedirect {
     }
 
     @Override
-    protected MailAddress getSender() throws MessagingException {
+    public MailAddress getSender() throws MessagingException {
         return SpecialAddressesUtils.from(this)
                 .getFirstSpecialAddressIfMatchingOrGivenAddress(getInitParameters().getSender(), AbstractRedirect.SENDER_ALLOWED_SPECIALS);
+    }
+
+    @Override
+    protected MailAddress getSender(Mail originalMail) throws MessagingException {
+        return SenderUtils.from(this).getSender(originalMail);
     }
 
     @Override
