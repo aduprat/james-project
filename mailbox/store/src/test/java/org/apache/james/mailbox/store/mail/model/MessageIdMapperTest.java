@@ -246,18 +246,6 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     }
 
     @ContractTest
-    public void deleteWithMailboxIdsShouldNotDeleteAMessage() throws Exception {
-        message1.setUid(mapperProvider.generateMessageUid());
-        sut.save(message1);
-
-        MessageId messageId = message1.getMessageId();
-        sut.delete(messageId);
-
-        List<MailboxMessage> messages = sut.find(ImmutableList.of(messageId), FetchType.Full);
-        assertThat(messages).isEmpty();
-    }
-
-    @ContractTest
     public void deleteWithMailboxIdsShouldNotDeleteIndicesWhenMailboxIdsIsEmpty() throws Exception {
         message1.setUid(mapperProvider.generateMessageUid());
         sut.save(message1);
