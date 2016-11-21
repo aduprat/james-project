@@ -29,6 +29,7 @@ import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 import javax.mail.util.SharedByteArrayInputStream;
 
+import org.apache.james.mailbox.FlagsBuilder;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
@@ -318,16 +319,17 @@ public class MessageIdMapperTest<T extends MapperProvider> {
 
         Map<MailboxId, UpdatedFlags> flags = sut.setFlags(new Flags(Flag.ANSWERED), MessageManager.FlagsUpdateMode.ADD, messageId);
 
-        Flags newFlags = new Flags();
-        newFlags.add(Flag.RECENT);
-        newFlags.add(Flag.ANSWERED);
+        Flags newFlags = new FlagsBuilder()
+            .add(Flag.RECENT)
+            .add(Flag.ANSWERED)
+            .build();
         int modSeq = 2;
         UpdatedFlags expectedUpdatedFlags = new UpdatedFlags(message1.getUid(), modSeq, initialFlags, newFlags);
         assertThat(flags).containsOnly(MapEntry.entry(benwaInboxMailbox.getMailboxId(), expectedUpdatedFlags));
     }
 
     @ContractTest
-    public void setFlagsShouldReturnUpdatedFlagsWhenMessageIsInTwoMailbox() throws Exception {
+    public void setFlagsShouldReturnUpdatedFlagsWhenMessageIsInTwoMailboxes() throws Exception {
         message1.setUid(mapperProvider.generateMessageUid());
         sut.save(message1);
 
@@ -360,7 +362,7 @@ public class MessageIdMapperTest<T extends MapperProvider> {
     }
 
     @ContractTest
-    public void setFlagsShouldUpdateFlagsWhenMessageIsInTwoMailbox() throws Exception {
+    public void setFlagsShouldUpdateFlagsWhenMessageIsInTwoMailboxes() throws Exception {
         message1.setUid(mapperProvider.generateMessageUid());
         sut.save(message1);
 
