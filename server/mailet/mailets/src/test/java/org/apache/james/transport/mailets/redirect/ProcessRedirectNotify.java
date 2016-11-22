@@ -111,11 +111,10 @@ public class ProcessRedirectNotify {
         newMail.setMessage(new MimeMessage(Session.getDefaultInstance(System.getProperties(), null)));
 
         // handle the new message if altered
-        AlteredMailUtils.builder()
-            .mailet(mailet)
+        MailMessageAlteringUtils.from(mailet)
             .originalMail(originalMail)
-            .build()
-            .buildAlteredMessage(newMail);
+            .newMail(newMail)
+            .alterNewMessage();
     }
 
     private void createUnalteredMessage(Mail originalMail, MailImpl newMail) throws MessagingException {

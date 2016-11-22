@@ -35,22 +35,22 @@ import org.apache.mailet.base.RFC2822Headers;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
-public class AlteredMailUtils {
+public class MailMessageAlteringUtils {
 
     private static final char LINE_BREAK = '\n';
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder from(RedirectNotify mailet) {
+        return new Builder(mailet);
     }
 
     public static class Builder {
 
         private RedirectNotify mailet;
         private Mail originalMail;
+        private Mail newMail;
 
-        public Builder mailet(RedirectNotify mailet) {
+        public Builder(RedirectNotify mailet) {
             this.mailet = mailet;
-            return this;
         }
 
         public Builder originalMail(Mail originalMail) {
@@ -58,19 +58,31 @@ public class AlteredMailUtils {
             return this;
         }
 
-        public AlteredMailUtils build() {
+        public Builder newMail(Mail newMail) {
+            this.newMail = newMail;
+            return this;
+        }
+
+        public void alterNewMessage() throws MessagingException {
+            build().alterNewMessage();
+        }
+
+        @VisibleForTesting MailMessageAlteringUtils build() {
             Preconditions.checkNotNull(mailet, "'mailet' is mandatory");
             Preconditions.checkNotNull(originalMail, "'originalMail' is mandatory");
-            return new AlteredMailUtils(mailet, originalMail);
+            Preconditions.checkNotNull(newMail, "'newMail' is mandatory");
+            return new MailMessageAlteringUtils(mailet, originalMail, newMail);
         }
     }
 
     private final RedirectNotify mailet;
     private final Mail originalMail;
+    private final Mail newMail;
 
-    private AlteredMailUtils(RedirectNotify mailet, Mail originalMail) {
+    private MailMessageAlteringUtils(RedirectNotify mailet, Mail originalMail, Mail newMail) {
         this.mailet = mailet;
         this.originalMail = originalMail;
+        this.newMail = newMail;
     }
 
     /**
@@ -79,7 +91,7 @@ public class AlteredMailUtils {
      * @param originalMail the original Mail object
      * @param newMail      the Mail object to build
      */
-    public void buildAlteredMessage(Mail newMail) throws MessagingException {
+    private void alterNewMessage() throws MessagingException {
 
         MimeMessage originalMessage = originalMail.getMessage();
         MimeMessage newMessage = newMail.getMessage();
