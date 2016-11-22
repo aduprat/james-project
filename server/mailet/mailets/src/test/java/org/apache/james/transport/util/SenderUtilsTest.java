@@ -19,31 +19,17 @@
 package org.apache.james.transport.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMail;
-import org.junit.Before;
 import org.junit.Test;
 
 public class SenderUtilsTest {
 
-    private RedirectNotify mailet;
-    private SenderUtils testee;
-
-    @Before
-    public void setup() {
-        mailet = mock(RedirectNotify.class);
-        testee = SenderUtils.from(mailet);
-    }
-
     @Test
-    public void getSenderShouldReturnNullWhenMailetSenderIsNull() throws Exception {
-        when(mailet.getSender())
-            .thenReturn(null);
+    public void getSenderShouldReturnNullWhenSenderIsNull() throws Exception {
+        SenderUtils testee = SenderUtils.from(null);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 
@@ -53,9 +39,8 @@ public class SenderUtilsTest {
     }
 
     @Test
-    public void getSenderShouldReturnNullWhenMailetSenderEqualsToUnaltered() throws Exception {
-        when(mailet.getSender())
-            .thenReturn(SpecialAddress.UNALTERED);
+    public void getSenderShouldReturnNullWhenSenderEqualsToUnaltered() throws Exception {
+        SenderUtils testee = SenderUtils.from(SpecialAddress.UNALTERED);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 
@@ -65,9 +50,8 @@ public class SenderUtilsTest {
     }
 
     @Test
-    public void getSenderShouldReturnNullWhenMailetSenderEqualsToSender() throws Exception {
-        when(mailet.getSender())
-            .thenReturn(SpecialAddress.SENDER);
+    public void getSenderShouldReturnNullWhenSenderEqualsToSender() throws Exception {
+        SenderUtils testee = SenderUtils.from(SpecialAddress.SENDER);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 
@@ -77,10 +61,9 @@ public class SenderUtilsTest {
     }
 
     @Test
-    public void getSenderShouldReturnSenderWhenMailetSenderIsCommon() throws Exception {
+    public void getSenderShouldReturnSenderWhenSenderIsCommon() throws Exception {
         MailAddress expectedMailAddress = new MailAddress("sender", "james.org");
-        when(mailet.getSender())
-            .thenReturn(expectedMailAddress);
+        SenderUtils testee = SenderUtils.from(expectedMailAddress);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 

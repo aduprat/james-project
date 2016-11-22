@@ -460,7 +460,7 @@ public class Redirect extends GenericMailet implements RedirectNotify {
 
     @Override
     public MailAddress getSender(Mail originalMail) throws MessagingException {
-        return SenderUtils.from(this).getSender(originalMail);
+        return SenderUtils.from(getSender()).getSender(originalMail);
     }
 
     @Override

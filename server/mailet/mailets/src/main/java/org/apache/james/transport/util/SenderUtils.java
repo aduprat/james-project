@@ -20,25 +20,23 @@ package org.apache.james.transport.util;
 
 import javax.mail.MessagingException;
 
-import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 
 public class SenderUtils {
 
-    public static SenderUtils from(RedirectNotify mailet) {
-        return new SenderUtils(mailet);
+    public static SenderUtils from(MailAddress sender) {
+        return new SenderUtils(sender);
     }
 
-    private final RedirectNotify mailet;
+    private final MailAddress sender;
 
-    private SenderUtils(RedirectNotify mailet) {
-        this.mailet = mailet;
+    private SenderUtils(MailAddress sender) {
+        this.sender = sender;
     }
 
     public MailAddress getSender(Mail originalMail) throws MessagingException {
-        MailAddress sender = mailet.getSender();
         if (sender != null) {
             if (isUnalteredOrSender(sender)) {
                 return null;
