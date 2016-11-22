@@ -74,8 +74,11 @@ public class BounceTest {
 
     @Test
     public void initShouldThrowWhenUnkownParameter() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("unknown", "error");
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .setProperty("unknown", "error")
+                .build();
         expectedException.expect(MessagingException.class);
 
         bounce.init(mailetConfig);
@@ -83,25 +86,31 @@ public class BounceTest {
 
     @Test
     public void initShouldNotThrowWhenEveryParameters() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("debug", "true");
-        mailetConfig.setProperty("passThrough", "false");
-        mailetConfig.setProperty("fakeDomainCheck", "false");
-        mailetConfig.setProperty("inline", "all");
-        mailetConfig.setProperty("attachment", "none");
-        mailetConfig.setProperty("message", "custom message");
-        mailetConfig.setProperty("notice", "");
-        mailetConfig.setProperty("sender", "sender@domain.org");
-        mailetConfig.setProperty("sendingAddress", "sender@domain.org");
-        mailetConfig.setProperty("prefix", "my prefix");
-        mailetConfig.setProperty("attachError", "true");
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .setProperty("debug", "true")
+                .setProperty("passThrough", "false")
+                .setProperty("fakeDomainCheck", "false")
+                .setProperty("inline", "all")
+                .setProperty("attachment", "none")
+                .setProperty("message", "custom message")
+                .setProperty("notice", "")
+                .setProperty("sender", "sender@domain.org")
+                .setProperty("sendingAddress", "sender@domain.org")
+                .setProperty("prefix", "my prefix")
+                .setProperty("attachError", "true")
+                .build();
 
         bounce.init(mailetConfig);
     }
 
     @Test
     public void bounceShouldReturnAMailToTheSenderWithoutAttributes() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .build();
         bounce.init(mailetConfig);
 
         MailAddress senderMailAddress = new MailAddress("sender@domain.com");
@@ -126,8 +135,11 @@ public class BounceTest {
 
     @Test
     public void bounceShouldChangeTheStateWhenNoSenderAndPassThroughEqualsFalse() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("passThrough", "false");
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .setProperty("passThrough", "false")
+                .build();
         bounce.init(mailetConfig);
 
         FakeMail mail = FakeMail.builder()
@@ -146,8 +158,11 @@ public class BounceTest {
 
     @Test
     public void bounceShouldNotChangeTheStateWhenNoSenderAndPassThroughEqualsTrue() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("passThrough", "true");
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .setProperty("passThrough", "true")
+                .build();
         bounce.init(mailetConfig);
 
         String initialState = "initial";
@@ -168,8 +183,11 @@ public class BounceTest {
 
     @Test
     public void bounceShouldAddPrefixToSubjectWhenPrefixIsConfigured() throws Exception {
-        FakeMailetConfig mailetConfig = new FakeMailetConfig(MAILET_NAME, fakeMailContext);
-        mailetConfig.setProperty("prefix", "pre");
+        FakeMailetConfig mailetConfig = FakeMailetConfig.builder()
+                .mailetName(MAILET_NAME)
+                .mailetContext(fakeMailContext)
+                .setProperty("prefix", "pre")
+                .build();
         bounce.init(mailetConfig);
 
         MimeMessage mimeMessage = new MimeMessage(Session.getDefaultInstance(new Properties()));
