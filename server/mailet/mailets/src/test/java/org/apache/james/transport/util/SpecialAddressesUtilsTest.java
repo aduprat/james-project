@@ -78,11 +78,6 @@ public class SpecialAddressesUtilsTest {
         }
 
         @Override
-        public void setDNSService(DNSService dns) {
-            
-        }
-
-        @Override
         public DNSService getDNSService() {
             return null;
         }
