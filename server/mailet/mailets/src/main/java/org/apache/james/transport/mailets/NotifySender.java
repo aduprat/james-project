@@ -218,7 +218,7 @@ public class NotifySender extends GenericMailet implements RedirectNotify {
 
     @Override
     public Optional<MailAddress> getReplyTo(Mail originalMail) throws MessagingException {
-        return ReplyToUtils.from(this).getReplyTo(originalMail);
+        return ReplyToUtils.from(getReplyTo()).getReplyTo(originalMail);
     }
 
     @Override

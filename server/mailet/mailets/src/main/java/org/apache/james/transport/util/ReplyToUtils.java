@@ -20,7 +20,6 @@ package org.apache.james.transport.util;
 
 import javax.mail.MessagingException;
 
-import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
@@ -29,18 +28,17 @@ import com.google.common.base.Optional;
 
 public class ReplyToUtils {
 
-    public static ReplyToUtils from(RedirectNotify mailet) {
-        return new ReplyToUtils(mailet);
+    public static ReplyToUtils from(MailAddress replyTo) {
+        return new ReplyToUtils(replyTo);
     }
 
-    private final RedirectNotify mailet;
+    private final MailAddress replyTo;
 
-    private ReplyToUtils(RedirectNotify mailet) {
-        this.mailet = mailet;
+    private ReplyToUtils(MailAddress replyTo) {
+        this.replyTo = replyTo;
     }
 
     public Optional<MailAddress> getReplyTo(Mail originalMail) throws MessagingException {
-        MailAddress replyTo = mailet.getReplyTo();
         if (replyTo != null) {
             if (replyTo.equals(SpecialAddress.UNALTERED)) {
                 return Optional.absent();

@@ -19,33 +19,19 @@
 package org.apache.james.transport.util;
 
 import static org.assertj.guava.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.base.test.FakeMail;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.google.common.base.Optional;
 
 public class ReplyToUtilsTest {
 
-    private RedirectNotify mailet;
-    private ReplyToUtils testee;
-
-    @Before
-    public void setup() {
-        mailet = mock(RedirectNotify.class);
-        testee = ReplyToUtils.from(mailet);
-    }
-
     @Test
-    public void getReplyToShouldReturnNullWhenMailetReplyToIsNull() throws Exception {
-        when(mailet.getReplyTo())
-            .thenReturn(null);
+    public void getReplyToShouldReturnNullWhenReplyToIsNull() throws Exception {
+        ReplyToUtils testee = ReplyToUtils.from(null);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 
@@ -55,9 +41,8 @@ public class ReplyToUtilsTest {
     }
 
     @Test
-    public void getReplyToShouldReturnNullWhenMailetReplyToEqualsToUnaltered() throws Exception {
-        when(mailet.getReplyTo())
-            .thenReturn(SpecialAddress.UNALTERED);
+    public void getReplyToShouldReturnNullWhenReplyToEqualsToUnaltered() throws Exception {
+        ReplyToUtils testee = ReplyToUtils.from(SpecialAddress.UNALTERED);
 
         FakeMail fakeMail = FakeMail.defaultFakeMail();
 
@@ -67,10 +52,9 @@ public class ReplyToUtilsTest {
     }
 
     @Test
-    public void getReplyToShouldReturnSenderWhenMailetReplyToIsCommon() throws Exception {
+    public void getReplyToShouldReturnSenderWhenReplyToIsCommon() throws Exception {
         MailAddress mailAddress = new MailAddress("test", "james.org");
-        when(mailet.getReplyTo())
-            .thenReturn(mailAddress);
+        ReplyToUtils testee = ReplyToUtils.from(mailAddress);
 
         MailAddress expectedMailAddress = new MailAddress("sender", "james.org");
         FakeMail fakeMail = FakeMail.builder()
