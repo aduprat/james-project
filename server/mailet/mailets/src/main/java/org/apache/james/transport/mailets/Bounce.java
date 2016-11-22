@@ -29,7 +29,7 @@ import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.transport.mailets.redirect.InitParameters;
 import org.apache.james.transport.mailets.redirect.NotifyMailetInitParameters;
 import org.apache.james.transport.mailets.redirect.NotifyMailetsMessage;
-import org.apache.james.transport.mailets.redirect.ProcessRedirectNotifyMailet;
+import org.apache.james.transport.mailets.redirect.ProcessRedirectNotify;
 import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.james.transport.mailets.utils.MimeMessageModifier;
@@ -240,7 +240,7 @@ public class Bounce extends GenericMailet implements RedirectNotify {
             if (getInitParameters().isDebug()) {
                 log("Processing a bounce request for a message with a reverse path.  The bounce will be sent to " + originalMail.getSender().toString());
             }
-            ProcessRedirectNotifyMailet.from(this).service(originalMail);
+            ProcessRedirectNotify.from(this).process(originalMail);
         }
     }
 

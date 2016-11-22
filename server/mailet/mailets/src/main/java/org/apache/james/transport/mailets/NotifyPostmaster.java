@@ -30,7 +30,7 @@ import org.apache.james.transport.mailets.redirect.AddressExtractor;
 import org.apache.james.transport.mailets.redirect.InitParameters;
 import org.apache.james.transport.mailets.redirect.NotifyMailetInitParameters;
 import org.apache.james.transport.mailets.redirect.NotifyMailetsMessage;
-import org.apache.james.transport.mailets.redirect.ProcessRedirectNotifyMailet;
+import org.apache.james.transport.mailets.redirect.ProcessRedirectNotify;
 import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.james.transport.mailets.utils.MimeMessageModifier;
@@ -255,6 +255,6 @@ public class NotifyPostmaster extends GenericMailet implements RedirectNotify {
 
     @Override
     public void service(Mail originalMail) throws MessagingException {
-        ProcessRedirectNotifyMailet.from(this).service(originalMail);
+        ProcessRedirectNotify.from(this).process(originalMail);
     }
 }

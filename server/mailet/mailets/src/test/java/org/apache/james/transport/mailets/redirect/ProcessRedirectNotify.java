@@ -26,21 +26,21 @@ import org.apache.james.core.MailImpl;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.StringUtils;
 
-public class ProcessRedirectNotifyMailet {
+public class ProcessRedirectNotify {
 
-    public static ProcessRedirectNotifyMailet from(RedirectNotify mailet) {
-        return new ProcessRedirectNotifyMailet(mailet);
+    public static ProcessRedirectNotify from(RedirectNotify mailet) {
+        return new ProcessRedirectNotify(mailet);
     }
 
     private final RedirectNotify mailet;
+    private final boolean isDebug;
 
-    private ProcessRedirectNotifyMailet(RedirectNotify mailet) {
+    private ProcessRedirectNotify(RedirectNotify mailet) {
         this.mailet = mailet;
+        this.isDebug = mailet.getInitParameters().isDebug();
     }
 
-    public void service(Mail originalMail) throws MessagingException {
-
-        boolean keepMessageId = false;
+    public void process(Mail originalMail) throws MessagingException {
 
         // duplicates the Mail object, to be able to modify the new mail keeping
         // the original untouched
@@ -54,42 +54,18 @@ public class ProcessRedirectNotifyMailet {
             mailModifier.setRemoteAddr();
             mailModifier.setRemoteHost();
 
-            if (mailet.getInitParameters().isDebug()) {
+            if (isDebug) {
                 mailet.log("New mail - sender: " + newMail.getSender() + ", recipients: " + StringUtils.arrayToString(newMail.getRecipients().toArray()) + ", name: " + newMail.getName() + ", remoteHost: " + newMail.getRemoteHost() + ", remoteAddr: " + newMail.getRemoteAddr() + ", state: " + newMail.getState()
                         + ", lastUpdated: " + newMail.getLastUpdated() + ", errorMessage: " + newMail.getErrorMessage());
             }
 
             // Create the message
+            boolean keepMessageId = false;
             if (!mailet.getInitParameters().getInLineType().equals(TypeCode.UNALTERED)) {
-                if (mailet.getInitParameters().isDebug()) {
-                    mailet.log("Alter message");
-                }
-                newMail.setMessage(new MimeMessage(Session.getDefaultInstance(System.getProperties(), null)));
-
-                // handle the new message if altered
-                AlteredMailUtils.builder()
-                    .mailet(mailet)
-                    .originalMail(originalMail)
-                    .build()
-                    .buildAlteredMessage(newMail);
+                createAlterMessage(originalMail, newMail);
 
             } else {
-                // if we need the original, create a copy of this message to
-                // redirect
-                if (mailet.getInitParameters().getPassThrough()) {
-                    newMail.setMessage(new MimeMessage(originalMail.getMessage()) {
-                        protected void updateHeaders() throws MessagingException {
-                            if (getMessageID() == null)
-                                super.updateHeaders();
-                            else {
-                                modified = false;
-                            }
-                        }
-                    });
-                }
-                if (mailet.getInitParameters().isDebug()) {
-                    mailet.log("Message resent unaltered.");
-                }
+                createUnalteredMessage(originalMail, newMail);
                 keepMessageId = true;
             }
 
@@ -128,6 +104,45 @@ public class ProcessRedirectNotifyMailet {
         }
     }
 
+    private void createAlterMessage(Mail originalMail, MailImpl newMail) throws MessagingException {
+        if (isDebug) {
+            mailet.log("Alter message");
+        }
+        newMail.setMessage(new MimeMessage(Session.getDefaultInstance(System.getProperties(), null)));
+
+        // handle the new message if altered
+        AlteredMailUtils.builder()
+            .mailet(mailet)
+            .originalMail(originalMail)
+            .build()
+            .buildAlteredMessage(newMail);
+    }
+
+    private void createUnalteredMessage(Mail originalMail, MailImpl newMail) throws MessagingException {
+        // if we need the original, create a copy of this message to
+        // redirect
+        if (mailet.getInitParameters().getPassThrough()) {
+            newMail.setMessage(new CopiedMimeMessage(originalMail.getMessage()));
+        }
+        if (isDebug) {
+            mailet.log("Message resent unaltered.");
+        }
+    }
+
+    private static class CopiedMimeMessage extends MimeMessage {
+
+        public CopiedMimeMessage(MimeMessage originalMessage) throws MessagingException {
+            super(originalMessage);
+        }
+
+        protected void updateHeaders() throws MessagingException {
+            if (getMessageID() == null)
+                super.updateHeaders();
+            else {
+                modified = false;
+            }
+        }
+    }
 
     /**
      * <p>

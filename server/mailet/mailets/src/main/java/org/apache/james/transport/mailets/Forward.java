@@ -29,7 +29,7 @@ import javax.mail.internet.InternetAddress;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.transport.mailets.redirect.AddressExtractor;
 import org.apache.james.transport.mailets.redirect.InitParameters;
-import org.apache.james.transport.mailets.redirect.ProcessRedirectNotifyMailet;
+import org.apache.james.transport.mailets.redirect.ProcessRedirectNotify;
 import org.apache.james.transport.mailets.redirect.RedirectMailetInitParameters;
 import org.apache.james.transport.mailets.redirect.RedirectNotify;
 import org.apache.james.transport.mailets.redirect.TypeCode;
@@ -242,6 +242,6 @@ public class Forward extends GenericMailet implements RedirectNotify {
 
     @Override
     public void service(Mail originalMail) throws MessagingException {
-        ProcessRedirectNotifyMailet.from(this).service(originalMail);
+        ProcessRedirectNotify.from(this).process(originalMail);
     }
 }
