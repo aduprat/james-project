@@ -32,6 +32,7 @@ import org.apache.james.transport.mailets.utils.MimeMessageUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.RFC2822Headers;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 public class AlteredMailUtils {
@@ -149,13 +150,16 @@ public class AlteredMailUtils {
             case UNALTERED:
                 break;
         }
-        if ((originalMessage.getSubject() != null) && (originalMessage.getSubject().trim().length() > 0)) {
-            attachmentPart.setFileName(originalMessage.getSubject().trim());
-        } else {
-            attachmentPart.setFileName("No Subject");
-        }
+        attachmentPart.setFileName(getFileName(originalMessage.getSubject()));
         attachmentPart.setDisposition("Attachment");
         return attachmentPart;
+    }
+
+    @VisibleForTesting String getFileName(String subject) {
+        if (subject != null && !subject.trim().isEmpty()) {
+            return subject.trim();
+        }
+        return "No Subject";
     }
 
     private MimeBodyPart getErrorPart(Mail originalMail) throws MessagingException {
@@ -179,18 +183,14 @@ public class AlteredMailUtils {
         if (mailet.getInitParameters().isDebug()) {
             mailet.log("inline:" + mailet.getInitParameters().getInLineType());
         }
-        boolean all = false;
         switch (mailet.getInitParameters().getInLineType()) {
             case ALL:
-                all = true;
+                appendHead(builder, head);
+                appendBody(builder, originalMessage);
+                break;
             case HEADS:
-                builder.append("Message Headers:")
-                    .append(LINE_BREAK)
-                    .append(head)
-                    .append(LINE_BREAK);
-                if (!all) {
-                    break;
-                }
+                appendHead(builder, head);
+                break;
             case BODY:
                 appendBody(builder, originalMessage);
                 break;
@@ -202,6 +202,13 @@ public class AlteredMailUtils {
                 break;
         }
         return builder.toString();
+    }
+
+    private void appendHead(StringBuilder builder, String head) {
+        builder.append("Message Headers:")
+            .append(LINE_BREAK)
+            .append(head)
+            .append(LINE_BREAK);
     }
 
     private void appendBody(StringBuilder builder, MimeMessage originalMessage) {

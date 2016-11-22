@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.james.transport.mailets.redirect;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import org.apache.mailet.Mail;
@@ -52,5 +53,53 @@ public class AlteredMailUtilsTest {
             .mailet(mock(RedirectNotify.class))
             .originalMail(mock(Mail.class))
             .build();
+    }
+
+    @Test
+    public void getFileNameShouldReturnNoSubjectWhenSubjectIsNull() {
+        AlteredMailUtils alteredMailUtils = AlteredMailUtils.builder()
+                .mailet(mock(RedirectNotify.class))
+                .originalMail(mock(Mail.class))
+                .build();
+
+        String fileName = alteredMailUtils.getFileName(null);
+
+        assertThat(fileName).isEqualTo("No Subject");
+    }
+
+    @Test
+    public void getFileNameShouldReturnNoSubjectWhenSubjectContainsOnlySpaces() {
+        AlteredMailUtils alteredMailUtils = AlteredMailUtils.builder()
+                .mailet(mock(RedirectNotify.class))
+                .originalMail(mock(Mail.class))
+                .build();
+
+        String fileName = alteredMailUtils.getFileName("    ");
+
+        assertThat(fileName).isEqualTo("No Subject");
+    }
+
+    @Test
+    public void getFileNameShouldReturnSubjectWhenSubjectIsGiven() {
+        AlteredMailUtils alteredMailUtils = AlteredMailUtils.builder()
+                .mailet(mock(RedirectNotify.class))
+                .originalMail(mock(Mail.class))
+                .build();
+
+        String fileName = alteredMailUtils.getFileName("my Subject");
+
+        assertThat(fileName).isEqualTo("my Subject");
+    }
+
+    @Test
+    public void getFileNameShouldReturnTrimmedSubjectWhenSubjectStartsWithSpaces() {
+        AlteredMailUtils alteredMailUtils = AlteredMailUtils.builder()
+                .mailet(mock(RedirectNotify.class))
+                .originalMail(mock(Mail.class))
+                .build();
+
+        String fileName = alteredMailUtils.getFileName("    my Subject");
+
+        assertThat(fileName).isEqualTo("my Subject");
     }
 }
