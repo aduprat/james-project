@@ -25,6 +25,8 @@ import org.apache.james.transport.mailets.redirect.SpecialAddress;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 
+import com.google.common.base.Optional;
+
 public class ReplyToUtils {
 
     public static ReplyToUtils from(RedirectNotify mailet) {
@@ -37,14 +39,14 @@ public class ReplyToUtils {
         this.mailet = mailet;
     }
 
-    public MailAddress getReplyTo(Mail originalMail) throws MessagingException {
+    public Optional<MailAddress> getReplyTo(Mail originalMail) throws MessagingException {
         MailAddress replyTo = mailet.getReplyTo();
         if (replyTo != null) {
             if (replyTo.equals(SpecialAddress.UNALTERED)) {
-                return null;
+                return Optional.absent();
             }
-            return originalMail.getSender();
+            return Optional.fromNullable(originalMail.getSender());
         }
-        return null;
+        return Optional.absent();
     }
 }
