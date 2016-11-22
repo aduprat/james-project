@@ -79,7 +79,7 @@ public class MimeMessageUtils {
         Enumeration<String> heads = message.getAllHeaderLines();
         StringBuilder headBuffer = new StringBuilder(1024);
         while (heads.hasMoreElements()) {
-            headBuffer.append(heads.nextElement().toString()).append("\r\n");
+            headBuffer.append(heads.nextElement()).append("\r\n");
         }
         return headBuffer.toString();
     }
