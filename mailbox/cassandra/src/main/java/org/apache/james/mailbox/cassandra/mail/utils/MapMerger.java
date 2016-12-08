@@ -17,43 +17,45 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.mailbox.store.mail;
+package org.apache.james.mailbox.cassandra.mail.utils;
 
-import java.util.Collection;
-import java.util.List;
+import com.github.steveash.guavate.Guavate;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.james.mailbox.cassandra.mail.AttachmentLoader;
 
-import org.apache.james.mailbox.exception.AttachmentNotFoundException;
-import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.Attachment;
-import org.apache.james.mailbox.model.AttachmentId;
+import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
-public class NoopAttachmentMapper implements AttachmentMapper {
+public class MapMerger {
 
-    @Override
-    public void endRequest() {
-
+    public static <K, U, V, T> Map<K, T> merge(Map<K, U> lhs, Map<K, V> rhs, BiFunction<U, V, T> merge) {
+        return lhs.entrySet().stream()
+                .flatMap(x -> entry(x.getKey(), x.getValue(), rhs.get(x.getKey())))
+                .collect(Guavate.toImmutableMap(Entry::getKey, x -> merge.apply(x.value1, x.value2)));
     }
 
-    @Override
-    public <T> T execute(Transaction<T> transaction) throws MailboxException {
-        return transaction.run();
+    private static <K, U, V> Stream<Entry<K, U, V>> entry(K k, U u, V v) {
+        if (v == null) {
+            return Stream.of();
+        } else {
+            return Stream.of(new Entry(k, u ,v));
+        }
     }
 
-    @Override
-    public Attachment getAttachment(AttachmentId attachmentId) throws AttachmentNotFoundException {
-        return null;
-    }
+    private static class Entry<K, U, V> {
+        final K key;
+        U value1;
+        V value2;
 
-    @Override
-    public List<Attachment> getAttachments(Collection<AttachmentId> attachmentIds) {
-        return null;
-    }
+        Entry(K key, U value1, V value2) {
+            this.key = key;
+            this.value1 = value1;
+            this.value2 = value2;
+        }
 
-    @Override
-    public void storeAttachment(Attachment attachment) throws MailboxException {
-    }
-
-    @Override
-    public void storeAttachments(Collection<Attachment> attachments) throws MailboxException {
+        public K getKey() {
+            return key;
+        }
     }
 }
