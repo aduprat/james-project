@@ -76,7 +76,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
     private QuotaManager quotaManager;
     private MessageIdManagerTestSystem testingData;
 
-    protected abstract MessageIdManagerTestSystem createTestingData(QuotaManager quotaManager, MailboxEventDispatcher dispatcher);
+    protected abstract MessageIdManagerTestSystem createTestingData(QuotaManager quotaManager, MailboxEventDispatcher dispatcher) throws Exception;
 
     @Before
     public void setUp() throws Exception {
@@ -177,7 +177,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
     }
 
     @Test
-    public void setInMailboxesThrowWhenOverQuota() throws Exception {
+    public void setInMailboxesShouldThrowWhenOverQuota() throws Exception {
         MessageId messageId = testingData.persist(mailbox2.getMailboxId(), FLAGS);
         reset(dispatcher);
         when(quotaManager.getMessageQuota(any(QuotaRoot.class))).thenReturn(OVER_QUOTA);
