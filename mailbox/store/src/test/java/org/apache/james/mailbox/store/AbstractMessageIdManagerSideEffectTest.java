@@ -181,6 +181,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
         MessageId messageId = testingData.persist(mailbox2.getMailboxId(), FLAGS);
         reset(dispatcher);
         when(quotaManager.getMessageQuota(any(QuotaRoot.class))).thenReturn(OVER_QUOTA);
+        when(quotaManager.getStorageQuota(any(QuotaRoot.class))).thenReturn(QuotaImpl.unlimited());
 
         expectedException.expect(OverQuotaException.class);
 
@@ -221,6 +222,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
 
     @Test
     public void deleteShouldNotDispatchEventWhenMessageDoesNotExist() throws Exception {
+        givenUnlimitedQuota();
         MessageId messageId = testingData.createNotUsedMessageId();
 
         messageIdManager.delete(messageId, ImmutableList.of(mailbox1.getMailboxId()), session);
@@ -230,6 +232,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
 
     @Test
     public void setFlagsShouldNotDispatchEventWhenMessageDoesNotExist() throws Exception {
+        givenUnlimitedQuota();
         MessageId messageId = testingData.createNotUsedMessageId();
 
         messageIdManager.setFlags(FLAGS, FlagsUpdateMode.ADD, messageId, session);
@@ -239,6 +242,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
 
     @Test
     public void setInMailboxesShouldNotDispatchEventWhenMessageDoesNotExist() throws Exception {
+        givenUnlimitedQuota();
         MessageId messageId = testingData.createNotUsedMessageId();
 
         messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId()), session);
