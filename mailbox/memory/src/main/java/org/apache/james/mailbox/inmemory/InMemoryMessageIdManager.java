@@ -82,11 +82,10 @@ public class InMemoryMessageIdManager implements MessageIdManager {
         for (MailboxMetaData mailboxMetaData: userMailboxes) {
             MailboxId mailboxId = mailboxMetaData.getId();
             Optional<MessageResult> message = findMessageWithId(mailboxId, messageId, FetchGroupImpl.MINIMAL, mailboxSession);
-            if (!message.isPresent()) {
-                throw new MailboxException();
+            if (message.isPresent()) {
+                mailboxManager.getMailbox(mailboxId, mailboxSession)
+                    .setFlags(newState, flagsUpdateMode, message.get().getUid().toRange(), mailboxSession);
             }
-            mailboxManager.getMailbox(mailboxId, mailboxSession)
-                .setFlags(newState, flagsUpdateMode, message.get().getUid().toRange(), mailboxSession);
         }
     }
 
@@ -125,7 +124,7 @@ public class InMemoryMessageIdManager implements MessageIdManager {
             if (maybeMessage.isPresent()) {
                 MessageRange range = maybeMessage.get().getUid().toRange();
                 MessageManager messageManager = mailboxManager.getMailbox(mailboxId, mailboxSession);
-                messageManager.setFlags(new Flags(Flags.Flag.DELETED), FlagsUpdateMode.REMOVE, range, mailboxSession);
+                messageManager.setFlags(new Flags(Flags.Flag.DELETED), FlagsUpdateMode.ADD, range, mailboxSession);
                 messageManager.expunge(range, mailboxSession);
             }
         }
@@ -134,19 +133,24 @@ public class InMemoryMessageIdManager implements MessageIdManager {
     @Override
     public void setInMailboxes(MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         List<MessageResult> messages = getMessages(ImmutableList.of(messageId), FetchGroupImpl.MINIMAL, mailboxSession);
-        ImmutableSet<MailboxId> currentMailboxes = currentMailboxes(messages).toSet();
-
-        HashSet<MailboxId> targetMailboxes = Sets.newHashSet(mailboxIds);
-        List<MailboxId> mailboxesToRemove = ImmutableList.copyOf(Sets.difference(currentMailboxes, targetMailboxes));
-        SetView<MailboxId> mailboxesToAdd = Sets.difference(targetMailboxes, currentMailboxes);
-
-        MessageResult referenceMessage = Iterables.getLast(messages);
-        for (MailboxId mailboxId: mailboxesToAdd) {
-            mailboxManager.copyMessages(referenceMessage.getUid().toRange(), referenceMessage.getMailboxId(), mailboxId, mailboxSession);
-        }
-
-        for (MessageResult message: messages) {
-            delete(message.getMessageId(), mailboxesToRemove, mailboxSession);
+        if (!messages.isEmpty()) {
+            ImmutableSet<MailboxId> currentMailboxes = currentMailboxes(messages).toSet();
+            
+            HashSet<MailboxId> targetMailboxes = Sets.newHashSet(mailboxIds);
+            List<MailboxId> mailboxesToRemove = ImmutableList.copyOf(Sets.difference(currentMailboxes, targetMailboxes));
+            SetView<MailboxId> mailboxesToAdd = Sets.difference(targetMailboxes, currentMailboxes);
+            
+            MessageResult referenceMessage = Iterables.getLast(messages);
+            for (MailboxId mailboxId: mailboxesToAdd) {
+                MessageRange messageRange = referenceMessage.getUid().toRange();
+                mailboxManager.copyMessages(messageRange, referenceMessage.getMailboxId(), mailboxId, mailboxSession);
+                mailboxManager.getMailbox(mailboxId, mailboxSession)
+                    .setFlags(referenceMessage.getFlags(), FlagsUpdateMode.REPLACE, messageRange, mailboxSession);
+            }
+            
+            for (MessageResult message: messages) {
+                delete(message.getMessageId(), mailboxesToRemove, mailboxSession);
+            }
         }
     }
 

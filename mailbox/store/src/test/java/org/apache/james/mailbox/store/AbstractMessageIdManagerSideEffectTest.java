@@ -28,6 +28,9 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.mail.Flags;
 
@@ -41,6 +44,7 @@ import org.apache.james.mailbox.exception.OverQuotaException;
 import org.apache.james.mailbox.model.FetchGroupImpl;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.Quota;
 import org.apache.james.mailbox.model.QuotaRoot;
@@ -58,6 +62,7 @@ import org.junit.rules.ExpectedException;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 public abstract class AbstractMessageIdManagerSideEffectTest {
 
@@ -81,10 +86,10 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
     @Before
     public void setUp() throws Exception {
         dispatcher = mock(MailboxEventDispatcher.class);
-        session = mock(MailboxSession.class);
         quotaManager = mock(QuotaManager.class);
 
         testingData = createTestingData(quotaManager, dispatcher);
+        session = testingData.getSession();
         messageIdManager = testingData.getMessageIdManager();
         mailbox1 = testingData.getMailbox1();
         mailbox2 = testingData.getMailbox2();
@@ -107,7 +112,12 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
 
         messageIdManager.delete(messageId, ImmutableList.of(mailbox1.getMailboxId()), session);
 
-        verify(dispatcher).expunged(session, simpleMessageMetaData, mailbox1);
+        MessageUid messageUid = simpleMessageMetaData.getUid();
+        Map<MessageUid, MessageMetaData> uids = ImmutableMap.of(messageUid, (MessageMetaData) simpleMessageMetaData);
+        verify(dispatcher).expunged(session, uids, mailbox1);
+        
+        UpdatedFlags updatedFlags = new UpdatedFlags(messageUid, messageResult.getModSeq(), FLAGS, new Flags(Flags.Flag.DELETED));
+        verify(dispatcher).flagsUpdated(session, ImmutableList.of(messageUid), mailbox1, ImmutableList.of(updatedFlags));
         verifyNoMoreInteractions(dispatcher);
     }
 
@@ -139,7 +149,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
         MessageId messageId = testingData.persist(mailbox2.getMailboxId(), FLAGS);
         reset(dispatcher);
 
-        messageIdManager.setInMailboxes(messageId, ImmutableList.<MailboxId>of(mailbox1.getMailboxId()), session);
+        messageIdManager.setInMailboxes(messageId, ImmutableList.<MailboxId>of(mailbox1.getMailboxId(), mailbox2.getMailboxId()), session);
 
         MessageResult messageResult = FluentIterable
             .from(messageIdManager.getMessages(ImmutableList.of(messageId), FetchGroupImpl.MINIMAL, session))
@@ -147,7 +157,13 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
             .get(0);
         SimpleMessageMetaData simpleMessageMetaData = fromMessageResult(messageId, messageResult);
 
-        verify(dispatcher).added(session, simpleMessageMetaData, mailbox1);
+        MessageUid messageUid = messageResult.getUid();
+        SortedMap<MessageUid, MessageMetaData> uids = new TreeMap<MessageUid, MessageMetaData>();
+        uids.put(messageUid, simpleMessageMetaData);
+        verify(dispatcher).added(session, uids, mailbox1);
+        
+        UpdatedFlags updatedFlags = new UpdatedFlags(messageUid, messageResult.getModSeq(), new Flags(Flags.Flag.RECENT), FLAGS);
+        verify(dispatcher).flagsUpdated(session, ImmutableList.of(messageUid), mailbox1, ImmutableList.of(updatedFlags));
         verifyNoMoreInteractions(dispatcher);
     }
 
@@ -157,7 +173,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
         MessageId messageId = testingData.persist(mailbox2.getMailboxId(), FLAGS);
         reset(dispatcher);
 
-        messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId(), mailbox3.getMailboxId()), session);
+        messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId(), mailbox2.getMailboxId(), mailbox3.getMailboxId()), session);
 
         List<MessageResult> messageResults = messageIdManager.getMessages(ImmutableList.of(messageId), FetchGroupImpl.MINIMAL, session);
         MessageResult messageResultMaibox1 = FluentIterable
@@ -171,8 +187,21 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
             .get(0);
         SimpleMessageMetaData metadataMailbox3 = fromMessageResult(messageId, messageResultMaibox3);
 
-        verify(dispatcher).added(session, metadataMailbox1, mailbox1);
-        verify(dispatcher).added(session, metadataMailbox3, mailbox3);
+        MessageUid messageUidMailbox1 = messageResultMaibox1.getUid();
+        SortedMap<MessageUid, MessageMetaData> uidsMailbox1 = new TreeMap<MessageUid, MessageMetaData>();
+        uidsMailbox1.put(messageUidMailbox1, metadataMailbox1);
+        verify(dispatcher).added(session, uidsMailbox1, mailbox1);
+        
+        UpdatedFlags updatedFlagsMailbox1 = new UpdatedFlags(messageUidMailbox1, metadataMailbox1.getModSeq(), new Flags(Flags.Flag.RECENT), FLAGS);
+        verify(dispatcher).flagsUpdated(session, ImmutableList.of(messageUidMailbox1), mailbox1, ImmutableList.of(updatedFlagsMailbox1));
+
+        MessageUid messageUidMailbox3 = metadataMailbox3.getUid();
+        SortedMap<MessageUid, MessageMetaData> uidsMailbox3 = new TreeMap<MessageUid, MessageMetaData>();
+        uidsMailbox3.put(messageUidMailbox3, metadataMailbox3);
+        verify(dispatcher).added(session, uidsMailbox3, mailbox1);
+        
+        UpdatedFlags updatedFlagsMailbox3 = new UpdatedFlags(messageUidMailbox3, metadataMailbox3.getModSeq(), new Flags(Flags.Flag.RECENT), FLAGS);
+        verify(dispatcher).flagsUpdated(session, ImmutableList.of(messageUidMailbox3), mailbox1, ImmutableList.of(updatedFlagsMailbox3));
         verifyNoMoreInteractions(dispatcher);
     }
 
@@ -216,7 +245,7 @@ public abstract class AbstractMessageIdManagerSideEffectTest {
         long modSeq = messageResult.getModSeq();
         UpdatedFlags updatedFlags = new UpdatedFlags(messageUid, modSeq, FLAGS, newFlags);
 
-        verify(dispatcher).flagsUpdated(session, messageUid, mailbox1, updatedFlags);
+        verify(dispatcher).flagsUpdated(session, ImmutableList.of(messageUid), mailbox2, ImmutableList.of(updatedFlags));
         verifyNoMoreInteractions(dispatcher);
     }
 

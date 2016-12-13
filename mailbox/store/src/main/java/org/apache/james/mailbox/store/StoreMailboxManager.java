@@ -204,7 +204,9 @@ public class StoreMailboxManager implements MailboxManager {
     @PostConstruct
     public void init() throws MailboxException {
         // The dispatcher need to have the delegating listener added
-        dispatcher = new MailboxEventDispatcher(getDelegationListener());
+        if (dispatcher == null) {
+            dispatcher = new MailboxEventDispatcher(getDelegationListener());
+        }
 
         if (index == null) {
             index = new SimpleMessageSearchIndex(mailboxSessionMapperFactory, mailboxSessionMapperFactory);
@@ -290,6 +292,10 @@ public class StoreMailboxManager implements MailboxManager {
      */
     public MailboxEventDispatcher getEventDispatcher() {
         return dispatcher;
+    }
+
+    public void setEventDispatcher(MailboxEventDispatcher dispatcher) {
+        this.dispatcher = dispatcher;
     }
 
     /**
@@ -709,7 +715,7 @@ public class StoreMailboxManager implements MailboxManager {
 
     @Override
     public void addListener(MailboxPath path, MailboxListener listener, MailboxSession session) throws MailboxException {
-        delegatingListener.addListener(path, listener, session);
+        getDelegationListener().addListener(path, listener, session);
     }
 
     /**
@@ -743,18 +749,18 @@ public class StoreMailboxManager implements MailboxManager {
 
     @Override
     public void addGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException {
-        delegatingListener.addGlobalListener(listener, session);
+        getDelegationListener().addGlobalListener(listener, session);
     }
 
     @Override
     public void removeListener(MailboxPath mailboxPath, MailboxListener listener, MailboxSession session) throws MailboxException {
-        delegatingListener.removeListener(mailboxPath, listener, session);
+        getDelegationListener().removeListener(mailboxPath, listener, session);
 
     }
 
     @Override
     public void removeGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException {
-        delegatingListener.removeGlobalListener(listener, session);
+        getDelegationListener().removeGlobalListener(listener, session);
     }
 
     @Override
