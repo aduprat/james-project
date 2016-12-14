@@ -19,7 +19,6 @@
 
 package org.apache.james.transport.mailets;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -44,6 +43,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * <p>
@@ -95,7 +96,7 @@ public class StripAttachment extends GenericMailet {
 
     public static final String SAVED_ATTACHMENTS_ATTRIBUTE_KEY = "org.apache.james.mailet.standard.mailets.StripAttachment.saved";
 
-    private String removeAttachments = null;
+    @VisibleForTesting String removeAttachments = null;
 
     private String directoryName = null;
 
@@ -109,10 +110,20 @@ public class StripAttachment extends GenericMailet {
 
     private List<ReplacingPattern> filenameReplacingPatterns = null;
 
-    private static boolean getBooleanParameter(String v, boolean def) {
-        return def ? !(v != null && (v.equalsIgnoreCase("false") || v
-                .equalsIgnoreCase("no"))) : v != null
-                && (v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes"));
+    @VisibleForTesting static boolean getBooleanParameter(String value, boolean def) {
+        if (def) {
+            return !isFalseOrNo(value);
+        } else {
+            return isTrueOrYes(value);
+        }
+    }
+
+    private static boolean isFalseOrNo(String value) {
+        return value != null && (value.equalsIgnoreCase("false") || value.equalsIgnoreCase("no"));
+    }
+
+    private static boolean isTrueOrYes(String value) {
+        return value != null && (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("yes"));
     }
 
     /**
@@ -238,7 +249,7 @@ public class StripAttachment extends GenericMailet {
      * @return
      * @throws Exception
      */
-    private boolean analyseMultipartPartMessage(Part part, Mail mail)
+    @VisibleForTesting boolean analyseMultipartPartMessage(Part part, Mail mail)
             throws Exception {
         if (part.isMimeType("multipart/*")) {
             try {
@@ -371,7 +382,7 @@ public class StripAttachment extends GenericMailet {
      * @return
      * @throws Exception
      */
-    private String saveAttachmentToFile(Part part, String fileName)
+    @VisibleForTesting String saveAttachmentToFile(Part part, String fileName)
             throws Exception {
         BufferedOutputStream os = null;
         InputStream is = null;
@@ -387,15 +398,10 @@ public class StripAttachment extends GenericMailet {
             String suffix = pos > 0 ? (fileName.substring(pos)) : ".bin";
             while (prefix.length() < 3)
                 prefix += "_";
-            if (suffix.length() == 0)
-                suffix = ".bin";
             f = File.createTempFile(prefix, suffix, new File(directoryName));
             log("saving content of " + f.getName() + "...");
             os = new BufferedOutputStream(new FileOutputStream(f));
             is = part.getInputStream();
-            if (!(is instanceof BufferedInputStream)) {
-                is = new BufferedInputStream(is);
-            }
             int c;
             while ((c = is.read()) != -1) {
                 os.write(c);
