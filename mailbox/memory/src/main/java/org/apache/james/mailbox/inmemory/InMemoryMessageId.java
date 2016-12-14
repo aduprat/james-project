@@ -22,6 +22,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.james.mailbox.model.MessageId;
 
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Objects;
+
 public class InMemoryMessageId implements MessageId {
 
     public static class Factory implements MessageId.Factory {
@@ -54,35 +57,28 @@ public class InMemoryMessageId implements MessageId {
         return String.valueOf(value);
     }
 
-    @Override
-    public String toString() {
-        return String.valueOf(value);
-    }
-
     public long getRawId() {
         return value;
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (int) (value ^ (value >>> 32));
-        return result;
+    public final int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        InMemoryMessageId other = (InMemoryMessageId) obj;
-        if (value != other.value)
-            return false;
-        return true;
+    public final boolean equals(Object obj) {
+        if (obj instanceof InMemoryMessageId) {
+            InMemoryMessageId other = (InMemoryMessageId) obj;
+            return Objects.equal(this.value, other.value);
+        }
+        return false;
     }
 
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(InMemoryMessageId.class)
+                .add("value", value)
+                .toString();
+    }
 }
