@@ -18,8 +18,6 @@
  ****************************************************************/
 package org.apache.james.mailbox.inmemory;
 
-import java.util.Random;
-
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.GroupMembershipResolver;
@@ -43,7 +41,7 @@ public class MessageIdManagerTestSystemProvider {
 
     private static final int LIMIT_ANNOTATIONS = 3;
     private static final int LIMIT_ANNOTATION_SIZE = 30;
-    private static final Random RANDOM = new Random();
+    private static final int UID_VALIDITY = 1024;
     private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryMessageIdManagerStorageTest.class);
     private static final String USER = "user";
     private static final String PASSWORD = "password";
@@ -75,14 +73,10 @@ public class MessageIdManagerTestSystemProvider {
         try {
             mailboxManager.createMailbox(mailboxPath, mailboxSession);
             MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
-            return new SimpleMailbox(mailboxPath, randomUidValidity(), messageManager.getId());
+            return new SimpleMailbox(mailboxPath, UID_VALIDITY, messageManager.getId());
         } catch (MailboxException e) {
             throw Throwables.propagate(e);
         }
-    }
-
-    private static int randomUidValidity() {
-        return Math.abs(RANDOM.nextInt());
     }
 
     private static InMemoryMailboxManager createMailboxManager() {

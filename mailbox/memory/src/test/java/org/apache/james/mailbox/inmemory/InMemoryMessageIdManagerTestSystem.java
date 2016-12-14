@@ -20,7 +20,6 @@ package org.apache.james.mailbox.inmemory;
 
 import java.io.ByteArrayInputStream;
 import java.util.Date;
-import java.util.Random;
 
 import javax.mail.Flags;
 
@@ -42,24 +41,29 @@ import com.google.common.collect.FluentIterable;
 
 public class InMemoryMessageIdManagerTestSystem extends MessageIdManagerTestSystem {
 
-    private static final Random RANDOM = new Random();
+    private static final MessageId FIRST_MESSAGE_ID = InMemoryMessageId.of(1);
+    private static final long ONE_HUNDRED = 100;
 
     private final MailboxManager mailboxManager;
     private final MailboxSession mailboxSession;
+    private Optional<MessageId> lastMessageIdUsed;
 
     public InMemoryMessageIdManagerTestSystem(MailboxManager mailboxManager, MailboxSession mailboxSession, 
             Mailbox mailbox1, Mailbox mailbox2, Mailbox mailbox3) {
         super(new InMemoryMessageIdManager(mailboxManager), mailboxSession, mailbox1, mailbox2, mailbox3);
         this.mailboxManager = mailboxManager;
         this.mailboxSession = mailboxSession;
+        this.lastMessageIdUsed = Optional.absent();
     }
 
     @Override
     public MessageId persist(MailboxId mailboxId, Flags flags) {
         try {
             MessageManager messageManager = mailboxManager.getMailbox(mailboxId, mailboxSession);
-            return messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), mailboxSession, false, flags)
+            MessageId messageId = messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), mailboxSession, false, flags)
                     .getMessageId();
+            lastMessageIdUsed = Optional.of(messageId);
+            return messageId;
         } catch (MailboxException e) {
             throw Throwables.propagate(e);
         }
@@ -67,7 +71,7 @@ public class InMemoryMessageIdManagerTestSystem extends MessageIdManagerTestSyst
 
     @Override
     public MessageId createNotUsedMessageId() {
-        return InMemoryMessageId.of(RANDOM.nextLong());
+        return InMemoryMessageId.of(Long.valueOf(lastMessageIdUsed.or(FIRST_MESSAGE_ID).serialize()) + ONE_HUNDRED);
     }
 
     @Override
