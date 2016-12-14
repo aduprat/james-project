@@ -156,7 +156,7 @@ public class ListProcessor extends AbstractMailboxProcessor<ListRequest> {
 
                     @Override
                     public MailboxId getId() {
-                        return null; //Will not be call in ListProcess scope
+                        return null; //Will not be call in ListProcessor scope
                     }
                     
                 });
