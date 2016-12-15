@@ -54,6 +54,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Optional;
 
 public class StripAttachmentTest {
 
@@ -343,7 +344,7 @@ public class StripAttachmentTest {
                 .build();
 
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("No value for pattern parameter was provided.");
+        expectedException.expectMessage("At least one of 'pattern' or 'notpattern' parameter should be provided.");
         mailet.init(mci);
     }
 
@@ -420,25 +421,8 @@ public class StripAttachmentTest {
             .thenThrow(new MessagingException("Test exception"));
 
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("Could not retrieve contenttype of message.");
+        expectedException.expectMessage("Could not retrieve contenttype of MimePart.");
         
-        mailet.service(mail);
-    }
-
-    @Test
-    public void serviceShouldThrowWhenNotAnalyzableMessage() throws Exception {
-        StripAttachment mailet = new StripAttachment();
-
-        MimeMessage message = mock(MimeMessage.class);
-        when(message.isMimeType("multipart/*"))
-            .thenThrow(new RuntimeException("Test exception"));
-        Mail mail = mock(Mail.class);
-        when(mail.getMessage())
-            .thenReturn(message);
-
-        expectedException.expect(MailetException.class);
-        expectedException.expectMessage("Could not analyse message.");
-
         mailet.service(mail);
     }
 
@@ -693,9 +677,8 @@ public class StripAttachmentTest {
         mailet.init(mci);
         Part part = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
         part.setFileName("example.tmp");
-        String fileName = null;
         //When
-        String actual = mailet.saveAttachmentToFile(part, fileName);
+        String actual = mailet.saveAttachmentToFile(part, Optional.<String> absent());
         //Then
         assertThat(actual).startsWith("example");
         assertThat(actual).endsWith(".tmp");
@@ -710,10 +693,9 @@ public class StripAttachmentTest {
                 .build();
         mailet.init(mci);
         Part part = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
-        String fileName = null;
 
         expectedException.expect(NullPointerException.class);
-        mailet.saveAttachmentToFile(part, fileName);
+        mailet.saveAttachmentToFile(part, Optional.<String> absent());
     }
     
     @Test
@@ -728,7 +710,7 @@ public class StripAttachmentTest {
         Part part = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
         String fileName = "exampleWithoutSuffix";
         //When
-        String actual = mailet.saveAttachmentToFile(part, fileName);
+        String actual = mailet.saveAttachmentToFile(part, Optional.of(fileName));
         //Then
         assertThat(actual).startsWith("exampleWithoutSuffix");
         assertThat(actual).endsWith(".bin");
@@ -763,4 +745,84 @@ public class StripAttachmentTest {
         return mailet;
     }
 
+    @Test
+    public void fileNameMatchesShouldReturnFalseWhenPatternDoesntMatch() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("pattern", ".*pattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("not matching")).isFalse();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnTrueWhenPatternMatches() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("pattern", ".*pattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("I've got a pattern.")).isTrue();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnFalseWhenNotPatternMatches() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("notpattern", ".*pattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("I've got a pattern.")).isFalse();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnTrueWhenNotPatternDoesntMatch() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("notpattern", ".*pattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("not matching")).isTrue();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnFalseWhenPatternAndNotPatternAreTheSame() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("pattern", ".*pattern.*")
+                .setProperty("notpattern", ".*pattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("not matching")).isFalse();
+        assertThat(mailet.fileNameMatches("I've got a pattern.")).isFalse();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnTrueWhenPatternMatchesAndNotPatternDoesntMatch() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("pattern", ".*pattern.*")
+                .setProperty("notpattern", ".*notpattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("I've got a pattern.")).isTrue();
+    }
+
+    @Test
+    public void fileNameMatchesShouldReturnTrueWhenPatternDoesntMatchesAndNotPatternDoesntMatch() throws Exception {
+        StripAttachment mailet = new StripAttachment();
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .setProperty("pattern", ".*pattern.*")
+                .setProperty("notpattern", ".*notpattern.*")
+                .build();
+        mailet.init(mci);
+        
+        assertThat(mailet.fileNameMatches("o.")).isTrue();
+    }
 }
