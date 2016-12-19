@@ -24,7 +24,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -77,50 +76,58 @@ public class StripAttachmentTest {
     }
 
     @Test
-    public void getBooleanParameterShouldReturnFalseWhenNullAndDefaultFalse() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter(null, false);
+    public void getBooleanParameterShouldReturnFalseWhenValueNullAndDefaultFalse() throws Exception {
+        String value = null;
+        boolean actual = StripAttachment.getBooleanParameter(value, false);
         assertThat(actual).isFalse();
     }
     
     @Test
-    public void getBooleanParameterShouldReturnTrueWhenTrueAndDefaultFalse() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("true", false);
+    public void getBooleanParameterShouldReturnTrueWhenValueTrueAndDefaultFalse() throws Exception {
+        String value = "true";
+        boolean actual = StripAttachment.getBooleanParameter(value, false);
         assertThat(actual).isTrue();
     }
     
     @Test
-    public void getBooleanParameterShouldReturnTrueWhenYesAndDefaultFalse() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("yes", false);
+    public void getBooleanParameterShouldReturnTrueWhenValueYesAndDefaultFalse() throws Exception {
+        String value = "yes";
+        boolean actual = StripAttachment.getBooleanParameter(value, false);
         assertThat(actual).isTrue();
     }
 
     @Test
-    public void getBooleanParameterShouldReturnFalseWhenOtherAndDefaultFalse() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("other", false);
+    public void getBooleanParameterShouldReturnFalseWhenValueOtherAndDefaultFalse() throws Exception {
+        String value = "other";
+        boolean actual = StripAttachment.getBooleanParameter(value, false);
         assertThat(actual).isFalse();
     }
 
     @Test
-    public void getBooleanParameterShouldReturnTrueWhenNullAndDefaultTrue() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter(null, true);
+    public void getBooleanParameterShouldReturnTrueWhenValueNullAndDefaultTrue() throws Exception {
+        String value = null;
+        boolean actual = StripAttachment.getBooleanParameter(value, true);
         assertThat(actual).isTrue();
     }
 
     @Test
-    public void getBooleanParameterShouldReturnFalseWhenNoAndDefaultTrue() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("no", true);
+    public void getBooleanParameterShouldReturnFalseWhenValueNoAndDefaultTrue() throws Exception {
+        String value = "no";
+        boolean actual = StripAttachment.getBooleanParameter(value, true);
         assertThat(actual).isFalse();
     }
 
     @Test
-    public void getBooleanParameterShouldReturnFalseWhenFalseAndDefaultTrue() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("false", true);
+    public void getBooleanParameterShouldReturnFalseWhenValueFalseAndDefaultTrue() throws Exception {
+        String value = "false";
+        boolean actual = StripAttachment.getBooleanParameter(value, true);
         assertThat(actual).isFalse();
     }
 
     @Test
-    public void getBooleanParameterShouldReturnTrueWhenOtherAndDefaultTrue() throws Exception {
-        boolean actual = StripAttachment.getBooleanParameter("other", true);
+    public void getBooleanParameterShouldReturnTrueWhenValueOtherAndDefaultTrue() throws Exception {
+        String value = "other";
+        boolean actual = StripAttachment.getBooleanParameter(value, true);
         assertThat(actual).isTrue();
     }
 
@@ -153,6 +160,8 @@ public class StripAttachmentTest {
         mailet.service(mail);
 
         assertThat(mail).isEqualToComparingFieldByField(expectedMail);
+        assertThat(mail.getMessage()).isEqualToComparingFieldByField(expectedMessage);
+        assertThat(mail.getMessage().getContent()).isEqualTo(part);
     }
     
     @Test
@@ -165,7 +174,8 @@ public class StripAttachmentTest {
         MimeBodyPart part = new MimeBodyPart();
         part.setText("simple text");
         multiPart.addBodyPart(part);
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", "10.tmp"));
+        String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "10.tmp"));
         multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
         
         message.setSubject("test");
@@ -178,19 +188,14 @@ public class StripAttachmentTest {
 
         mailet.service(mail);
 
-        ByteArrayOutputStream rawMessage = new ByteArrayOutputStream();
-        mail.getMessage().writeTo(rawMessage,
-                new String[]{"Bcc", "Content-Length", "Message-ID"});
-
         @SuppressWarnings("unchecked")
-        Collection<String> c = (Collection<String>) mail
-                .getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
-        assertThat(c).isNotNull();
-        assertThat(c.size()).isEqualTo(1);
+        Collection<String> savedAttachments = (Collection<String>) mail.getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
+        assertThat(savedAttachments).isNotNull();
+        assertThat(savedAttachments).hasSize(1);
 
-        String name = c.iterator().next();
+        String attachmentFilename = savedAttachments.iterator().next();
 
-        assertThat(new File(folderPath + name)).hasContent("\u0023\u00A4\u00E3\u00E0\u00E9");
+        assertThat(new File(folderPath + attachmentFilename)).hasContent(expectedAttachmentContent);
     }
 
     private MimeBodyPart createAttachmentBodyPart(String body, String fileName) throws MessagingException, UnsupportedEncodingException {
@@ -225,7 +230,8 @@ public class StripAttachmentTest {
         MimeBodyPart part = new MimeBodyPart();
         part.setText("simple text");
         multiPart.addBodyPart(part);
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", "temp.tmp"));
+        String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "temp.tmp"));
         multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "winmail.dat"));
         
         message.setSubject("test");
@@ -238,19 +244,14 @@ public class StripAttachmentTest {
 
         mailet.service(mail);
 
-        ByteArrayOutputStream rawMessage = new ByteArrayOutputStream();
-        mail.getMessage().writeTo(rawMessage,
-                new String[]{"Bcc", "Content-Length", "Message-ID"});
-
         @SuppressWarnings("unchecked")
-        Collection<String> c = (Collection<String>) mail
-                .getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
-        assertThat(c).isNotNull();
-        assertThat(c.size()).isEqualTo(1);
+        Collection<String> savedAttachments = (Collection<String>) mail.getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
+        assertThat(savedAttachments).isNotNull();
+        assertThat(savedAttachments).hasSize(1);
 
-        String name = c.iterator().next();
+        String attachmentFilename = savedAttachments.iterator().next();
 
-        assertThat(new File(folderPath + name)).hasContent("\u0023\u00A4\u00E3\u00E0\u00E9");
+        assertThat(new File(folderPath + attachmentFilename)).hasContent(expectedAttachmentContent);
     }
 
     @Test
@@ -264,7 +265,8 @@ public class StripAttachmentTest {
         MimeBodyPart part = new MimeBodyPart();
         part.setText("simple text");
         multiPart.addBodyPart(part);
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", "=?iso-8859-15?Q?=E9_++++Pubblicit=E0_=E9_vietata____Milano9052.tmp?="));
+        String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "=?iso-8859-15?Q?=E9_++++Pubblicit=E0_=E9_vietata____Milano9052.tmp?="));
         multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
         
         message.setSubject("test");
@@ -277,21 +279,57 @@ public class StripAttachmentTest {
 
         mailet.service(mail);
 
-        ByteArrayOutputStream rawMessage = new ByteArrayOutputStream();
-        mail.getMessage().writeTo(rawMessage,
-                new String[]{"Bcc", "Content-Length", "Message-ID"});
-
         @SuppressWarnings("unchecked")
-        Collection<String> c = (Collection<String>) mail
-                .getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
-        assertThat(c).isNotNull();
-        assertThat(c.size()).isEqualTo(1);
+        Collection<String> savedAttachments = (Collection<String>) mail.getAttribute(StripAttachment.SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
+        assertThat(savedAttachments).isNotNull();
+        assertThat(savedAttachments).hasSize(1);
 
-        String name = c.iterator().next();
+        String name = savedAttachments.iterator().next();
 
         assertThat(name.startsWith("e_Pubblicita_e_vietata_Milano9052")).isTrue();
         
-        assertThat(new File(folderPath + name)).hasContent("\u0023\u00A4\u00E3\u00E0\u00E9");
+        assertThat(new File(folderPath + name)).hasContent(expectedAttachmentContent);
+    }
+
+    @Test
+    public void serviceShouldSaveFilenameAttachmentAndFileContentInCustomAttribute() throws MessagingException, IOException {
+        StripAttachment mailet = new StripAttachment();
+
+        String customAttribute = "my.custom.attribute";
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("remove", "matched")
+                .setProperty("directory", folderPath)
+                .setProperty("pattern", ".*\\.tmp")
+                .setProperty("attribute", customAttribute)
+                .build();
+        mailet.init(mci);
+        
+        MimeMessage message = new MimeMessage(Session
+                .getDefaultInstance(new Properties()));
+
+        MimeMultipart multiPart = new MimeMultipart();
+        MimeBodyPart part = new MimeBodyPart();
+        part.setText("simple text");
+        multiPart.addBodyPart(part);
+        String expectedKey = "10.tmp";
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", expectedKey));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
+        
+        message.setSubject("test");
+        message.setContent(multiPart);
+        message.saveChanges();
+
+        Mail mail = FakeMail.builder()
+                .mimeMessage(message)
+                .build();
+
+        mailet.service(mail);
+
+        @SuppressWarnings("unchecked")
+        Map<String, byte[]> saved = (Map<String, byte[]>) mail.getAttribute(customAttribute);
+        assertThat(saved).hasSize(1);
+        assertThat(saved).containsKey(expectedKey);
     }
 
     @Test
@@ -342,7 +380,7 @@ public class StripAttachmentTest {
     }
 
     @Test
-    public void initShouldSetRemoveAttachmentsToMatched() throws MessagingException {
+    public void initShouldSetRemoveAttachments() throws MessagingException {
         StripAttachment mailet = new StripAttachment();
 
         FakeMailetConfig mci = FakeMailetConfig.builder()
@@ -514,33 +552,38 @@ public class StripAttachmentTest {
         //Given
         StripAttachment mailet = new StripAttachment();
 
+        String customAttribute = "my.custom.attribute";
         FakeMailetConfig mci = FakeMailetConfig.builder()
                 .mailetName("Test")
                 .setProperty("remove", "matched")
                 .setProperty("directory", folderPath)
                 .setProperty("pattern", ".*")
-                .setProperty("attribute", "my.custom.attribute")
+                .setProperty("attribute", customAttribute)
                 .build();
         mailet.init(mci);
-        MimeMultipart multiPart = new MimeMultipart();
         
+        // Message with two matching attachments
+        MimeMultipart multiPart = new MimeMultipart();
         MimeBodyPart part1 = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
         part1.setFileName("removeMe1.tmp");
+        multiPart.addBodyPart(part1);
         MimeBodyPart part2 = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
         part2.setFileName("removeMe2.tmp");
-        multiPart.addBodyPart(part1);
         multiPart.addBodyPart(part2);
-        MimeMessage message = new MimeMessage(Session
-                .getDefaultInstance(new Properties()));
+        
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
         message.setContent(multiPart);
         message.saveChanges();
+        
         Mail mail = FakeMail.builder().build();
+        
         //When
         boolean actual = mailet.analyseMultipartPartMessage(message, mail);
+        
         //Then
         assertThat(actual).isTrue();
         @SuppressWarnings("unchecked")
-        Map<String, byte[]> values = (Map<String, byte[]>)mail.getAttribute("my.custom.attribute");
+        Map<String, byte[]> values = (Map<String, byte[]>)mail.getAttribute(customAttribute);
         assertThat(values).hasSize(2);
     }
 

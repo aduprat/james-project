@@ -40,6 +40,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeUtility;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
@@ -113,17 +114,16 @@ public class StripAttachment extends GenericMailet {
     @VisibleForTesting static boolean getBooleanParameter(String value, boolean def) {
         if (def) {
             return !isFalseOrNo(value);
-        } else {
-            return isTrueOrYes(value);
         }
+        return isTrueOrYes(value);
     }
 
     private static boolean isFalseOrNo(String value) {
-        return value != null && (value.equalsIgnoreCase("false") || value.equalsIgnoreCase("no"));
+        return StringUtils.containsIgnoreCase(value, "false") || StringUtils.containsIgnoreCase(value, "no");
     }
 
     private static boolean isTrueOrYes(String value) {
-        return value != null && (value.equalsIgnoreCase("true") || value.equalsIgnoreCase("yes"));
+        return StringUtils.containsIgnoreCase(value, "true") || StringUtils.containsIgnoreCase(value, "yes");
     }
 
     /**
@@ -305,14 +305,14 @@ public class StripAttachment extends GenericMailet {
                     String filename = saveAttachmentToFile(part, fileName);
                     if (filename != null) {
                         @SuppressWarnings("unchecked")
-                        Collection<String> c = (Collection<String>) mail
+                        Collection<String> savedAttachments = (Collection<String>) mail
                                 .getAttribute(SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
-                        if (c == null) {
-                            c = new ArrayList<String>();
+                        if (savedAttachments == null) {
+                            savedAttachments = new ArrayList<String>();
                             mail.setAttribute(SAVED_ATTACHMENTS_ATTRIBUTE_KEY,
-                                    (ArrayList<String>) c);
+                                    (ArrayList<String>) savedAttachments);
                         }
-                        c.add(filename);
+                        savedAttachments.add(filename);
                     }
                 }
                 if (attributeName != null) {
@@ -337,14 +337,14 @@ public class StripAttachment extends GenericMailet {
             }
             if (ret) {
                 @SuppressWarnings("unchecked")
-                Collection<String> c = (Collection<String>) mail
+                Collection<String> removedAttachments = (Collection<String>) mail
                         .getAttribute(REMOVED_ATTACHMENTS_ATTRIBUTE_KEY);
-                if (c == null) {
-                    c = new ArrayList<String>();
+                if (removedAttachments == null) {
+                    removedAttachments = new ArrayList<String>();
                     mail.setAttribute(REMOVED_ATTACHMENTS_ATTRIBUTE_KEY,
-                            (ArrayList<String>) c);
+                            (ArrayList<String>) removedAttachments);
                 }
-                c.add(fileName);
+                removedAttachments.add(fileName);
             }
         }
         return ret;
@@ -374,7 +374,7 @@ public class StripAttachment extends GenericMailet {
     }
 
     /**
-     * Saves the content of the part to a file in the given directoy, using the
+     * Saves the content of the part to a file in the given directory, using the
      * name of the part. If a file with that name already exists, it will
      * 
      * @param part
@@ -382,8 +382,7 @@ public class StripAttachment extends GenericMailet {
      * @return
      * @throws Exception
      */
-    @VisibleForTesting String saveAttachmentToFile(Part part, String fileName)
-            throws Exception {
+    @VisibleForTesting String saveAttachmentToFile(Part part, String fileName) throws Exception {
         BufferedOutputStream os = null;
         InputStream is = null;
         File f = null;

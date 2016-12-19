@@ -183,7 +183,7 @@ public class StripAttachmentTest {
         MimeBodyPart part = new MimeBodyPart();
         part.setText("simple text");
         multiPart.addBodyPart(part);
-        multiPart.addBodyPart(createAttachmentBodyPart("Not matching attachment", "matching.tmp"));
+        multiPart.addBodyPart(createAttachmentBodyPart("Not matching attachment", "not_matching.tmp"));
         multiPart.addBodyPart(createAttachmentBodyPart("Matching attachment", "temp.zip"));
         
         message.setSubject("test");
