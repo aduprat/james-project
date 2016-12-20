@@ -60,6 +60,8 @@ import com.google.common.base.Optional;
 
 public class StripAttachmentTest {
 
+    private static final Optional<String> ABSENT_MIME_TYPE = Optional.<String> absent();
+
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
     @Rule
@@ -118,8 +120,8 @@ public class StripAttachmentTest {
         part.setText("simple text");
         multiPart.addBodyPart(part);
         String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
-        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "10.tmp"));
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "10.tmp", ABSENT_MIME_TYPE));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip", ABSENT_MIME_TYPE));
         
         message.setSubject("test");
         message.setContent(multiPart);
@@ -141,22 +143,61 @@ public class StripAttachmentTest {
         assertThat(new File(folderPath + attachmentFilename)).hasContent(expectedAttachmentContent);
     }
 
+    @Test
+    public void serviceShouldRemoveWhenMimeTypeMatch() throws MessagingException, IOException {
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("mimeType", "text/calendar")
+                .setProperty("remove", "matched")
+                .build();
+        Mailet mailet = new StripAttachment();
+        mailet.init(mci);
+
+        MimeMultipart multiPart = new MimeMultipart();
+        MimeBodyPart textPart = new MimeBodyPart();
+        textPart.setText("simple text");
+        multiPart.addBodyPart(textPart);
+        multiPart.addBodyPart(createAttachmentBodyPart("content", "10.ical", Optional.of("text/calendar")));
+        multiPart.addBodyPart(createAttachmentBodyPart("other content", "11.ical", ABSENT_MIME_TYPE));
+
+        MimeMessage message = mimeMessage();
+        message.setSubject("test");
+        message.setContent(multiPart);
+        message.saveChanges();
+
+        Mail mail = FakeMail.builder()
+                .mimeMessage(message)
+                .build();
+
+        mailet.service(mail);
+
+        @SuppressWarnings("unchecked")
+        List<String> removedAttachments = (List<String>) mail.getAttribute(StripAttachment.REMOVED_ATTACHMENTS_ATTRIBUTE_KEY);
+        assertThat(removedAttachments).containsOnly("10.ical");
+    }
+
     private MimeMessage mimeMessage() {
         return new MimeMessage(Session
                 .getDefaultInstance(new Properties()));
     }
 
-    private MimeBodyPart createAttachmentBodyPart(String body, String fileName) throws MessagingException, UnsupportedEncodingException {
-        MimeBodyPart part = createBodyPart(body);
+    private MimeBodyPart createAttachmentBodyPart(String body, String fileName, Optional<String> mimeType) throws MessagingException, UnsupportedEncodingException {
+        MimeBodyPart part = createBodyPart(body, mimeType);
         part.setDisposition("attachment");
         part.setFileName(fileName);
         return part;
     }
 
-    private MimeBodyPart createBodyPart(String body) throws MessagingException, UnsupportedEncodingException {
-        return new MimeBodyPart(new ByteArrayInputStream(
-                ("Content-Transfer-Encoding: 8bit\r\nContent-Type: application/octet-stream; charset=utf-8\r\n\r\n"
-                        + body).getBytes("UTF-8")));
+    private MimeBodyPart createBodyPart(String body, Optional<String> mimeType) throws MessagingException, UnsupportedEncodingException {
+        byte[] content = (mimeHeaders(mimeType) + body).getBytes("UTF-8");
+        return new MimeBodyPart(new ByteArrayInputStream(content));
+    }
+
+    private String mimeHeaders(Optional<String> mimeType) {
+        if (mimeType.isPresent()) {
+            return "Content-Transfer-Encoding: 8bit\r\nContent-Type: " + mimeType.get() + "; charset=utf-8\r\n\r\n";
+        }
+        return "Content-Transfer-Encoding: 8bit\r\nContent-Type: application/octet-stream; charset=utf-8\r\n\r\n";
     }
 
     @Test
@@ -178,8 +219,8 @@ public class StripAttachmentTest {
         part.setText("simple text");
         multiPart.addBodyPart(part);
         String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
-        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "temp.tmp"));
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "winmail.dat"));
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "temp.tmp", ABSENT_MIME_TYPE));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "winmail.dat", ABSENT_MIME_TYPE));
         
         message.setSubject("test");
         message.setContent(multiPart);
@@ -212,8 +253,8 @@ public class StripAttachmentTest {
         part.setText("simple text");
         multiPart.addBodyPart(part);
         String expectedAttachmentContent = "\u0023\u00A4\u00E3\u00E0\u00E9";
-        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "=?iso-8859-15?Q?=E9_++++Pubblicit=E0_=E9_vietata____Milano9052.tmp?="));
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
+        multiPart.addBodyPart(createAttachmentBodyPart(expectedAttachmentContent, "=?iso-8859-15?Q?=E9_++++Pubblicit=E0_=E9_vietata____Milano9052.tmp?=", ABSENT_MIME_TYPE));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip", ABSENT_MIME_TYPE));
         
         message.setSubject("test");
         message.setContent(multiPart);
@@ -258,8 +299,8 @@ public class StripAttachmentTest {
         part.setText("simple text");
         multiPart.addBodyPart(part);
         String expectedKey = "10.tmp";
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", expectedKey));
-        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip"));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0023\u00A4\u00E3\u00E0\u00E9", expectedKey, ABSENT_MIME_TYPE));
+        multiPart.addBodyPart(createAttachmentBodyPart("\u0014\u00A3\u00E1\u00E2\u00E4", "temp.zip", ABSENT_MIME_TYPE));
         
         message.setSubject("test");
         message.setContent(multiPart);
@@ -278,7 +319,7 @@ public class StripAttachmentTest {
     }
 
     @Test
-    public void initShouldThrowWhenPatternAndNotPatternAreNull() throws MessagingException {
+    public void initShouldThrowWhenPatternAndNotPatternAndMimeTypeAreNull() throws MessagingException {
         Mailet mailet = new StripAttachment();
 
         FakeMailetConfig mci = FakeMailetConfig.builder()
@@ -286,7 +327,57 @@ public class StripAttachmentTest {
                 .build();
 
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("At least one of 'pattern' or 'notpattern' parameter should be provided.");
+        expectedException.expectMessage("At least one of 'pattern', 'notpattern' or 'mimeType' parameter should be provided.");
+        mailet.init(mci);
+    }
+
+    @Test
+    public void initShouldThrowWhenMimeTypeIsEmpty() throws MessagingException {
+        Mailet mailet = new StripAttachment();
+
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("mimeType", "")
+                .build();
+
+        expectedException.expect(MailetException.class);
+        expectedException.expectMessage("At least one of 'pattern', 'notpattern' or 'mimeType' parameter should be provided.");
+        mailet.init(mci);
+    }
+
+    @Test
+    public void initShouldWorkWhenPatternIsDefinedAndValid() throws MessagingException {
+        Mailet mailet = new StripAttachment();
+
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("pattern", ".*\\.tmp")
+                .build();
+
+        mailet.init(mci);
+    }
+
+    @Test
+    public void initShouldWorkWhenNotPatternIsDefinedAndValid() throws MessagingException {
+        Mailet mailet = new StripAttachment();
+
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("notpattern", ".*\\.tmp")
+                .build();
+
+        mailet.init(mci);
+    }
+
+    @Test
+    public void initShouldWorkWhenMimeTypeIsDefined() throws MessagingException {
+        Mailet mailet = new StripAttachment();
+
+        FakeMailetConfig mci = FakeMailetConfig.builder()
+                .mailetName("Test")
+                .setProperty("mimeType", "text/calendar")
+                .build();
+
         mailet.init(mci);
     }
 
@@ -663,7 +754,7 @@ public class StripAttachmentTest {
         Part part = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
         part.setFileName("example.tmp");
         //When
-        Optional<String> mayBeFilename = mailet.saveAttachmentToFile(part, Optional.<String> absent());
+        Optional<String> mayBeFilename = mailet.saveAttachmentToFile(part, ABSENT_MIME_TYPE);
         //Then
         assertThat(mayBeFilename).isPresent();
         String filename = mayBeFilename.get();
@@ -681,7 +772,7 @@ public class StripAttachmentTest {
         mailet.init(mci);
         Part part = new MimeBodyPart(new ByteArrayInputStream(new byte[0]));
 
-        Optional<String> mayBeFilename = mailet.saveAttachmentToFile(part, Optional.<String> absent());
+        Optional<String> mayBeFilename = mailet.saveAttachmentToFile(part, ABSENT_MIME_TYPE);
         assertThat(mayBeFilename).isAbsent();
     }
     

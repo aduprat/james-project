@@ -64,12 +64,13 @@ import com.google.common.collect.ImmutableList;
  *   &lt;mailet match=&quot;All&quot; class=&quot;StripAttachment&quot; &gt;
  *     &lt;pattern &gt;.*\.xls &lt;/pattern&gt;  &lt;!-- The regular expression that must be matched -- &gt;
  *     &lt;!-- notpattern &gt;.*\.xls &lt;/notpattern--&gt;  &lt;!-- The regular expression that must be matched -- &gt;
+ *     &lt;mimeType&gt;text/calendar&lt;/mimeType&gt;  &lt;!-- The matching mimeType -- &gt;
  *     &lt;directory &gt;c:\temp\james_attach &lt;/directory&gt;   &lt;!-- The directory to save to -- &gt;
  *     &lt;remove &gt;all &lt;/remove&gt;   &lt;!-- either &quot;no&quot;, &quot;matched&quot;, &quot;all&quot; -- &gt;
  *     &lt;!-- attribute&gt;my.attribute.name&lt;/attribute --&gt;
  *   &lt;/mailet &gt;
  *   
- *   At least one of pattern and notpattern is required.
+ *   At least one of pattern, notpattern and mimeType is required.
  * </pre>
  * 
  * </p>
@@ -79,6 +80,7 @@ public class StripAttachment extends GenericMailet {
     private static final String MULTIPART_MIME_TYPE = "multipart/*";
     public static final String PATTERN_PARAMETER_NAME = "pattern";
     public static final String NOTPATTERN_PARAMETER_NAME = "notpattern";
+    public static final String MIMETYPE_PARAMETER_NAME = "mimeType";
     public static final String ATTRIBUTE_PARAMETER_NAME = "attribute";
     public static final String DIRECTORY_PARAMETER_NAME = "directory";
     // Either "no", "matched", "all"
@@ -99,6 +101,7 @@ public class StripAttachment extends GenericMailet {
     private String attributeName;
     private Pattern regExPattern;
     private Pattern notregExPattern;
+    private String mimeType;
     private boolean decodeFilename;
 
     private List<ReplacingPattern> filenameReplacingPatterns;
@@ -113,8 +116,10 @@ public class StripAttachment extends GenericMailet {
     public void init() throws MailetException {
         regExPattern = regExFromParameter(PATTERN_PARAMETER_NAME);
         notregExPattern = regExFromParameter(NOTPATTERN_PARAMETER_NAME);
-        if (regExPattern == null && notregExPattern == null) {
-            throw new MailetException("At least one of '" + PATTERN_PARAMETER_NAME + "' or '" + NOTPATTERN_PARAMETER_NAME + "' parameter should be provided.");
+        mimeType = getInitParameter(MIMETYPE_PARAMETER_NAME);
+        if (regExPattern == null && notregExPattern == null && Strings.isNullOrEmpty(mimeType)) {
+            throw new MailetException("At least one of '" + PATTERN_PARAMETER_NAME + "', '" + NOTPATTERN_PARAMETER_NAME + "' or '" + MIMETYPE_PARAMETER_NAME + 
+                    "' parameter should be provided.");
         }
 
         directoryName = getInitParameter(DIRECTORY_PARAMETER_NAME);
@@ -298,7 +303,7 @@ public class StripAttachment extends GenericMailet {
         }
 
         boolean shouldRemove = removeAttachments.equals(REMOVE_ALL);
-        if (fileNameMatches(fileName)) {
+        if (isMatching(bodyPart, fileName)) {
             storeBodyPartAsFile(bodyPart, mail, fileName);
             storeBodyPartAsMailAttribute(bodyPart, mail, fileName);
             if (removeAttachments.equals(REMOVE_MATCHED)) {
@@ -307,6 +312,10 @@ public class StripAttachment extends GenericMailet {
         }
         storeFileNameAsAttribute(mail, fileName, shouldRemove);
         return shouldRemove;
+    }
+
+    private boolean isMatching(BodyPart bodyPart, String fileName) throws MessagingException {
+        return fileNameMatches(fileName) || bodyPart.isMimeType(mimeType);
     }
 
     private void storeBodyPartAsFile(BodyPart bodyPart, Mail mail, String fileName) throws Exception {
