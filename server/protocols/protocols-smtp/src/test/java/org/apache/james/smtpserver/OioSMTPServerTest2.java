@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -138,7 +137,7 @@ public class OioSMTPServerTest2 {
         }
     }
 
-    private static final long HALF_SECOND = Duration.ofMillis(500).toMillis();
+    private static final long HALF_SECOND = 500;
     private static final int MAX_ITERATIONS = 10;
 
     private SMTPTestConfiguration smtpConfiguration;
