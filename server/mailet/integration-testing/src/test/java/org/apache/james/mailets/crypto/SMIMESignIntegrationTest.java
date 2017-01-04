@@ -21,8 +21,6 @@ package org.apache.james.mailets.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.ZonedDateTime;
-
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
@@ -31,7 +29,6 @@ import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
 import org.apache.james.mailets.utils.IMAPMessageReader;
 import org.apache.james.mailets.utils.SMTPMessageSender;
-import org.apache.james.util.date.ZonedDateTimeProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -45,7 +42,6 @@ import com.jayway.awaitility.core.ConditionFactory;
 public class SMIMESignIntegrationTest {
 
 
-    private static final ZonedDateTime DATE_2015 = ZonedDateTime.parse("2015-10-15T14:10:00Z");
     private static final String DEFAULT_DOMAIN = "domain";
     private static final String LOCALHOST_IP = "127.0.0.1";
     private static final int IMAP_PORT = 1143;
@@ -63,8 +59,6 @@ public class SMIMESignIntegrationTest {
 
     @Before
     public void setup() throws Exception {
-        temporaryFolder.newFile("smime.pk12");
-
         MailetContainer mailetContainer = MailetContainer.builder()
             .postmaster("postmaster@" + DEFAULT_DOMAIN)
             .threads(5)
@@ -101,8 +95,8 @@ public class SMIMESignIntegrationTest {
                 .addMailet(MailetConfiguration.builder()
                     .clazz("SMIMESign")
                     .match("SenderIsLocal")
-                    .addProperty("keyStoreFileName", temporaryFolder.getRoot().getAbsoluteFile().getAbsolutePath() + "/conf/smime_1.p12")
-                    .addProperty("keyStorePassword", "totototo")
+                    .addProperty("keyStoreFileName", temporaryFolder.getRoot().getAbsoluteFile().getAbsolutePath() + "/conf/smime.p12")
+                    .addProperty("keyStorePassword", "secret")
                     .addProperty("keyStoreType", "PKCS12")
                     .addProperty("debug", "true")
                     .build())
@@ -134,8 +128,7 @@ public class SMIMESignIntegrationTest {
             .addProcessor(CommonProcessors.sieveManagerCheck())
             .build();
 
-        jamesServer = new TemporaryJamesServer(temporaryFolder, mailetContainer,
-            binder -> binder.bind(ZonedDateTimeProvider.class).toInstance(() -> DATE_2015));
+        jamesServer = new TemporaryJamesServer(temporaryFolder, mailetContainer);
         Duration slowPacedPollInterval = Duration.FIVE_HUNDRED_MILLISECONDS;
         calmlyAwait = Awaitility.with().pollInterval(slowPacedPollInterval).and().with().pollDelay(slowPacedPollInterval).await();
 
