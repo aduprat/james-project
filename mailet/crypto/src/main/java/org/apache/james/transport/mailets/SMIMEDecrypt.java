@@ -110,9 +110,9 @@ public class SMIMEDecrypt extends GenericMailet {
         try {
             return new X509CertificateHolder(certificate.getEncoded());
         } catch (CertificateEncodingException e) {
-            throw new MessagingException("Error during the decryption of the certificate",e);
+            throw new MessagingException("Error during the parsing of the certificate",e);
         } catch (IOException e) {
-            throw new MessagingException("Error during the decryption of the certificate",e);
+            throw new MessagingException("Error during the parsing of the certificate",e);
         }
     }
     

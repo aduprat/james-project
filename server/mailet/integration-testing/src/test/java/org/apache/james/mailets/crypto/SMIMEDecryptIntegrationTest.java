@@ -88,17 +88,7 @@ public class SMIMEDecryptIntegrationTest {
                     .match("RecipientIsLocal")
                     .clazz("LocalDelivery")
                     .build())
-                .addMailet(MailetConfiguration.builder()
-                    .match("All")
-                    .clazz("ToProcessor")
-                    .addProperty("processor", "relay-denied")
-                    .build())
                 .build())
-            .addProcessor(CommonProcessors.spam())
-            .addProcessor(CommonProcessors.localAddressError())
-            .addProcessor(CommonProcessors.relayDenied())
-            .addProcessor(CommonProcessors.bounces())
-            .addProcessor(CommonProcessors.sieveManagerCheck())
             .build();
 
         jamesServer = new TemporaryJamesServer(temporaryFolder, mailetContainer);
