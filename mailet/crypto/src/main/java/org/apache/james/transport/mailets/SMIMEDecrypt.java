@@ -29,10 +29,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import javax.mail.MessagingException;
-import javax.mail.Multipart;
 import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.transport.SMIMEKeyHolder;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetConfig;
@@ -45,6 +45,8 @@ import org.bouncycastle.cms.RecipientInformationStore;
 import org.bouncycastle.cms.jcajce.JceKeyTransEnvelopedRecipient;
 import org.bouncycastle.mail.smime.SMIMEEnveloped;
 import org.bouncycastle.mail.smime.SMIMEUtil;
+
+import com.google.common.base.Charsets;
 
 /**
  * This mailet decrypts a s/mime encrypted message. It takes as input an
@@ -163,12 +165,8 @@ public class SMIMEDecrypt extends GenericMailet {
             // I start the message stripping.
             try {
                 MimeMessage newmex = new MimeMessage(message);
-                Object obj = strippedMessage.getContent();
-                if (obj instanceof Multipart) {
-                    log("The message is multipart, content type "+((Multipart)obj).getContentType());
-                    newmex.setContent((Multipart)obj);
-                } else {
-                    newmex.setContent(obj, strippedMessage.getContentType());
+                newmex.setText(text(strippedMessage), Charsets.UTF_8.name());
+                if (!strippedMessage.isMimeType("multipart/*")) {
                     newmex.setDisposition(null);
                 }
                 newmex.saveChanges();
@@ -178,5 +176,9 @@ public class SMIMEDecrypt extends GenericMailet {
                 throw new MessagingException("Error during the stripping of the encrypted message",e);
             }
         }
+    }
+
+    private String text(Part mimePart) throws IOException, MessagingException {
+        return IOUtils.toString(mimePart.getDataHandler().getInputStream());
     }
 }
