@@ -514,6 +514,34 @@ public class ICSAttachmentWorkflowTest {
         }
     }
 
+    @Test
+    public void aaaaaa() throws Exception {
+        
+        MimeMessage message = new MimeMessage(Session
+                .getDefaultInstance(new Properties()), ClassLoader.getSystemResourceAsStream("eml/test.eml"));
+        
+        Mail mail = FakeMail.builder()
+              .mimeMessage(message)
+              .sender(new MailAddress(FROM))
+              .recipient(new MailAddress(RECIPIENT))
+              .build();
+
+        try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, JAMES_APACHE_ORG);
+                IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
+            messageSender.sendMessage(mail);
+            calmlyAwait.atMost(Duration.ONE_MINUTE).until(messageSender::messageHasBeenSent);
+            calmlyAwait.atMost(Duration.ONE_MINUTE).until(() -> imapMessageReader.userReceivedMessage(RECIPIENT, PASSWORD));
+
+            String receivedHeaders = imapMessageReader.readFirstMessageHeadersInInbox(RECIPIENT, PASSWORD);
+            
+            //Here only the third ICal attachment is used to fill headers
+            assertThat(receivedHeaders).contains("X-MEETING-UID: " + ICS_UID);
+            assertThat(receivedHeaders).contains("X-MEETING-METHOD: " + ICS_METHOD);
+            assertThat(receivedHeaders).contains("X-MEETING-SEQUENCE: " + ICS_SEQUENCE);
+            assertThat(receivedHeaders).contains("X-MEETING-DTSTAMP: " + ICS_DTSTAMP);
+        }
+    }
+
 
     private MimeBodyPart createAttachmentBodyPart(byte[] body, String fileName) throws MessagingException, UnsupportedEncodingException {
         MimeBodyPart part = createBodyPart(body);
