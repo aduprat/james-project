@@ -86,6 +86,7 @@ public class ICALToHeader extends GenericMailet {
             return;
         }
         try {
+            log("ICALToHeader: attribute found");
             getCalendarMap(mail)
                 .values()
                 .stream()
@@ -110,6 +111,7 @@ public class ICALToHeader extends GenericMailet {
     private void writeToHeaders(Calendar calendar, Mail mail) throws MessagingException {
         MimeMessage mimeMessage = mail.getMessage();
         VEvent vevent = (VEvent) calendar.getComponent("VEVENT");
+        log("ICALToHeader: putting headers from: " + vevent);
         addIfPresent(mimeMessage, X_MEETING_METHOD_HEADER, calendar.getMethod());
         addIfPresent(mimeMessage, X_MEETING_UID_HEADER, vevent.getUid());
         addIfPresent(mimeMessage, X_MEETING_RECURRENCE_ID_HEADER, vevent.getRecurrenceId());

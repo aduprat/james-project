@@ -124,10 +124,12 @@ public class ICALToJsonAttribute extends GenericMailet {
         }
         try {
             Map<String, Calendar> calendars = getCalendarMap(mail);
+            log("ICALToJsonAttribute: input: " + calendars);
             Map<String, byte[]> jsonsInByteForm = calendars.entrySet()
                 .stream()
                 .flatMap(calendar -> toJson(calendar, mail))
                 .collect(Guavate.toImmutableMap(Pair::getKey, Pair::getValue));
+            log("ICALToJsonAttribute: output: " + jsonsInByteForm);
             mail.setAttribute(destinationAttributeName, (Serializable) jsonsInByteForm);
         } catch (ClassCastException e) {
             log("Received a mail with " + sourceAttributeName + " not being an ICAL object for mail " + mail.getName(), e);
@@ -149,7 +151,9 @@ public class ICALToJsonAttribute extends GenericMailet {
 
     private Stream<String> toJson(ICAL ical, String mailName) {
         try {
-            return Stream.of(objectMapper.writeValueAsString(ical));
+            String json = objectMapper.writeValueAsString(ical);
+            log("ICALToJsonAttribute: json: " + json);
+            return Stream.of(json);
         } catch (JsonProcessingException e) {
             log("Error while serializing Calendar for mail " + mailName, e);
             return Stream.of();
@@ -161,11 +165,13 @@ public class ICALToJsonAttribute extends GenericMailet {
 
     private Stream<ICAL> toICAL(Calendar calendar, MailAddress recipient, MailAddress sender) {
         try {
-            return Stream.of(ICAL.builder()
+            ICAL ical = ICAL.builder()
                 .from(calendar)
                 .recipient(recipient)
                 .sender(sender)
-                .build());
+                .build();
+            log("ICALToJsonAttribute: ical: " + ical);
+            return Stream.of(ical);
         } catch (Exception e) {
             log("Exception while converting calendar to ICAL", e);
             return Stream.of();

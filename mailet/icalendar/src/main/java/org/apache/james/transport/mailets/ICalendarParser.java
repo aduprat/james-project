@@ -96,6 +96,7 @@ public class ICalendarParser extends GenericMailet {
     @SuppressWarnings("unchecked")
     public void service(Mail mail) throws MessagingException {
         Object icsAttachmentsObj = mail.getAttribute(sourceAttributeName);
+        log("ICalendarParser: source attribute" + icsAttachmentsObj);
         if (icsAttachmentsObj == null || !(icsAttachmentsObj instanceof Map)) {
             return;
         }
@@ -118,7 +119,9 @@ public class ICalendarParser extends GenericMailet {
         CalendarBuilder builder = new CalendarBuilder();
         try {
             ByteArrayInputStream inputStream = new ByteArrayInputStream(icsContent);
-            return Stream.of(Pair.of(key, builder.build(inputStream)));
+            Pair<String, Calendar> pair = Pair.of(key, builder.build(inputStream));
+            log("ICalendarParser: parsed" + pair);
+            return Stream.of(pair);
         } catch (IOException e) {
             log("Error while reading input: " + icsContent, e);
             return Stream.of();

@@ -288,7 +288,7 @@ public class StripAttachment extends GenericMailet {
             }
             return atLeastOneRemoved || subpartHasBeenChanged;
         } catch (Exception e) {
-            log("Failing while analysing part for attachments (StripAttachment mailet).", e);
+            log("StripAttachment: Failing while analysing part for attachments (StripAttachment mailet).", e);
             return false;
         }
     }
@@ -317,6 +317,7 @@ public class StripAttachment extends GenericMailet {
         boolean shouldRemove = removeAttachments.equals(REMOVE_ALL);
         String decodedName = DecoderUtil.decodeEncodedWords(fileName, DecodeMonitor.SILENT);
         if (isMatching(bodyPart, decodedName)) {
+            log("StripAttachment: bodyPart matches: " + bodyPart.getContentType() + " " + bodyPart.getDisposition() + " " + bodyPart.getFileName());
             storeBodyPartAsFile(bodyPart, mail, decodedName);
             storeBodyPartAsMailAttribute(bodyPart, mail, decodedName);
             if (removeAttachments.equals(REMOVE_MATCHED)) {
@@ -365,6 +366,7 @@ public class StripAttachment extends GenericMailet {
         }
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bodyPart.writeTo(new BufferedOutputStream(byteArrayOutputStream));
+        log("StripAttachment: Stored in map attribute");
         fileNamesToPartContent.put(fileName, byteArrayOutputStream.toByteArray());
     }
 
@@ -411,7 +413,7 @@ public class StripAttachment extends GenericMailet {
         boolean result = isMatchingPattern(name, regExPattern).or(false) 
                 || !isMatchingPattern(name, notRegExPattern).or(true);
 
-        log("attachment " + name + " " + ((result) ? "matches" : "does not match"));
+        log("StripAttachment: attachment " + name + " " + ((result) ? "matches" : "does not match"));
         return result;
     }
 
@@ -440,12 +442,12 @@ public class StripAttachment extends GenericMailet {
         try {
             File outputFile = outputFile(part, fileName);
 
-            log("saving content of " + outputFile.getName() + "...");
+            log("StripAttachment: saving content of " + outputFile.getName() + "...");
             IOUtils.copy(part.getInputStream(), new FileOutputStream(outputFile));
 
             return Optional.of(outputFile.getName());
         } catch (Exception e) {
-            log("Error while saving contents of", e);
+            log("StripAttachment: Error while saving contents of", e);
             return Optional.absent();
         }
     }

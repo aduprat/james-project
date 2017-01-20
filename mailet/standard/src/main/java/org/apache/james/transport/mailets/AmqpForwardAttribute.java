@@ -102,6 +102,7 @@ public class AmqpForwardAttribute extends GenericMailet {
             return;
         }
         Map<String, byte[]> content = getAttributeContent(mail);
+        log("AmqpForwardAttribute: attribute: " + content);
         try {
             sendContent(content);
         } catch (IOException e) {
@@ -142,6 +143,7 @@ public class AmqpForwardAttribute extends GenericMailet {
 
     private void sendContentOnChannel(Channel channel, Map<String, byte[]> content) throws IOException {
         for (byte[] body: content.values()) {
+            log("AmqpForwardAttribute: sending: " + exchange + "\n" + routingKey + "\n" + body);
             channel.basicPublish(exchange, 
                     routingKey, 
                     new AMQP.BasicProperties(), 

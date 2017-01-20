@@ -70,6 +70,7 @@ public class MimeDecodingMailet extends GenericMailet {
         ImmutableMap.Builder<String, byte[]> extractedMimeContentByName = ImmutableMap.builder();
         for (Map.Entry<String, byte[]> entry: getAttributeContent(mail).entrySet()) {
             Optional<byte[]> maybeContent = extractContent(entry.getValue());
+            log("MimeDecodingMailet: extracting " + entry.getKey() + " " + maybeContent);
             if (maybeContent.isPresent()) {
                 extractedMimeContentByName.put(entry.getKey(), maybeContent.get());
             }
@@ -80,6 +81,7 @@ public class MimeDecodingMailet extends GenericMailet {
     @SuppressWarnings("unchecked")
     private Map<String, byte[]> getAttributeContent(Mail mail) throws MailetException {
         Serializable attributeContent = mail.getAttribute(attribute);
+        log("MimeDecodingMailet: attribute retrieved " + attributeContent);
         if (! (attributeContent instanceof Map)) {
             log("Invalid attribute found into attribute "
                     + attribute + "class Map expected but "
