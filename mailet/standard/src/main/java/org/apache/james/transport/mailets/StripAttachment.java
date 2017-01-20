@@ -267,12 +267,12 @@ public class StripAttachment extends GenericMailet {
         }
 
         try {
-            log("Processing: " + part.getContentType());
             Multipart multipart = (Multipart) part.getContent();
             boolean atLeastOneRemoved = false;
             boolean subpartHasBeenChanged = false;
             List<BodyPart> bodyParts = retrieveBodyParts(multipart);
             for (BodyPart bodyPart: bodyParts) {
+                log("Processing: " + part.getContentType());
                 if (isMultipart(bodyPart)) {
                     if (processMultipartPartMessage(bodyPart, mail)) {
                         subpartHasBeenChanged = true;
