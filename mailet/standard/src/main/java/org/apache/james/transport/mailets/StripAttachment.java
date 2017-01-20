@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import javax.mail.BodyPart;
@@ -313,13 +314,10 @@ public class StripAttachment extends GenericMailet {
     }
 
     private boolean shouldBeRemoved(BodyPart bodyPart, Mail mail) throws MessagingException, Exception {
-        String fileName = getFilename(bodyPart);
-        if (fileName == null) {
-            return false;
-        }
+        Optional<String> fileName = getFilename(bodyPart);
 
         boolean shouldRemove = removeAttachments.equals(REMOVE_ALL);
-        String decodedName = DecoderUtil.decodeEncodedWords(fileName, DecodeMonitor.SILENT);
+        Optional<String> decodedName = decodeFileName(fileName);
         if (isMatching(bodyPart, decodedName)) {
             log("StripAttachment: bodyPart matches: " + bodyPart.getContentType() + " " + bodyPart.getDisposition() + " " + bodyPart.getFileName());
             storeBodyPartAsFile(bodyPart, mail, decodedName);
@@ -332,36 +330,43 @@ public class StripAttachment extends GenericMailet {
         return shouldRemove;
     }
 
-    private boolean isMatching(BodyPart bodyPart, String fileName) throws MessagingException {
-        return fileNameMatches(fileName) || bodyPart.isMimeType(mimeType);
+    private Optional<String> decodeFileName(Optional<String> fileName) {
+        if (fileName.isPresent()) {
+            return Optional.of(DecoderUtil.decodeEncodedWords(fileName.get(), DecodeMonitor.SILENT));
+        }
+        return Optional.absent();
     }
 
-    private void storeBodyPartAsFile(BodyPart bodyPart, Mail mail, String fileName) throws Exception {
+    private boolean isMatching(BodyPart bodyPart, Optional<String> decodedName) throws MessagingException {
+        return fileNameMatches(decodedName) || bodyPart.isMimeType(mimeType);
+    }
+
+    private void storeBodyPartAsFile(BodyPart bodyPart, Mail mail, Optional<String> decodedName) throws Exception {
         if (directoryName != null) {
-            Optional<String> filename = saveAttachmentToFile(bodyPart, Optional.of(fileName));
+            Optional<String> filename = saveAttachmentToFile(bodyPart, decodedName);
             if (filename.isPresent()) {
-                addFilenameToAttribute(mail, filename.get(), SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
+                addFilenameToAttribute(mail, filename, SAVED_ATTACHMENTS_ATTRIBUTE_KEY);
             }
         }
     }
 
-    private void addFilenameToAttribute(Mail mail, String filename, String attributeName) {
+    private void addFilenameToAttribute(Mail mail, Optional<String> fileName, String attributeName) {
         @SuppressWarnings("unchecked")
         List<String> attributeValues = (List<String>) mail.getAttribute(attributeName);
         if (attributeValues == null) {
             attributeValues = new ArrayList<String>();
             mail.setAttribute(attributeName, (Serializable) attributeValues);
         }
-        attributeValues.add(filename);
+        attributeValues.add(fileName.or(UUID.randomUUID().toString()));
     }
 
-    private void storeBodyPartAsMailAttribute(BodyPart bodyPart, Mail mail, String fileName) throws IOException, MessagingException {
+    private void storeBodyPartAsMailAttribute(BodyPart bodyPart, Mail mail, Optional<String> decodedName) throws IOException, MessagingException {
         if (attributeName != null) {
-            addPartContent(bodyPart, mail, fileName);
+            addPartContent(bodyPart, mail, decodedName);
         }
     }
 
-    private void addPartContent(BodyPart bodyPart, Mail mail, String fileName) throws IOException, MessagingException {
+    private void addPartContent(BodyPart bodyPart, Mail mail, Optional<String> decodedName) throws IOException, MessagingException {
         @SuppressWarnings("unchecked")
         Map<String, byte[]> fileNamesToPartContent = (Map<String, byte[]>) mail.getAttribute(attributeName);
         if (fileNamesToPartContent == null) {
@@ -371,21 +376,21 @@ public class StripAttachment extends GenericMailet {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bodyPart.writeTo(new BufferedOutputStream(byteArrayOutputStream));
         log("StripAttachment: Stored in map attribute");
-        fileNamesToPartContent.put(fileName, byteArrayOutputStream.toByteArray());
+        fileNamesToPartContent.put(decodedName.or(UUID.randomUUID().toString()), byteArrayOutputStream.toByteArray());
     }
 
-    private void storeFileNameAsAttribute(Mail mail, String fileName, boolean hasToBeStored) {
+    private void storeFileNameAsAttribute(Mail mail, Optional<String> fileName, boolean hasToBeStored) {
         if (hasToBeStored) {
             addFilenameToAttribute(mail, fileName, REMOVED_ATTACHMENTS_ATTRIBUTE_KEY);
         }
     }
 
-    private String getFilename(BodyPart bodyPart) throws UnsupportedEncodingException, MessagingException {
+    private Optional<String> getFilename(BodyPart bodyPart) throws UnsupportedEncodingException, MessagingException {
         String fileName = bodyPart.getFileName();
         if (fileName != null) {
-            return renameWithConfigurationPattern(decodeFilename(fileName));
+            return Optional.of(renameWithConfigurationPattern(decodeFilename(fileName)));
         }
-        return fileName;
+        return Optional.absent();
     }
 
     private String renameWithConfigurationPattern(String fileName) {
@@ -406,18 +411,18 @@ public class StripAttachment extends GenericMailet {
     /**
      * Checks if the given name matches the pattern.
      * 
-     * @param name
+     * @param decodedName
      *            The name to check for a match.
      * @return True if a match is found, false otherwise.
      */
-    @VisibleForTesting boolean fileNameMatches(String name) {
-        if (patternsAreEquals()) {
+    @VisibleForTesting boolean fileNameMatches(Optional<String> decodedName) {
+        if (patternsAreEquals() || !decodedName.isPresent()) {
             return false;
         }
-        boolean result = isMatchingPattern(name, regExPattern).or(false) 
-                || !isMatchingPattern(name, notRegExPattern).or(true);
+        boolean result = isMatchingPattern(decodedName.get(), regExPattern).or(false) 
+                || !isMatchingPattern(decodedName.get(), notRegExPattern).or(true);
 
-        log("StripAttachment: attachment " + name + " " + ((result) ? "matches" : "does not match"));
+        log("StripAttachment: attachment " + decodedName.get() + " " + ((result) ? "matches" : "does not match"));
         return result;
     }
 
