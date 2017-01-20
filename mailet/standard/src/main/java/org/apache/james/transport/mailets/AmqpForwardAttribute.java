@@ -29,6 +29,7 @@ import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
@@ -57,6 +58,8 @@ public class AmqpForwardAttribute extends GenericMailet {
     public static final String EXCHANGE_PARAMETER_NAME = "exchange";
     public static final String ROUTING_KEY_PARAMETER_NAME = "routing_key";
     public static final String ATTRIBUTE_PARAMETER_NAME = "attribute";
+    public static final String USERNAME_PARAMETER_NAME = "username";
+    public static final String PASSWORD_PARAMETER_NAME = "password";
 
     public static final String ROUTING_KEY_DEFAULT_VALUE = "";
 
@@ -64,6 +67,8 @@ public class AmqpForwardAttribute extends GenericMailet {
     private String attribute;
     private ConnectionFactory connectionFactory;
     @VisibleForTesting String routingKey;
+    private Optional<String> username;
+    private Optional<String> password;
 
     @Override
     public void init() throws MailetException {
@@ -89,6 +94,13 @@ public class AmqpForwardAttribute extends GenericMailet {
         } catch (Exception e) {
             throw new MailetException("Invalid " + URI_PARAMETER_NAME
                     + " parameter was provided: " + uri, e);
+        }
+
+        username = Optional.fromNullable(getInitParameter(USERNAME_PARAMETER_NAME));
+        password = Optional.fromNullable(getInitParameter(PASSWORD_PARAMETER_NAME));
+        if (username.isPresent() && password.isPresent()) {
+            connectionFactory.setUsername(username.get());
+            connectionFactory.setPassword(password.get());
         }
     }
 
