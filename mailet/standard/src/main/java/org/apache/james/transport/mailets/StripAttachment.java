@@ -302,9 +302,12 @@ public class StripAttachment extends GenericMailet {
     }
 
     private List<BodyPart> retrieveBodyParts(Multipart multipart) throws MessagingException {
+        log("StripAttachment: retrieveBodyParts for: " + multipart.getContentType());
         ImmutableList.Builder<BodyPart> builder = ImmutableList.builder();
         for (int i = 0; i < multipart.getCount(); i++) {
-            builder.add(multipart.getBodyPart(i));
+            BodyPart bodyPart = multipart.getBodyPart(i);
+            log("StripAttachment: add child: " + bodyPart.getContentType());
+            builder.add(bodyPart);
         }
         return builder.build();
     }
