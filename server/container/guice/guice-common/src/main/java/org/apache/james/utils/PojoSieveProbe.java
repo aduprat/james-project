@@ -22,12 +22,9 @@ import javax.inject.Inject;
 
 import org.apache.james.mailbox.store.probe.SieveProbe;
 import org.apache.james.sieverepository.api.SieveRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PojoSieveProbe implements GuiceProbe, SieveProbe {
 
-    static final Logger LOGGER = LoggerFactory.getLogger(PojoSieveProbe.class);
     private final SieveRepository sieveRepository;
 
     @Inject

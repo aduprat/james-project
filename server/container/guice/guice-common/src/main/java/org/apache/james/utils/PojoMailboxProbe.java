@@ -32,6 +32,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.MailboxConstants;
@@ -42,25 +43,30 @@ import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.probe.MailboxProbe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 
 public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PojoMailboxProbe.class);
     private final MailboxManager mailboxManager;
     private final MailboxMapperFactory mailboxMapperFactory;
+    private final SubscriptionManager subscriptionManager;
 
     @Inject
-    private PojoMailboxProbe(MailboxManager mailboxManager, MailboxMapperFactory mailboxMapperFactory) {
+    private PojoMailboxProbe(MailboxManager mailboxManager, MailboxMapperFactory mailboxMapperFactory, SubscriptionManager subscriptionManager) {
         this.mailboxManager = mailboxManager;
         this.mailboxMapperFactory = mailboxMapperFactory;
+        this.subscriptionManager = subscriptionManager;
     }
 
     @Override
     public void createMailbox(String namespace, String user, String name) {
         MailboxSession mailboxSession = null;
         try {
-            mailboxSession = mailboxManager.createSystemSession(user, PojoSieveProbe.LOGGER);
+            mailboxSession = mailboxManager.createSystemSession(user, LOGGER);
             mailboxManager.startProcessingRequest(mailboxSession);
             mailboxManager.createMailbox(new MailboxPath(namespace, user, name), mailboxSession);
         } catch (MailboxException e) {
@@ -75,7 +81,7 @@ public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
     public Mailbox getMailbox(String namespace, String user, String name) {
         MailboxSession mailboxSession = null;
         try {
-            mailboxSession = mailboxManager.createSystemSession(user, PojoSieveProbe.LOGGER);
+            mailboxSession = mailboxManager.createSystemSession(user, LOGGER);
             MailboxMapper mailboxMapper = mailboxMapperFactory.getMailboxMapper(mailboxSession);
             return mailboxMapper.findMailboxByPath(new MailboxPath(namespace, user, name));
         } catch (MailboxException e) {
@@ -100,7 +106,7 @@ public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
     public Collection<String> listUserMailboxes(String user) {
         MailboxSession mailboxSession = null;
         try {
-            mailboxSession = mailboxManager.createSystemSession(user, PojoSieveProbe.LOGGER);
+            mailboxSession = mailboxManager.createSystemSession(user, LOGGER);
             mailboxManager.startProcessingRequest(mailboxSession);
             return searchUserMailboxes(user, mailboxSession)
                     .stream()
@@ -127,7 +133,7 @@ public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
     public void deleteMailbox(String namespace, String user, String name) {
         MailboxSession mailboxSession = null;
         try {
-            mailboxSession = mailboxManager.createSystemSession(user, PojoSieveProbe.LOGGER);
+            mailboxSession = mailboxManager.createSystemSession(user, LOGGER);
             mailboxManager.startProcessingRequest(mailboxSession);
             mailboxManager.deleteMailbox(new MailboxPath(namespace, user, name), mailboxSession);
         } catch (MailboxException e) {
@@ -141,7 +147,7 @@ public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
     public ComposedMessageId appendMessage(String username, MailboxPath mailboxPath, InputStream message, Date internalDate, boolean isRecent, Flags flags) 
             throws MailboxException {
         
-        MailboxSession mailboxSession = mailboxManager.createSystemSession(username, PojoSieveProbe.LOGGER);
+        MailboxSession mailboxSession = mailboxManager.createSystemSession(username, LOGGER);
         MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
         return messageManager.appendMessage(message, internalDate, mailboxSession, isRecent, flags);
     }
@@ -168,7 +174,7 @@ public class PojoMailboxProbe implements GuiceProbe, MailboxProbe {
 
     @Override
     public Collection<String> listSubscriptions(String user) throws Exception {
-        throw new NotImplementedException();
+        MailboxSession mailboxSession = mailboxManager.createSystemSession(user, LOGGER);
+        return subscriptionManager.subscriptions(mailboxSession);
     }
-
 }
