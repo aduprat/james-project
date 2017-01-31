@@ -33,9 +33,12 @@ public class ReadOnlyUsersLDAPRepositoryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadOnlyUsersLDAPRepositoryTest.class);
     private static final String DOMAIN = "james.org";
-    private static final String PASSWORD = "mysecretpassword";
+    private static final String ADMIN_PASSWORD = "mysecretpassword";
 
-    private LdapGenericContainer ldapContainer = new LdapGenericContainer(DOMAIN, PASSWORD);
+    private LdapGenericContainer ldapContainer = LdapGenericContainer.builder()
+            .domain(DOMAIN)
+            .password(ADMIN_PASSWORD)
+            .build();
     private ReadOnlyUsersLDAPRepository ldapRepository;
 
     @Before
@@ -49,9 +52,9 @@ public class ReadOnlyUsersLDAPRepositoryTest {
 
     private HierarchicalConfiguration ldapRepositoryConfiguration() throws ConfigurationException {
         PropertyListConfiguration configuration = new PropertyListConfiguration();
-        configuration.addProperty("[@ldapHost]", ldapHost());
+        configuration.addProperty("[@ldapHost]", ldapContainer.getLdapHost());
         configuration.addProperty("[@principal]", "cn=admin\\,dc=james\\,dc=org");
-        configuration.addProperty("[@credentials]", PASSWORD);
+        configuration.addProperty("[@credentials]", ADMIN_PASSWORD);
         configuration.addProperty("[@userBase]", "ou=People\\,dc=james\\,dc=org");
         configuration.addProperty("[@userIdAttribute]", "uid");
         configuration.addProperty("[@userObjectClass]", "inetOrgPerson");
@@ -60,13 +63,6 @@ public class ReadOnlyUsersLDAPRepositoryTest {
         configuration.addProperty("[@retryMaxInterval]", "8");
         configuration.addProperty("[@retryIntervalScale]", "1000");
         return configuration;
-    }
-
-    private String ldapHost() {
-        return "ldap://" +
-                ldapContainer.getContainerIpAddress() +
-                ":" + 
-                ldapContainer.getMappedPort(LdapGenericContainer.DEFAULT_LDAP_PORT);
     }
 
     @After
