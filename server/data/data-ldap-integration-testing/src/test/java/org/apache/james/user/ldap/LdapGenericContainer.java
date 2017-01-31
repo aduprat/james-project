@@ -57,14 +57,13 @@ public class LdapGenericContainer {
         }
 
         private SwarmGenericContainer createContainer() {
-            SwarmGenericContainer container = new SwarmGenericContainer("dinkel/openldap:latest")
-                    .withAffinityToContainer();
-            container.addEnv("SLAPD_DOMAIN", domain);
-            container.addEnv("SLAPD_PASSWORD", password);
-            container.addEnv("SLAPD_CONFIG_PASSWORD", password);
-            container.withClasspathResourceMapping("ldif-files", "/etc/ldap.dist/prepopulate", BindMode.READ_ONLY);
-            container.withExposedPorts(DEFAULT_LDAP_PORT);
-            return container;
+            return new SwarmGenericContainer("dinkel/openldap:latest")
+                    .withAffinityToContainer()
+                    .withEnv("SLAPD_DOMAIN", domain)
+                    .withEnv("SLAPD_PASSWORD", password)
+                    .withEnv("SLAPD_CONFIG_PASSWORD", password)
+                    .withClasspathResourceMapping("ldif-files", "/etc/ldap.dist/prepopulate", BindMode.READ_ONLY)
+                    .withExposedPorts(DEFAULT_LDAP_PORT);
         }
     }
 
@@ -84,8 +83,8 @@ public class LdapGenericContainer {
 
     public String getLdapHost() {
         return "ldap://" +
-                container.getContainerIpAddress() +
+                container.getIp() +
                 ":" + 
-                container.getMappedPort(LdapGenericContainer.DEFAULT_LDAP_PORT);
+                LdapGenericContainer.DEFAULT_LDAP_PORT;
     }
 }
