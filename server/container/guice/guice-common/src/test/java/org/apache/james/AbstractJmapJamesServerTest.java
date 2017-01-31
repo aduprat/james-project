@@ -30,8 +30,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 
-import org.apache.james.utils.PojoDataProbe;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.utils.JmapGuiceProbe;
+import org.apache.james.utils.PojoDataProbe;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,8 +45,6 @@ import com.jayway.restassured.http.ContentType;
 
 public abstract class AbstractJmapJamesServerTest {
 
-    private static final int IMAP_PORT = 1143; // You need to be root (superuser) to bind to ports under 1024.
-    private static final int IMAP_PORT_SSL = 1993;
     private static final int POP3_PORT = 1110;
     private static final int SMTP_PORT = 1025;
     private static final int LMTP_PORT = 1024;
@@ -94,13 +94,19 @@ public abstract class AbstractJmapJamesServerTest {
 
     @Test
     public void connectIMAPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress("127.0.0.1", IMAP_PORT));
+        int imapPort = server.getProbe(ImapGuiceProbe.class)
+                .getImapPort()
+                .orElseThrow(() -> new ConfigurationException("Missing IMAP port server in configuration."));
+        socketChannel.connect(new InetSocketAddress("127.0.0.1", imapPort));
         assertThat(getServerConnectionResponse(socketChannel)).startsWith("* OK JAMES IMAP4rev1 Server");
     }
 
     @Test
     public void connectOnSecondaryIMAPServerIMAPServerShouldSendShabangOnConnect() throws Exception {
-        socketChannel.connect(new InetSocketAddress("127.0.0.1", IMAP_PORT_SSL));
+        int imapsPort = server.getProbe(ImapGuiceProbe.class)
+                .getImapsPort()
+                .orElseThrow(() -> new ConfigurationException("Missing IMAPS port server in configuration."));
+        socketChannel.connect(new InetSocketAddress("127.0.0.1", imapsPort));
         assertThat(getServerConnectionResponse(socketChannel)).startsWith("* OK JAMES IMAP4rev1 Server");
     }
 
