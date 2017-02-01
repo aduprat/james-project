@@ -83,8 +83,8 @@ public class LdapGenericContainer {
 
     public String getLdapHost() {
         return "ldap://" +
-                container.getIp() +
+                container.getContainerIpAddress() +
                 ":" + 
-                LdapGenericContainer.DEFAULT_LDAP_PORT;
+                container.getMappedPort(LdapGenericContainer.DEFAULT_LDAP_PORT);
     }
 }
