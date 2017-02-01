@@ -72,6 +72,7 @@ public class ReadOnlyUsersLDAPRepositoryTest {
 
     @Test
     public void knownUserShouldBeAbleToLogInWhenPasswordIsCorrect() throws Exception {
+        ldapContainer.logConfiguration();
         assertThat(ldapRepository.test("james-user", "secret")).isTrue();
     }
 

@@ -19,13 +19,17 @@
 package org.apache.james.user.ldap;
 
 import org.apache.james.util.streams.SwarmGenericContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
+import org.testcontainers.shaded.com.github.dockerjava.api.command.InspectContainerResponse;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 public class LdapGenericContainer {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LdapGenericContainer.class);
     public static final int DEFAULT_LDAP_PORT = 389;
 
     public static Builder builder() {
@@ -86,5 +90,11 @@ public class LdapGenericContainer {
                 container.getContainerIpAddress() +
                 ":" + 
                 container.getMappedPort(LdapGenericContainer.DEFAULT_LDAP_PORT);
+    }
+
+    public void logConfiguration() {
+        LOGGER.debug("Container configuration");
+        InspectContainerResponse response = container.getDockerClient().inspectContainerCmd(container.getContainerId()).exec();
+        LOGGER.debug(response.toString());
     }
 }
