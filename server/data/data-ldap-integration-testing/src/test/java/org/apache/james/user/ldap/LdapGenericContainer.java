@@ -92,6 +92,21 @@ public class LdapGenericContainer {
                 container.getMappedPort(LdapGenericContainer.DEFAULT_LDAP_PORT);
     }
 
+    public String getLdapHostOnContainer() {
+        return "ldap://" +
+                container.getIp() +
+                ":" + 
+                LdapGenericContainer.DEFAULT_LDAP_PORT;
+    }
+
+    public String getContainerIpAddress() {
+        return container.getContainerIpAddress();
+    }
+
+    public String getIp() {
+        return container.getIp();
+    }
+
     public void logConfiguration() {
         LOGGER.debug("Container configuration");
         InspectContainerResponse response = container.getDockerClient().inspectContainerCmd(container.getContainerId()).exec();

@@ -20,6 +20,9 @@ package org.apache.james.user.ldap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+
+import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.plist.PropertyListConfiguration;
@@ -28,6 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Charsets;
 
 public class ReadOnlyUsersLDAPRepositoryTest {
 
@@ -73,7 +78,24 @@ public class ReadOnlyUsersLDAPRepositoryTest {
     @Test
     public void knownUserShouldBeAbleToLogInWhenPasswordIsCorrect() throws Exception {
         ldapContainer.logConfiguration();
+        logSystemCommand("ping -c 3 " + ldapContainer.getContainerIpAddress());
+        logSystemCommand("ping -c 3 " + ldapContainer.getIp());
+        logSystemCommand("curl " + ldapContainer.getLdapHost());
+        logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer());
+        logSystemCommand("docker ps");
         assertThat(ldapRepository.test("james-user", "secret")).isTrue();
+    }
+
+    private void logSystemCommand(String command) throws IOException {
+        System.out.println("----------------------");
+        System.out.println(command);
+        System.out.println("----------------------");
+        Runtime runtime = Runtime.getRuntime();
+        Process process = runtime.exec(command);
+        System.out.println("Input:");
+        System.out.println(new String(IOUtils.toByteArray(process.getInputStream()), Charsets.UTF_8));
+        System.out.println("Error:");
+        System.out.println(new String(IOUtils.toByteArray(process.getErrorStream()), Charsets.UTF_8));
     }
 
     @Test
