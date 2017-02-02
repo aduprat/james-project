@@ -33,5 +33,9 @@ public class MemoryGetMailboxesMethodTest extends GetMailboxesMethodTest {
     protected JmapJamesServer createJmapServer() {
         return memoryJmap.jmapServer();
     }
+
+    @Override
+    protected void await() {
+    }
     
 }

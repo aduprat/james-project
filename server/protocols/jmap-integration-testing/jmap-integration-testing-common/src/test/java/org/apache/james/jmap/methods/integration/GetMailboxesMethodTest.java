@@ -32,6 +32,8 @@ import static org.hamcrest.Matchers.nullValue;
 
 import java.io.ByteArrayInputStream;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import javax.mail.Flags;
 
@@ -45,7 +47,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Charsets;
+import com.google.common.base.Stopwatch;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.builder.RequestSpecBuilder;
 import com.jayway.restassured.http.ContentType;
@@ -55,6 +59,8 @@ public abstract class GetMailboxesMethodTest {
     private static final String ARGUMENTS = "[0][1]";
 
     protected abstract JmapJamesServer createJmapServer();
+
+    protected abstract void await();
 
     private AccessToken accessToken;
     private String username;
@@ -409,4 +415,83 @@ public abstract class GetMailboxesMethodTest {
             .body(ARGUMENTS + ".list[0].role", equalTo("outbox"));
     }
 
+    @Test
+    public void aaaaaaaaaaaaaaa() throws Exception {
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "INBOX");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox2");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox3");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox4");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox5");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox12");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox13");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox14");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox15");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox22");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox23");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox24");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox25");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox32");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox33");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox34");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox35");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox42");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox43");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox44");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox45");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox52");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox53");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox54");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox55");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox62");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox63");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox64");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox65");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox72");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox73");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox74");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox75");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox82");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox83");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox84");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox85");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox92");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox93");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox94");
+        jmapServer.serverProbe().createMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox95");
+
+        Mailbox mailbox = jmapServer.serverProbe().getMailbox(MailboxConstants.USER_NAMESPACE, username, "INBOX");
+        Mailbox mailbox2 = jmapServer.serverProbe().getMailbox(MailboxConstants.USER_NAMESPACE, username, "myMailbox");
+        appendMessages(10000000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "INBOX"));
+        appendMessages(100000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "myMailbox"));
+        appendMessages(20000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "myMailbox2"));
+        appendMessages(30000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "myMailbox3"));
+        appendMessages(40000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "myMailbox4"));
+        appendMessages(50000, new MailboxPath(MailboxConstants.USER_NAMESPACE, username, "myMailbox5"));
+        await();
+
+        String mailboxId = mailbox.getMailboxId().serialize();
+        String mailboxId2 = mailbox2.getMailboxId().serialize();
+
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        given()
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMailboxes\", {\"ids\": [\"" + mailboxId + "\", \"" + mailboxId2 + "\"]}, \"#0\"]]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxes"))
+            .body(ARGUMENTS + ".list", hasSize(2))
+            .body(ARGUMENTS + ".list[0].id", equalTo(mailboxId))
+            .body(ARGUMENTS + ".list[1].id", equalTo(mailboxId2));
+        System.out.println("getMailboxes duration: " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + " ms");
+    }
+
+    private void appendMessages(int numberOfMessagesToAppend, MailboxPath mailboxPath) {
+        IntStream.of(numberOfMessagesToAppend)
+            .forEach(Throwing.intConsumer(i -> jmapServer.serverProbe()
+                    .appendMessage(username, mailboxPath, new ByteArrayInputStream(("Subject: test " + i + "\r\n\r\ntestmail" + mailboxPath.getName()).getBytes()), new Date(), false, new Flags())))
+            ;
+    }
 }

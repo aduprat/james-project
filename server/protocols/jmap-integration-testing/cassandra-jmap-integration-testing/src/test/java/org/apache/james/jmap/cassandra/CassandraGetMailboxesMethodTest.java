@@ -33,5 +33,9 @@ public class CassandraGetMailboxesMethodTest extends GetMailboxesMethodTest {
     protected JmapJamesServer createJmapServer() {
         return rule.jmapServer();
     }
-    
+
+    @Override
+    protected void await() {
+        rule.await();
+    }
 }
