@@ -84,6 +84,7 @@ public class ReadOnlyUsersLDAPRepositoryTest {
         logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer());
         logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer() + "/dc=james,dc=org");
         logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer() + "/dc=james,dc=org?objectClass?sub");
+        System.out.println("ldif files: " + org.apache.commons.io.IOUtils.toString(ClassLoader.getSystemResource("ldif-files")));
 //        logSystemCommand("docker ps");
         assertThat(ldapRepository.test("james-user", "secret")).isTrue();
     }
