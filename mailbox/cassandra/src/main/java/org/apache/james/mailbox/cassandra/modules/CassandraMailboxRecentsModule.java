@@ -19,7 +19,8 @@
 
 package org.apache.james.mailbox.cassandra.modules;
 
-import static com.datastax.driver.core.DataType.counter;
+import static com.datastax.driver.core.DataType.bigint;
+import static com.datastax.driver.core.DataType.list;
 import static com.datastax.driver.core.DataType.timeuuid;
 
 import java.util.Collections;
@@ -29,24 +30,23 @@ import org.apache.james.backends.cassandra.components.CassandraIndex;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraTable;
 import org.apache.james.backends.cassandra.components.CassandraType;
-import org.apache.james.mailbox.cassandra.table.CassandraMailboxCountersTable;
+import org.apache.james.mailbox.cassandra.table.CassandraMailboxRecentsTable;
 
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 
-public class CassandraMailboxCounterModule implements CassandraModule {
+public class CassandraMailboxRecentsModule implements CassandraModule {
 
     private final List<CassandraTable> tables;
     private final List<CassandraIndex> index;
     private final List<CassandraType> types;
 
-    public CassandraMailboxCounterModule() {
+    public CassandraMailboxRecentsModule() {
         tables = Collections.singletonList(
-            new CassandraTable(CassandraMailboxCountersTable.TABLE_NAME,
-                SchemaBuilder.createTable(CassandraMailboxCountersTable.TABLE_NAME)
+            new CassandraTable(CassandraMailboxRecentsTable.TABLE_NAME,
+                SchemaBuilder.createTable(CassandraMailboxRecentsTable.TABLE_NAME)
                     .ifNotExists()
-                    .addPartitionKey(CassandraMailboxCountersTable.MAILBOX_ID, timeuuid())
-                    .addColumn(CassandraMailboxCountersTable.COUNT, counter())
-                    .addColumn(CassandraMailboxCountersTable.UNSEEN, counter())));
+                    .addPartitionKey(CassandraMailboxRecentsTable.MAILBOX_ID, timeuuid())
+                    .addColumn(CassandraMailboxRecentsTable.RECENT_MESSAGE_UIDS, list(bigint()))));
         index = Collections.emptyList();
         types = Collections.emptyList();
     }
