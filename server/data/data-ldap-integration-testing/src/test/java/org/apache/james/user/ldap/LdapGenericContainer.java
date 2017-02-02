@@ -18,7 +18,13 @@
  ****************************************************************/
 package org.apache.james.user.ldap;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.james.util.streams.SwarmGenericContainer;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
@@ -26,22 +32,25 @@ import org.testcontainers.shaded.com.github.dockerjava.api.command.InspectContai
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
 
 public class LdapGenericContainer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LdapGenericContainer.class);
     public static final int DEFAULT_LDAP_PORT = 389;
 
-    public static Builder builder() {
-        return new Builder();
+    public static Builder builder(TemporaryFolder temporaryFolder) {
+        return new Builder(temporaryFolder);
     }
 
     public static class Builder {
 
         private String domain;
         private String password;
+        private TemporaryFolder temporaryFolder;
 
-        private Builder() {
+        private Builder(TemporaryFolder temporaryFolder) {
+            this.temporaryFolder = temporaryFolder;
         }
 
         public Builder domain(String domain) {
@@ -61,13 +70,21 @@ public class LdapGenericContainer {
         }
 
         private SwarmGenericContainer createContainer() {
-            return new SwarmGenericContainer("dinkel/openldap:latest")
-                    .withAffinityToContainer()
-                    .withEnv("SLAPD_DOMAIN", domain)
-                    .withEnv("SLAPD_PASSWORD", password)
-                    .withEnv("SLAPD_CONFIG_PASSWORD", password)
-                    .withClasspathResourceMapping("ldif-files", "/etc/ldap.dist/prepopulate", BindMode.READ_ONLY)
-                    .withExposedPorts(DEFAULT_LDAP_PORT);
+            try {
+                File ldifFolder = temporaryFolder.newFolder("ldif-files");
+                FileOutputStream outputStream = new FileOutputStream(new File(ldifFolder, "populate.ldif"));
+                IOUtils.copy(ClassLoader.getSystemResourceAsStream("ldif-files/populate.ldif"), outputStream);
+                return new SwarmGenericContainer("dinkel/openldap:latest")
+                        .withAffinityToContainer()
+                        .withEnv("SLAPD_DOMAIN", domain)
+                        .withEnv("SLAPD_PASSWORD", password)
+                        .withEnv("SLAPD_CONFIG_PASSWORD", password)
+//                    .withClasspathResourceMapping("ldif-files", "/etc/ldap.dist/prepopulate", BindMode.READ_ONLY)
+                        .withFileSystemBind(ldifFolder.getAbsolutePath(), "/etc/ldap.dist/prepopulate", BindMode.READ_ONLY)
+                        .withExposedPorts(DEFAULT_LDAP_PORT);
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
         }
     }
 

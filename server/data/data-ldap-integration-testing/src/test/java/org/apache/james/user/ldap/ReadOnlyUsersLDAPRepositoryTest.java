@@ -28,7 +28,9 @@ import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.plist.PropertyListConfiguration;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +42,18 @@ public class ReadOnlyUsersLDAPRepositoryTest {
     private static final String DOMAIN = "james.org";
     private static final String ADMIN_PASSWORD = "mysecretpassword";
 
-    private LdapGenericContainer ldapContainer = LdapGenericContainer.builder()
-            .domain(DOMAIN)
-            .password(ADMIN_PASSWORD)
-            .build();
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    private LdapGenericContainer ldapContainer;
     private ReadOnlyUsersLDAPRepository ldapRepository;
 
     @Before
     public void setup() throws Exception {
+        ldapContainer = LdapGenericContainer.builder(temporaryFolder)
+                .domain(DOMAIN)
+                .password(ADMIN_PASSWORD)
+                .build();
         ldapContainer.start();
         ldapRepository = new ReadOnlyUsersLDAPRepository();
         ldapRepository.configure(ldapRepositoryConfiguration());
@@ -72,7 +78,9 @@ public class ReadOnlyUsersLDAPRepositoryTest {
 
     @After
     public void tearDown() {
-        ldapContainer.stop();
+        if (ldapContainer != null) {
+            ldapContainer.stop();
+        }
     }
 
     @Test
