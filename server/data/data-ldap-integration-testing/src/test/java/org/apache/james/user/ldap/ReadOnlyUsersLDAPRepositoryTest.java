@@ -78,11 +78,13 @@ public class ReadOnlyUsersLDAPRepositoryTest {
     @Test
     public void knownUserShouldBeAbleToLogInWhenPasswordIsCorrect() throws Exception {
         ldapContainer.logConfiguration();
-        logSystemCommand("ping -c 3 " + ldapContainer.getContainerIpAddress());
-        logSystemCommand("ping -c 3 " + ldapContainer.getIp());
+//        logSystemCommand("ping -c 3 " + ldapContainer.getContainerIpAddress());
+//        logSystemCommand("ping -c 3 " + ldapContainer.getIp());
         logSystemCommand("curl " + ldapContainer.getLdapHost());
         logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer());
-        logSystemCommand("docker ps");
+        logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer() + "/dc=james,dc=org");
+        logSystemCommand("curl " + ldapContainer.getLdapHostOnContainer() + "/dc=james,dc=org?objectClass?sub");
+//        logSystemCommand("docker ps");
         assertThat(ldapRepository.test("james-user", "secret")).isTrue();
     }
 
