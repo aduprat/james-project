@@ -89,6 +89,17 @@ public class GetMailboxesMethod implements Method {
     private GetMailboxesResponse getMailboxesResponse(GetMailboxesRequest mailboxesRequest, MailboxSession mailboxSession) {
         GetMailboxesResponse.Builder builder = GetMailboxesResponse.builder();
         try {
+            Optional<ImmutableList<MailboxId>> mailboxIds = mailboxesRequest.getIds();
+            if (mailboxIds.isPresent()) {
+                System.out.println("IN OPTIM");
+                mailboxIds.get().stream()
+                    .map(mailboxId -> mailboxFactory.fromMailboxId(mailboxId, mailboxSession))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .sorted((m1, m2) -> m1.getSortOrder().compareTo(m2.getSortOrder()))
+                    .forEach(mailbox -> builder.add(mailbox));
+                return builder.build();
+            }
             retrieveUserMailboxes(mailboxSession)
                 .stream()
                 .map(MailboxMetaData::getPath)
