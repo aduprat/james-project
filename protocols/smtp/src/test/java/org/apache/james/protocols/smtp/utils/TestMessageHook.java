@@ -18,9 +18,7 @@
  ****************************************************************/
 package org.apache.james.protocols.smtp.utils;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.configuration.Configuration;
@@ -33,7 +31,7 @@ import org.apache.james.protocols.smtp.hook.MessageHook;
 
 public class TestMessageHook implements MessageHook {
 
-    private final Collection<MailEnvelope> queued = new ConcurrentLinkedQueue<MailEnvelope>();
+    private final CopyOnWriteArrayList<MailEnvelope> queued = new CopyOnWriteArrayList<MailEnvelope>();
     
     public HookResult onMessage(SMTPSession session, MailEnvelope mail) {
         queued.add(mail);
@@ -41,7 +39,7 @@ public class TestMessageHook implements MessageHook {
     }
  
     public List<MailEnvelope> getQueued() {
-        return new CopyOnWriteArrayList<MailEnvelope>(queued);
+        return queued;
     }
 
     @Override
