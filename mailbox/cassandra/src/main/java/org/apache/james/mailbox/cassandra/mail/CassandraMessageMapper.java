@@ -49,7 +49,6 @@ import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.SimpleMessageMetaData;
-import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
 import org.apache.james.mailbox.store.mail.UidProvider;
@@ -170,8 +169,9 @@ public class CassandraMessageMapper implements MessageMapper {
             messageRepresentions = messageDAO.retrieveMessages(messageIds, fetchType, limit).join();
         if (fetchType == FetchType.Body || fetchType == FetchType.Full) {
             return CompletableFutureUtil.allOf(messageRepresentions
-                .map(pair -> attachmentLoader.getAttachments(pair.getRight().collect(Guavate.toImmutableList()))
-                    .thenApply(attachments -> Pair.of(pair.getLeft(), attachments))))
+                .map((Pair<CassandraMessageDAO.MessageWithoutAttachment, Stream<CassandraMessageDAO.MessageAttachmentRepresentation>> pair) -> 
+                    attachmentLoader.getAttachments(pair.getRight().collect(Guavate.toImmutableList()))
+                        .thenApply(attachments -> Pair.of(pair.getLeft(), attachments))))
                 .join()
                 .map(Throwing.function(pair -> pair.getLeft()
                     .toMailboxMessage(pair.getRight()
