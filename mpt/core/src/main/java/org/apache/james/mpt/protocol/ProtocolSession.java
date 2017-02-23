@@ -534,7 +534,7 @@ public class ProtocolSession implements ProtocolInteractor {
     protected enum TimerCommand {
         START, PRINT, RESET;
 
-        public static TimerCommand from(String value) {
+        public static TimerCommand from(String value) throws InvalidServerResponseException {
             if (value.equalsIgnoreCase("start")) {
                 return START;
             }
@@ -544,7 +544,7 @@ public class ProtocolSession implements ProtocolInteractor {
             if (value.equalsIgnoreCase("reset")) {
                 return RESET;
             }
-            return null;
+            throw new InvalidServerResponseException("Invalid TIMER command '" + value + "'");
         }
     }
 
