@@ -584,7 +584,7 @@ public class ProtocolSession implements ProtocolInteractor {
             if (stopwatch == null) {
                 throw new InvalidServerResponseException("TIMER '" + timerName + "' undefined");
             }
-            System.out.println("Time spent in '" + timerName + "': " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + " ms");
+            LOGGER.info("Time spent in '" + timerName + "': " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + " ms");
         }
 
         private void reset() throws InvalidServerResponseException {
