@@ -16,21 +16,25 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
+package org.apache.james.modules;
 
-package org.apache.james.imap.processor;
-
-import org.apache.james.imap.api.message.response.StatusResponseFactory;
-import org.apache.james.imap.api.process.ImapProcessor;
-import org.apache.james.imap.message.request.SelectRequest;
-import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.api.TimeLogger;
 import org.apache.james.metrics.api.TimeMetricFactory;
+import org.apache.james.metrics.logger.DefaultTimeLogger;
+import org.apache.james.metrics.logger.DefaultTimeMetricFactory;
 
-public class SelectProcessor extends AbstractSelectionProcessor<SelectRequest> {
+import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
 
-    public SelectProcessor(ImapProcessor next, MailboxManager mailboxManager, StatusResponseFactory statusResponseFactory,
-            TimeMetricFactory timeMetricFactory, TimeLogger timeLogger) {
-        super(SelectRequest.class, next, mailboxManager, statusResponseFactory, false, timeMetricFactory, timeLogger);
+public class TimeLoggerModule extends AbstractModule {
+
+    @Override
+    protected void configure() {
+        bind(DefaultTimeLogger.class).in(Scopes.SINGLETON);
+        bind(DefaultTimeMetricFactory.class).in(Scopes.SINGLETON);
+
+        bind(TimeLogger.class).to(DefaultTimeLogger.class);
+        bind(TimeMetricFactory.class).to(DefaultTimeMetricFactory.class);
     }
 
 }

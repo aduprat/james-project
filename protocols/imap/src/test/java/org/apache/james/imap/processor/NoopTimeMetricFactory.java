@@ -16,21 +16,28 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-
 package org.apache.james.imap.processor;
 
-import org.apache.james.imap.api.message.response.StatusResponseFactory;
-import org.apache.james.imap.api.process.ImapProcessor;
-import org.apache.james.imap.message.request.SelectRequest;
-import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.metrics.api.TimeLogger;
+import org.apache.james.metrics.api.TimeMetric;
 import org.apache.james.metrics.api.TimeMetricFactory;
 
-public class SelectProcessor extends AbstractSelectionProcessor<SelectRequest> {
+public class NoopTimeMetricFactory implements TimeMetricFactory {
 
-    public SelectProcessor(ImapProcessor next, MailboxManager mailboxManager, StatusResponseFactory statusResponseFactory,
-            TimeMetricFactory timeMetricFactory, TimeLogger timeLogger) {
-        super(SelectRequest.class, next, mailboxManager, statusResponseFactory, false, timeMetricFactory, timeLogger);
+    @Override
+    public TimeMetric generate(String name) {
+        return new NoopTimeMetric();
     }
 
+    public static class NoopTimeMetric implements TimeMetric {
+
+        @Override
+        public String name() {
+            return "";
+        }
+
+        @Override
+        public long elapseTimeInMs() {
+            return 0;
+        }
+    }
 }
