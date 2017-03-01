@@ -19,6 +19,7 @@
 package org.apache.james;
 
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import javax.annotation.PreDestroy;
 
@@ -29,6 +30,8 @@ import org.apache.james.onami.lifecycle.Stager;
 import org.apache.james.utils.ConfigurationsPerformer;
 import org.apache.james.utils.GuiceProbeProvider;
 import org.apache.james.utils.GuiceServerProbe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Iterables;
 import com.google.inject.Guice;
@@ -36,9 +39,14 @@ import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
+import com.google.inject.internal.BindingImpl;
+import com.google.inject.spi.ConstructorBinding;
 import com.google.inject.util.Modules;
 
 public class GuiceJamesServerImpl implements GuiceJamesServer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GuiceJamesServerImpl.class);
+
     protected final Module module;
     private Stager<PreDestroy> preDestroy;
     private GuiceProbeProvider guiceProbeProvider;
@@ -65,9 +73,19 @@ public class GuiceJamesServerImpl implements GuiceJamesServer {
     @Override
     public void start() throws Exception {
         Injector injector = Guice.createInjector(module);
+        logInjectedElementsWithNoScope(injector);
+
         preDestroy = injector.getInstance(Key.get(new TypeLiteral<Stager<PreDestroy>>() {}));
         injector.getInstance(ConfigurationsPerformer.class).initModules();
         guiceProbeProvider = injector.getInstance(GuiceProbeProvider.class);
+    }
+
+    private void logInjectedElementsWithNoScope(Injector injector) {
+        injector.getAllBindings().entrySet().stream()
+            .filter(entry -> entry.getValue() instanceof ConstructorBinding)
+            .filter(entry -> ((BindingImpl<?>) entry.getValue()).getScoping().isNoScope())
+            .peek(entry -> LOGGER.warn("Element " + entry.getKey().getTypeLiteral() + " as no scope " + entry.getValue()))
+            .collect(Collectors.toList());
     }
 
     @Override
