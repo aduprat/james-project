@@ -19,7 +19,6 @@
 package org.apache.james;
 
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import javax.annotation.PreDestroy;
 
@@ -84,8 +83,7 @@ public class GuiceJamesServerImpl implements GuiceJamesServer {
         injector.getAllBindings().entrySet().stream()
             .filter(entry -> entry.getValue() instanceof ConstructorBinding)
             .filter(entry -> ((BindingImpl<?>) entry.getValue()).getScoping().isNoScope())
-            .peek(entry -> LOGGER.warn("Element " + entry.getKey().getTypeLiteral() + " as no scope " + entry.getValue()))
-            .collect(Collectors.toList());
+            .forEach(entry -> LOGGER.warn("Element " + entry.getKey().getTypeLiteral() + " as no scope " + entry.getValue()));
     }
 
     @Override
