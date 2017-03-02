@@ -93,12 +93,12 @@ public class GetMessageListMethod implements Method {
         GetMessageListRequest messageListRequest = (GetMessageListRequest) request;
         GetMessageListResponse messageListResponse = getMessageListResponse(messageListRequest, mailboxSession);
  
-        TimeMetric timeMetric = metricFactory.timer(METHOD_NAME.getName());
+        TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
         Stream<JmapResponse> jmapResponse = Stream.of(JmapResponse.builder().clientId(clientId)
                 .response(messageListResponse)
                 .responseName(RESPONSE_NAME)
                 .build());
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsed();
         return Stream.concat(jmapResponse,
                 processGetMessages(messageListRequest, messageListResponse, clientId, mailboxSession));
     }

@@ -76,7 +76,7 @@ public class SetVacationResponseMethod implements Method {
         Preconditions.checkArgument(request instanceof SetVacationRequest);
         SetVacationRequest setVacationRequest = (SetVacationRequest) request;
 
-        TimeMetric timeMetric = metricFactory.timer(METHOD_NAME.getName());
+        TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
         if (!setVacationRequest.isValid()) {
             Stream<JmapResponse> responses = Stream.of(JmapResponse
                 .builder()
@@ -86,14 +86,14 @@ public class SetVacationResponseMethod implements Method {
                     .description(INVALID_ARGUMENT_DESCRIPTION)
                     .build())
                 .build());
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsed();
             return responses;
         }
 
         Stream<JmapResponse> responses = process(clientId,
             AccountId.fromString(mailboxSession.getUser().getUserName()),
             setVacationRequest.getUpdate().get(Vacation.ID));
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsed();
         return responses;
     }
 
