@@ -25,8 +25,10 @@ import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.Collectors;
 
 import org.apache.commons.net.imap.IMAPClient;
 import org.apache.http.client.utils.URIBuilder;
@@ -58,12 +60,12 @@ public class ESReporterTest {
     private static final String USERNAME = "user1@" + DOMAIN;
     private static final String PASSWORD = "secret";
 
-    private EmbeddedElasticSearchRule embeddedCassandraRule = new EmbeddedElasticSearchRule();
+    private EmbeddedElasticSearchRule embeddedElasticSearchRule = new EmbeddedElasticSearchRule();
 
     private Timer timer;
 
     @Rule
-    public CassandraJmapTestRule cassandraJmap = new CassandraJmapTestRule(embeddedCassandraRule, new EmbeddedCassandraRule());
+    public CassandraJmapTestRule cassandraJmap = new CassandraJmapTestRule(embeddedElasticSearchRule, new EmbeddedCassandraRule());
 
     private JmapJamesServer server;
     private AccessToken accessToken;
@@ -147,8 +149,13 @@ public class ESReporterTest {
     }
 
     private boolean done() {
-        try (Client client = embeddedCassandraRule.getNode().client()) {
-            return client.prepareSearch().setQuery(QueryBuilders.indicesQuery(QueryBuilders.matchAllQuery(), TestESMetricReporterModule.METRICS_INDEX)).get().getHits().totalHits() > 0;
+        try (Client client = embeddedElasticSearchRule.getNode().client()) {
+            return !Arrays.stream(client.prepareSearch()
+                    .setQuery(QueryBuilders.matchAllQuery())
+                    .get().getHits().getHits())
+                .filter(searchHit -> searchHit.getIndex().startsWith(TestESMetricReporterModule.METRICS_INDEX))
+                .collect(Collectors.toList())
+                .isEmpty();
         } catch (Exception e) {
             return false;
         }
