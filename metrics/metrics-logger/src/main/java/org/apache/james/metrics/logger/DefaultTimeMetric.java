@@ -40,7 +40,7 @@ public class DefaultTimeMetric implements TimeMetric {
     }
 
     @Override
-    public long elapseTimeInMs() {
+    public long elapsed() {
         long elapsed = stopwatch.elapsed(TimeUnit.MILLISECONDS);
         DefaultMetricFactory.LOGGER.info("Time spent in " + name + ": " + elapsed + " ms.");
         return elapsed;

@@ -18,20 +18,26 @@
  ****************************************************************/
 package org.apache.james.metrics.logger;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.james.metrics.api.Metric;
 
 public class DefaultMetric implements Metric {
 
-    public int value;
+    private AtomicInteger value;
+
+    public DefaultMetric() {
+        value = new AtomicInteger();
+    }
 
     @Override
     public void increment() {
-        value++;
+        value.incrementAndGet();
     }
 
     @Override
     public void decrement() {
-        value--;
+        value.decrementAndGet();
     }
 
 }
