@@ -39,7 +39,7 @@ public class DropWizardTimeMetric implements TimeMetric {
     }
 
     @Override
-    public long elapsed() {
+    public long elapsedTimeInMs() {
         return time.stop();
     }
 }
