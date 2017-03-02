@@ -103,7 +103,12 @@ public class InMemoryEventAsynchronousHostSystem extends JamesImapHostSystem {
 
         mailboxManager.init();
 
-        final ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(mailboxManager, new StoreSubscriptionManager(factory), quotaManager, quotaRootResolver, new DefaultMetricFactory());
+        final ImapProcessor defaultImapProcessorFactory = DefaultImapProcessorFactory.createDefaultProcessor(
+                mailboxManager, 
+                new StoreSubscriptionManager(factory), 
+                quotaManager, 
+                quotaRootResolver, 
+                new DefaultMetricFactory());
         configure(new DefaultImapDecoderFactory().buildImapDecoder(),
                 new DefaultImapEncoderFactory().buildImapEncoder(),
                 defaultImapProcessorFactory);
