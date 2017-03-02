@@ -22,6 +22,6 @@ public interface TimeMetric {
 
     String name();
 
-    long elapsed();
+    long elapsedTimeInMs();
 
 }
