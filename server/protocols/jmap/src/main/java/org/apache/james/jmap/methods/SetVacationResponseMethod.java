@@ -86,14 +86,14 @@ public class SetVacationResponseMethod implements Method {
                     .description(INVALID_ARGUMENT_DESCRIPTION)
                     .build())
                 .build());
-            timeMetric.elapsed();
+            timeMetric.elapsedTimeInMs();
             return responses;
         }
 
         Stream<JmapResponse> responses = process(clientId,
             AccountId.fromString(mailboxSession.getUser().getUserName()),
             setVacationRequest.getUpdate().get(Vacation.ID));
-        timeMetric.elapsed();
+        timeMetric.elapsedTimeInMs();
         return responses;
     }
 

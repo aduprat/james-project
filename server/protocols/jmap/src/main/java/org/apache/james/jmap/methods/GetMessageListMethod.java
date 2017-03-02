@@ -98,7 +98,7 @@ public class GetMessageListMethod implements Method {
                 .response(messageListResponse)
                 .responseName(RESPONSE_NAME)
                 .build());
-        timeMetric.elapsed();
+        timeMetric.elapsedTimeInMs();
         return Stream.concat(jmapResponse,
                 processGetMessages(messageListRequest, messageListResponse, clientId, mailboxSession));
     }

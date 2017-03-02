@@ -76,7 +76,7 @@ public class SetMessagesMethod implements Method {
                     .responseName(RESPONSE_NAME)
                     .build());
         } finally {
-            timeMetric.elapsed();
+            timeMetric.elapsedTimeInMs();
         }
     }
 

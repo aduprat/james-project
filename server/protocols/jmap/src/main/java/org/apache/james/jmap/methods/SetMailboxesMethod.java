@@ -72,7 +72,7 @@ public class SetMailboxesMethod implements Method {
                 .response(setMailboxesResponse(setMailboxesRequest, mailboxSession))
                 .responseName(RESPONSE_NAME)
                 .build());
-        timeMetric.elapsed();
+        timeMetric.elapsedTimeInMs();
         return responses;
     }
 

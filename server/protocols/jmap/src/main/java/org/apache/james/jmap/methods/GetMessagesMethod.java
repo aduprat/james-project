@@ -96,7 +96,7 @@ public class GetMessagesMethod implements Method {
                             .properties(outputProperties.getOptionalMessageProperties())
                             .filterProvider(buildOptionalHeadersFilteringFilterProvider(outputProperties))
                             .build());
-        timeMetric.elapsed();
+        timeMetric.elapsedTimeInMs();
         return responses;
     }
 

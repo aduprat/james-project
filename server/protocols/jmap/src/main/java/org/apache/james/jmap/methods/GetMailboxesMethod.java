@@ -86,7 +86,7 @@ public class GetMailboxesMethod implements Method {
                 .properties(mailboxesRequest.getProperties().map(this::ensureContainsId))
                 .responseName(RESPONSE_NAME)
                 .build());
-        timeMetric.elapsed();
+        timeMetric.elapsedTimeInMs();
         return responses;
     }
 
