@@ -109,7 +109,7 @@ public class ESReporterTest {
         TimerTask timerTask = new TimerTask() {
             @Override
             public void run() {
-                metric.elapsed();
+                metric.elapsedTimeInMs();
             }
         };
         timer.schedule(timerTask, DELAY_IN_MS, PERIOD_IN_MS);
