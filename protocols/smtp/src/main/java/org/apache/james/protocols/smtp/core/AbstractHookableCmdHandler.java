@@ -77,7 +77,7 @@ public abstract class AbstractHookableCmdHandler<Hook extends org.apache.james.p
                 return response;
             }
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
 
     }

@@ -149,7 +149,7 @@ public class DataCmdHandler implements CommandHandler<SMTPSession>, ExtensibleHa
                 return response;
             }
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
     }
 
