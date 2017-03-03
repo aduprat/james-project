@@ -97,13 +97,6 @@ public class AuthenticationServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
             timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
         }
     }
     
