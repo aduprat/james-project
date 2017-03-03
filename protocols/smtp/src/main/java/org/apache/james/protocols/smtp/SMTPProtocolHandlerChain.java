@@ -24,11 +24,11 @@ import java.util.List;
 
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.handler.CommandDispatcher;
+import org.apache.james.protocols.api.handler.CommandHandlerResultLogger;
 import org.apache.james.protocols.api.handler.ExtensibleHandler;
 import org.apache.james.protocols.api.handler.ProtocolHandler;
 import org.apache.james.protocols.api.handler.ProtocolHandlerChain;
 import org.apache.james.protocols.api.handler.ProtocolHandlerChainImpl;
-import org.apache.james.protocols.api.handler.CommandHandlerResultLogger;
 import org.apache.james.protocols.api.handler.WiringException;
 import org.apache.james.protocols.smtp.core.DataCmdHandler;
 import org.apache.james.protocols.smtp.core.DataLineMessageHookHandler;
@@ -68,10 +68,10 @@ public class SMTPProtocolHandlerChain extends ProtocolHandlerChainImpl {
 
         
     public SMTPProtocolHandlerChain(MetricFactory metricFactory, boolean addDefault) {
+        this.metricFactory = metricFactory;
         if (addDefault) {
             addAll(initDefaultHandlers());      
         }
-        this.metricFactory = metricFactory;
     }
 
     /**
