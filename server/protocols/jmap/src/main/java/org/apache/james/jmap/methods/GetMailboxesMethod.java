@@ -89,11 +89,6 @@ public class GetMailboxesMethod implements Method {
                     .build());
         } finally {
             timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
-            timeMetric.stopAndPublish();
         }
     }
 
