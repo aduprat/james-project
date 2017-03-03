@@ -110,9 +110,6 @@ public class ESReporterTest {
             @Override
             public void run() {
                 metric.stopAndPublish();
-                metric.stopAndPublish();
-                metric.stopAndPublish();
-                metric.stopAndPublish();
             }
         };
         timer.schedule(timerTask, DELAY_IN_MS, PERIOD_IN_MS);
