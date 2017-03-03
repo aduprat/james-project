@@ -98,7 +98,7 @@ public class GetMessagesMethod implements Method {
                             .filterProvider(buildOptionalHeadersFilteringFilterProvider(outputProperties))
                             .build());
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

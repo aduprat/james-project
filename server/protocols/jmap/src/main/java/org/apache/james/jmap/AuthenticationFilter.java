@@ -87,7 +87,7 @@ public class AuthenticationFilter implements Filter {
                     .map(mailboxSession -> addSessionToRequest(httpRequest, mailboxSession))
                     .orElseThrow(UnauthorizedException::new);
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

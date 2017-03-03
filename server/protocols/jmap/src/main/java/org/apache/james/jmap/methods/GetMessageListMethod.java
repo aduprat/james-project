@@ -102,7 +102,7 @@ public class GetMessageListMethod implements Method {
             return Stream.concat(jmapResponse,
                     processGetMessages(messageListRequest, messageListResponse, clientId, mailboxSession));
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

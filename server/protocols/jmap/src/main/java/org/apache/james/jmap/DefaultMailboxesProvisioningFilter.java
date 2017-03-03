@@ -75,7 +75,7 @@ public class DefaultMailboxesProvisioningFilter implements Filter {
         } catch (MailboxException e) {
             throw Throwables.propagate(e);
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

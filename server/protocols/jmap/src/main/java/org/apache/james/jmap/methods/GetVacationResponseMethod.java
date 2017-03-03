@@ -78,7 +78,7 @@ public class GetVacationResponseMethod implements Method {
                 .response(process(mailboxSession))
                 .build());
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

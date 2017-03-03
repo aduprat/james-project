@@ -80,7 +80,7 @@ public class UserProvisioningFilter implements Filter {
         } catch (UsersRepositoryException|MailboxException e) {
             throw Throwables.propagate(e);
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

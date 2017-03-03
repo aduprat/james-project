@@ -69,7 +69,7 @@ public class UploadServlet extends HttpServlet {
             } catch (MailboxException e) {
                 internalServerError(resp, e);
             } finally {
-                timeMetric.elapsedTimeInMs();
+                timeMetric.stopAndPublish();
             }
         }
     }

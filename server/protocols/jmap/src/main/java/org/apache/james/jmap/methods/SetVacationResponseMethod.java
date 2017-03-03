@@ -93,7 +93,7 @@ public class SetVacationResponseMethod implements Method {
                 AccountId.fromString(mailboxSession.getUser().getUserName()),
                 setVacationRequest.getUpdate().get(Vacation.ID));
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 

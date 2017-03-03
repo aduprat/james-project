@@ -81,7 +81,7 @@ public class JMAPServlet extends HttpServlet {
             LOG.error("error handling request", e);
             resp.setStatus(SC_BAD_REQUEST);
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
     

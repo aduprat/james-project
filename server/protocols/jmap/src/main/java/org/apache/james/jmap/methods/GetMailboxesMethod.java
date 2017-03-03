@@ -88,7 +88,12 @@ public class GetMailboxesMethod implements Method {
                     .responseName(RESPONSE_NAME)
                     .build());
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish();
         }
     }
 

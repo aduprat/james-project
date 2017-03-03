@@ -74,7 +74,7 @@ public class SetMailboxesMethod implements Method {
                     .responseName(RESPONSE_NAME)
                     .build());
         } finally {
-            timeMetric.elapsedTimeInMs();
+            timeMetric.stopAndPublish();
         }
     }
 
