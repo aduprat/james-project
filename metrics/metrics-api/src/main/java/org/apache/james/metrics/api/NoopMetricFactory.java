@@ -54,7 +54,7 @@ public class NoopMetricFactory implements MetricFactory {
         }
 
         @Override
-        public long elapsedTimeInMs() {
+        public long stopAndPublish() {
             return 0;
         }
     }
