@@ -56,7 +56,7 @@
     <bean id="imapEncoderFactory" class="org.apache.james.imap.encode.main.DefaultImapEncoderFactory"/>
     <bean id="imapEncoder" factory-bean="imapEncoderFactory" factory-method="buildImapEncoder"/>
 
-    <bean id="timeMetricFactory" class="org.apache.james.metrics.logger.DefaultTimeMetricFactory"/>
+    <bean id="timeMetricFactory" class="org.apache.james.metrics.logger.DefaultMetricFactory"/>
     <bean id="timeLogger" class="org.apache.james.metrics.logger.DefaultTimeLogger"/>
 
 </beans>
