@@ -61,20 +61,21 @@ public class DefaultMailboxesProvisioningFilter implements Filter {
     
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        TimeMetric timeMetric = metricFactory.timer("JMAP-mailboxes-provisioning");
         Optional<MailboxSession> session = Optional.ofNullable((MailboxSession)request.getAttribute(AuthenticationFilter.MAILBOX_SESSION));
         session.ifPresent(this::createMailboxesIfNeeded);
         chain.doFilter(request, response);
-        timeMetric.elapseTimeInMs();
     }
     
     @VisibleForTesting
     void createMailboxesIfNeeded(MailboxSession session) {
+        TimeMetric timeMetric = metricFactory.timer("JMAP-mailboxes-provisioning");
         try {
             User user = session.getUser();
             createDefaultMailboxes(user);
         } catch (MailboxException e) {
             throw Throwables.propagate(e);
+        } finally {
+            timeMetric.elapsedTimeInMs();
         }
     }
 

@@ -62,7 +62,6 @@ public class UserProvisioningFilter implements Filter {
     
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        TimeMetric timeMetric = metricFactory.timer("JMAP-user-provisioning");
         Optional<MailboxSession> session = Optional.ofNullable((MailboxSession)request.getAttribute(AuthenticationFilter.MAILBOX_SESSION));
         session.ifPresent(this::createAccountIfNeeded);
         chain.doFilter(request, response);
@@ -70,6 +69,7 @@ public class UserProvisioningFilter implements Filter {
     
     @VisibleForTesting
     void createAccountIfNeeded(MailboxSession session) {
+        TimeMetric timeMetric = metricFactory.timer("JMAP-user-provisioning");
         try {
             User user = session.getUser();
             if (needsAccountCreation(user)) {
@@ -79,6 +79,8 @@ public class UserProvisioningFilter implements Filter {
             // Ignore
         } catch (UsersRepositoryException|MailboxException e) {
             throw Throwables.propagate(e);
+        } finally {
+            timeMetric.elapsedTimeInMs();
         }
     }
 

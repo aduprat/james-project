@@ -53,11 +53,11 @@ public class UploadServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException {
-        TimeMetric timeMetric = metricFactory.timer("JMAP-upload-post");
         String contentType = req.getContentType();
         if (Strings.isNullOrEmpty(contentType)) {
             resp.setStatus(SC_BAD_REQUEST);
         } else {
+            TimeMetric timeMetric = metricFactory.timer("JMAP-upload-post");
             try {
                 uploadHandler.handle(contentType, req.getInputStream(), getMailboxSession(req), resp);
             } catch (IOException e) {
@@ -68,9 +68,10 @@ public class UploadServlet extends HttpServlet {
                 }
             } catch (MailboxException e) {
                 internalServerError(resp, e);
+            } finally {
+                timeMetric.elapsedTimeInMs();
             }
         }
-        timeMetric.elapseTimeInMs();
     }
 
     private void internalServerError(HttpServletResponse resp, Exception e) {

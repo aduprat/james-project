@@ -96,7 +96,7 @@ public class AuthenticationServlet extends HttpServlet {
             LOG.error("Internal error", e);
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
     }
     

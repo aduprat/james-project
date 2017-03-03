@@ -87,7 +87,7 @@ public class SetMailboxesDestructionProcessor implements SetMailboxesProcessor {
             .forEach(entry -> destroyMailbox(entry, mailboxSession, builder));
 
         notDestroyedRequests(request, idToMailbox, builder);
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return builder.build();
     }
 

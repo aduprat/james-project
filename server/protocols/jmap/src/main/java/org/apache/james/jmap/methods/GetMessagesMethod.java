@@ -90,14 +90,16 @@ public class GetMessagesMethod implements Method {
         GetMessagesRequest getMessagesRequest = (GetMessagesRequest) request;
         MessageProperties outputProperties = getMessagesRequest.getProperties().toOutputProperties();
         TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
-        Stream<JmapResponse> responses = Stream.of(JmapResponse.builder().clientId(clientId)
+        try {
+            return Stream.of(JmapResponse.builder().clientId(clientId)
                             .response(getMessagesResponse(mailboxSession, getMessagesRequest))
                             .responseName(RESPONSE_NAME)
                             .properties(outputProperties.getOptionalMessageProperties())
                             .filterProvider(buildOptionalHeadersFilteringFilterProvider(outputProperties))
                             .build());
-        timeMetric.elapsedTimeInMs();
-        return responses;
+        } finally {
+            timeMetric.elapsedTimeInMs();
+        }
     }
 
     private Optional<SimpleFilterProvider> buildOptionalHeadersFilteringFilterProvider(MessageProperties properties) {

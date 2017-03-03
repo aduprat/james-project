@@ -96,7 +96,7 @@ public class SetMailboxesCreationProcessor implements SetMailboxesProcessor {
             markRequestsAsNotCreatedDueToCycle(request, builder);
         }
 
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return builder.build();
     }
 

@@ -77,24 +77,24 @@ public class SetVacationResponseMethod implements Method {
         SetVacationRequest setVacationRequest = (SetVacationRequest) request;
 
         TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
-        if (!setVacationRequest.isValid()) {
-            Stream<JmapResponse> responses = Stream.of(JmapResponse
-                .builder()
-                .clientId(clientId)
-                .error(ErrorResponse.builder()
-                    .type(INVALID_ARGUMENTS1)
-                    .description(INVALID_ARGUMENT_DESCRIPTION)
-                    .build())
-                .build());
+        try {
+            if (!setVacationRequest.isValid()) {
+                return Stream.of(JmapResponse
+                    .builder()
+                    .clientId(clientId)
+                    .error(ErrorResponse.builder()
+                        .type(INVALID_ARGUMENTS1)
+                        .description(INVALID_ARGUMENT_DESCRIPTION)
+                        .build())
+                    .build());
+            }
+    
+            return process(clientId,
+                AccountId.fromString(mailboxSession.getUser().getUserName()),
+                setVacationRequest.getUpdate().get(Vacation.ID));
+        } finally {
             timeMetric.elapsedTimeInMs();
-            return responses;
         }
-
-        Stream<JmapResponse> responses = process(clientId,
-            AccountId.fromString(mailboxSession.getUser().getUserName()),
-            setVacationRequest.getUpdate().get(Vacation.ID));
-        timeMetric.elapsedTimeInMs();
-        return responses;
     }
 
 

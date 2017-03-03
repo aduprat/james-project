@@ -82,7 +82,7 @@ public class SetMailboxesUpdateProcessor implements SetMailboxesProcessor {
         request.getUpdate()
             .entrySet()
             .forEach(update -> handleUpdate(update.getKey(), update.getValue(), responseBuilder, mailboxSession));
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return responseBuilder.build();
     }
 

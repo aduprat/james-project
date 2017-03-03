@@ -116,7 +116,7 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
         request.getCreate()
             .forEach(create -> handleCreate(create, responseBuilder, mailboxSession));
 
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return responseBuilder.build();
     }
 

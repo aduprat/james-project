@@ -69,7 +69,7 @@ public class SetMessagesDestructionProcessor implements SetMessagesProcessor {
             .reduce(SetMessagesResponse.builder(), SetMessagesResponse.Builder::accumulator, SetMessagesResponse.Builder::combiner)
             .build();
 
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return result;
     }
 

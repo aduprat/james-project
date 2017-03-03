@@ -67,23 +67,27 @@ public class AuthenticationFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        TimeMetric timeMetric = metricFactory.timer("JMAP-authentication-filter");
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
         try {
-            HttpServletRequest requestWithSession = authMethods.stream()
+            chain.doFilter(authenticate(httpRequest), response);
+        } catch (UnauthorizedException | NoValidAuthHeaderException | MailboxSessionCreationException | JwtException e) {
+            LOGGER.error("Exception occurred during authentication process", e);
+            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+        }
+    }
+
+    private HttpServletRequest authenticate(HttpServletRequest httpRequest) {
+        TimeMetric timeMetric = metricFactory.timer("JMAP-authentication-filter");
+        try {
+            return  authMethods.stream()
                     .flatMap(auth -> createSession(auth, httpRequest))
                     .findFirst()
                     .map(mailboxSession -> addSessionToRequest(httpRequest, mailboxSession))
                     .orElseThrow(UnauthorizedException::new);
-            chain.doFilter(requestWithSession, response);
-
-        } catch (UnauthorizedException | NoValidAuthHeaderException | MailboxSessionCreationException | JwtException e) {
-            LOGGER.error("Exception occurred during authentication process", e);
-            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
     }
 

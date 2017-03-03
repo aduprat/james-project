@@ -77,7 +77,7 @@ public class DownloadServlet extends HttpServlet {
             LOGGER.error(String.format("Error while generating attachment access token '%s'", pathInfo), e);
             resp.setStatus(SC_BAD_REQUEST);
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
     }
 
@@ -96,7 +96,7 @@ public class DownloadServlet extends HttpServlet {
             LOGGER.error("Error while asking attachment access token", e);
             resp.setStatus(SC_INTERNAL_SERVER_ERROR);
         } finally {
-            timeMetric.elapseTimeInMs();
+            timeMetric.elapsedTimeInMs();
         }
     }
 

@@ -87,7 +87,7 @@ public class SetMessagesUpdateProcessor implements SetMessagesProcessor {
                 handleInvalidRequest(responseBuilder, id, patch.getValidationErrors());
             }});
 
-        timeMetric.elapseTimeInMs();
+        timeMetric.elapsedTimeInMs();
         return responseBuilder.build();
     }
 

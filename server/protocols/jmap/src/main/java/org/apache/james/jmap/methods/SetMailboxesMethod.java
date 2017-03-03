@@ -66,14 +66,16 @@ public class SetMailboxesMethod implements Method {
         Preconditions.checkArgument(request instanceof SetMailboxesRequest);
         
         TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
-        SetMailboxesRequest setMailboxesRequest = (SetMailboxesRequest) request;
-        Stream<JmapResponse> responses = Stream.of(
-                JmapResponse.builder().clientId(clientId)
-                .response(setMailboxesResponse(setMailboxesRequest, mailboxSession))
-                .responseName(RESPONSE_NAME)
-                .build());
-        timeMetric.elapsedTimeInMs();
-        return responses;
+        try {
+            SetMailboxesRequest setMailboxesRequest = (SetMailboxesRequest) request;
+            return Stream.of(
+                    JmapResponse.builder().clientId(clientId)
+                    .response(setMailboxesResponse(setMailboxesRequest, mailboxSession))
+                    .responseName(RESPONSE_NAME)
+                    .build());
+        } finally {
+            timeMetric.elapsedTimeInMs();
+        }
     }
 
     private SetMailboxesResponse setMailboxesResponse(SetMailboxesRequest request, MailboxSession mailboxSession) {

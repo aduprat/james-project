@@ -80,14 +80,16 @@ public class GetMailboxesMethod implements Method {
         Preconditions.checkArgument(request instanceof GetMailboxesRequest);
         GetMailboxesRequest mailboxesRequest = (GetMailboxesRequest) request;
         TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
-        Stream<JmapResponse> responses = Stream.of(
-                JmapResponse.builder().clientId(clientId)
-                .response(getMailboxesResponse(mailboxesRequest, mailboxSession))
-                .properties(mailboxesRequest.getProperties().map(this::ensureContainsId))
-                .responseName(RESPONSE_NAME)
-                .build());
-        timeMetric.elapsedTimeInMs();
-        return responses;
+        try {
+            return Stream.of(
+                    JmapResponse.builder().clientId(clientId)
+                    .response(getMailboxesResponse(mailboxesRequest, mailboxSession))
+                    .properties(mailboxesRequest.getProperties().map(this::ensureContainsId))
+                    .responseName(RESPONSE_NAME)
+                    .build());
+        } finally {
+            timeMetric.elapsedTimeInMs();
+        }
     }
 
     private Set<MailboxProperty> ensureContainsId(Set<MailboxProperty> input) {

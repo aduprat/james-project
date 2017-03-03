@@ -71,13 +71,15 @@ public class GetVacationResponseMethod implements Method {
         Preconditions.checkArgument(request instanceof GetVacationRequest);
 
         TimeMetric timeMetric = metricFactory.timer(JMAP_PREFIX + METHOD_NAME.getName());
-        Stream<JmapResponse> responses = Stream.of(JmapResponse.builder()
-            .clientId(clientId)
-            .responseName(RESPONSE_NAME)
-            .response(process(mailboxSession))
-            .build());
-        timeMetric.elapsedTimeInMs();
-        return responses;
+        try {
+            return Stream.of(JmapResponse.builder()
+                .clientId(clientId)
+                .responseName(RESPONSE_NAME)
+                .response(process(mailboxSession))
+                .build());
+        } finally {
+            timeMetric.elapsedTimeInMs();
+        }
     }
 
     private GetVacationResponse process(MailboxSession mailboxSession) {
