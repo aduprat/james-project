@@ -94,7 +94,7 @@ abstract public class AbstractMailboxProcessor<M extends ImapRequest> extends Ab
 
         TimeMetric timeMetric = metricFactory.timer(IMAP_PREFIX + command.getName());
         doProcess(message, command, tag, responder, session);
-        timeMetric.elapsedTimeInMs();
+        timeMetric.stopAndPublish();
     }
 
     final void doProcess(M message, ImapCommand command, String tag, Responder responder, ImapSession session) {
