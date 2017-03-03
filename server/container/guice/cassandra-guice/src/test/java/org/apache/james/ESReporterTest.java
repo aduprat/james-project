@@ -125,7 +125,7 @@ public class ESReporterTest {
         timer.schedule(timerTask, DELAY_IN_MS, PERIOD_IN_MS);
 
         await().atMost(Duration.TEN_MINUTES)
-            .until(() -> done());
+            .until(() -> checkMetricRecordedInElasticSearch());
     }
 
     @Test
@@ -145,10 +145,10 @@ public class ESReporterTest {
         timer.schedule(timerTask, DELAY_IN_MS, PERIOD_IN_MS);
 
         await().atMost(Duration.TEN_MINUTES)
-            .until(() -> done());
+            .until(() -> checkMetricRecordedInElasticSearch());
     }
 
-    private boolean done() {
+    private boolean checkMetricRecordedInElasticSearch() {
         try (Client client = embeddedElasticSearchRule.getNode().client()) {
             return !Arrays.stream(client.prepareSearch()
                     .setQuery(QueryBuilders.matchAllQuery())
