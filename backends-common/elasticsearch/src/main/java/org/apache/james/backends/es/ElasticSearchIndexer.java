@@ -117,6 +117,7 @@ public class ElasticSearchIndexer {
                 .setDoc(updatedDocumentPart.getUpdatedDocumentPart())));
             return Optional.of(bulkRequestBuilder.get());
         } catch (ValidationException e) {
+            LOGGER.warn("Error while updating index", e);
             return Optional.empty();
         }
     }
@@ -131,6 +132,7 @@ public class ElasticSearchIndexer {
                     id)));
             return Optional.of(bulkRequestBuilder.get());
         } catch (ValidationException e) {
+            LOGGER.warn("Error while deleting index", e);
             return Optional.empty();
         }
     }
