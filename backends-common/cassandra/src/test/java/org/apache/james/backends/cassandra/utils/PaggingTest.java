@@ -35,6 +35,7 @@ import org.apache.james.backends.cassandra.components.CassandraType;
 import org.apache.james.util.CompletableFutureUtil;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.datastax.driver.core.DataType;
@@ -48,26 +49,27 @@ public class PaggingTest {
     private static final String CLUSTERING = "clustering";
     private static final UUID UUID = UUIDs.timeBased();
 
-    private CassandraCluster cassandra;
-    private CassandraAsyncExecutor executor;
-
-    @Before
-    public void setUp() {
-        cassandra = CassandraCluster.create(new CassandraModule() {
-            @Override
-            public List<CassandraTable> moduleTables() {
-                return ImmutableList.of(new CassandraTable(TABLE_NAME,
+    private static final CassandraModule MODULE = new CassandraModule() {
+        @Override public List<CassandraTable> moduleTables() {
+            return ImmutableList.of(new CassandraTable(TABLE_NAME,
                     SchemaBuilder.createTable(TABLE_NAME)
                         .ifNotExists()
                         .addPartitionKey(ID, DataType.timeuuid())
                         .addClusteringColumn(CLUSTERING, DataType.bigint())));
-            }
+        }
 
-            @Override
-            public List<CassandraType> moduleTypes() {
-                return ImmutableList.of();
-            }
-        });
+        @Override public List<CassandraType> moduleTypes() {
+            return ImmutableList.of();
+        }
+    };
+
+    @ClassRule
+    public static CassandraCluster cassandra = CassandraCluster.create(MODULE);
+
+    private CassandraAsyncExecutor executor;
+    
+    @Before
+    public void setUp() {
         cassandra.ensureAllTables();
         executor = new CassandraAsyncExecutor(cassandra.getConf());
     }

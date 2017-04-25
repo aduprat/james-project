@@ -18,31 +18,32 @@
  ****************************************************************/
 package org.apache.james.backends.cassandra;
 
+import org.apache.james.util.streams.SwarmGenericContainer;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.com.github.dockerjava.api.model.ExposedPort;
 
 public class EmbeddedCassandra implements TestRule {
 
-    private GenericContainer cassandra;
+    private SwarmGenericContainer cassandra;
 
     public static EmbeddedCassandra createStartServer() {
         return new EmbeddedCassandra();
     }
 
     private EmbeddedCassandra() {
-        cassandra = new GenericContainer("cassandra:2.2.3");
+        cassandra = new SwarmGenericContainer("cassandra:2.2.3");
     }
 
     public int cassandraPort() {
-        return cassandra.getContainerInfo()
-                .getNetworkSettings()
-                .getPorts()
-                .getBindings()
-                .get(ExposedPort.tcp(9042))[0]
-                        .getHostPort();
+        return Integer.valueOf(
+                cassandra.getContainerInfo()
+                    .getNetworkSettings()
+                    .getPorts()
+                    .getBindings()
+                    .get(ExposedPort.tcp(9042))[0]
+                    .getHostPortSpec());
     }
 
     public void startWithoutLifecycle() throws Exception {

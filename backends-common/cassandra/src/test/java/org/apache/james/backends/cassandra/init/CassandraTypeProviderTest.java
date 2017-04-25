@@ -48,10 +48,6 @@ public class CassandraTypeProviderTest {
             return ImmutableList.of();
         }
 
-        @Override public List<CassandraIndex> moduleIndex() {
-            return ImmutableList.of();
-        }
-
         @Override public List<CassandraType> moduleTypes() {
             return ImmutableList.copyOf(
                 Arrays.asList(new CassandraType(TYPE_NAME, SchemaBuilder.createType(TYPE_NAME)
