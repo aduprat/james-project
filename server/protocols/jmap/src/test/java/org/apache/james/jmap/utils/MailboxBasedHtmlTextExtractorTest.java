@@ -24,17 +24,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.james.mailbox.tika.extractor.TikaTextExtractor;
+import org.apache.james.mailbox.tika.TikaConfiguration;
+import org.apache.james.mailbox.tika.TikaContainer;
+import org.apache.james.mailbox.tika.TikaHttpClientImpl;
+import org.apache.james.mailbox.tika.TikaTextExtractor;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 public class MailboxBasedHtmlTextExtractorTest {
 
     private MailboxBasedHtmlTextExtractor textExtractor;
 
+    @Rule
+    public TikaContainer tika = new TikaContainer();
+
     @Before
-    public void setUp() {
-        textExtractor = new MailboxBasedHtmlTextExtractor(new TikaTextExtractor());
+    public void setUp() throws Exception {
+        tika.start();
+        TikaTextExtractor tikaTextExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
+                .host(tika.getIp())
+                .port(tika.getPort())
+                .timeoutInMillis(tika.getTimeoutInMillis())
+                .build()));
+        textExtractor = new MailboxBasedHtmlTextExtractor(tikaTextExtractor);
+    }
+
+    @After
+    public void tearDown() {
+        tika.stop();
     }
 
     @Test
@@ -81,8 +100,7 @@ public class MailboxBasedHtmlTextExtractorTest {
     @Test
     public void toPlainTextShouldWorkWithMoreComplexHTML() throws Exception {
         String html = IOUtils.toString(ClassLoader.getSystemResource("example.html"), StandardCharsets.UTF_8);
-        String expectedPlainText = "\n" +
-            "    Why a new Logo?\n" +
+        String expectedPlainText = "Why a new Logo?\n" +
             "\n" +
             "\n" +
             "\n" +

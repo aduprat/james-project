@@ -54,13 +54,18 @@ import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.tika.extractor.TikaTextExtractor;
+import org.apache.james.mailbox.tika.TikaConfiguration;
+import org.apache.james.mailbox.tika.TikaContainer;
+import org.apache.james.mailbox.tika.TikaHttpClientImpl;
+import org.apache.james.mailbox.tika.TikaTextExtractor;
 import org.apache.james.metrics.logger.DefaultMetricFactory;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.assertj.core.api.Condition;
 import org.assertj.core.data.MapEntry;
 import org.assertj.core.groups.Tuple;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -102,6 +107,9 @@ public class GetMessagesMethodTest {
             return this.username.equalsIgnoreCase(username);
         }
     }
+
+    @Rule
+    public TikaContainer tika = new TikaContainer();
     
     private static final User ROBERT = new User("robert", "secret");
 
@@ -116,7 +124,13 @@ public class GetMessagesMethodTest {
     @Before
     public void setup() throws Exception {
         clientId = ClientId.of("#0");
-        HtmlTextExtractor htmlTextExtractor = new MailboxBasedHtmlTextExtractor(new TikaTextExtractor());
+        tika.start();
+        TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
+                .host(tika.getIp())
+                .port(tika.getPort())
+                .timeoutInMillis(tika.getTimeoutInMillis())
+                .build()));
+        HtmlTextExtractor htmlTextExtractor = new MailboxBasedHtmlTextExtractor(textExtractor);
         MessagePreviewGenerator messagePreview = new MessagePreviewGenerator();
         MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
         MessageFactory messageFactory = new MessageFactory(messagePreview, messageContentExtractor, htmlTextExtractor);
@@ -131,7 +145,12 @@ public class GetMessagesMethodTest {
         mailboxManager.createMailbox(customMailboxPath, session);
         testee = new GetMessagesMethod(messageFactory, inMemoryIntegrationResources.createMessageIdManager(mailboxManager), new DefaultMetricFactory());
     }
-    
+
+    @After
+    public void tearDown() {
+        tika.stop();
+    }
+
     @Test
     public void processShouldThrowWhenNullRequest() {
         GetMessagesRequest request = null;

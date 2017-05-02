@@ -17,25 +17,51 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.mailbox.tika.extractor;
+package org.apache.james.mailbox.tika;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.extractor.TextExtractor;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class TikaTextExtractorTest {
-    
+
     private TextExtractor textExtractor;
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
     
+    @Rule
+    public TikaContainer tika = new TikaContainer();
+
     @Before
-    public void setUp() {
-        textExtractor = new TikaTextExtractor();
+    public void setUp() throws Exception {
+        tika.start();
+        textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
+                .host(tika.getIp())
+                .port(tika.getPort())
+                .timeoutInMillis(tika.getTimeoutInMillis())
+                .build()));
     }
-    
+
+    @After
+    public void tearDown() {
+        tika.stop();
+    }
+
+    @Test
+    public void textualContentShouldReturnNullWhenInputStreamIsEmpty() throws Exception {
+        assertThat(textExtractor.extractContent(IOUtils.toInputStream(""), "text/plain", "Text.txt").getTextualContent())
+            .isNull();
+    }
+
     @Test
     public void textTest() throws Exception {
         InputStream inputStream = ClassLoader.getSystemResourceAsStream("documents/Text.txt");
@@ -89,7 +115,7 @@ public class TikaTextExtractorTest {
         InputStream inputStream = ClassLoader.getSystemResourceAsStream("documents/PDF.pdf");
         assertThat(inputStream).isNotNull();
         assertThat(textExtractor.extractContent(inputStream, "application/pdf", "PDF.pdf").getTextualContent())
-            .isEqualTo("\nThis is an awesome document on libroffice writter !\n\n\n");
+            .isEqualTo("This is an awesome document on libroffice writter !\n\n\n");
     }
     
     @Test
@@ -97,7 +123,7 @@ public class TikaTextExtractorTest {
         InputStream inputStream = ClassLoader.getSystemResourceAsStream("documents/calc.ods");
         assertThat(inputStream).isNotNull();
         assertThat(textExtractor.extractContent(inputStream, "application/vnd.oasis.opendocument.spreadsheet", "calc.ods").getTextualContent())
-            .isEqualTo("\tThis is an aesome LibreOffice document !\n" +
+            .isEqualTo("This is an aesome LibreOffice document !\n" +
                 "\n" +
                 "\n" +
                 "???\n" +
@@ -121,5 +147,38 @@ public class TikaTextExtractorTest {
                 "\n" +
                 "\n");
     }
-    
+
+    @Test
+    public void deserializerShouldThrowWhenMoreThanOneNode() throws Exception {
+        expectedException.expect(IllegalStateException.class);
+        expectedException.expectMessage("The response should have only one element");
+
+        TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClient() {
+            
+            @Override
+            public String metadataAndContent(InputStream inputStream, String contentType) throws TikaException {
+                return "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]";
+            }
+        });
+
+        InputStream inputStream = null;
+        textExtractor.extractContent(inputStream, "text/plain", "fake.txt");
+    }
+
+    @Test
+    public void deserializerShouldThrowWhenNodeIsNotAnObject() throws Exception {
+        expectedException.expect(IllegalStateException.class);
+        expectedException.expectMessage("The element should be a Json object");
+
+        TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClient() {
+            
+            @Override
+            public String metadataAndContent(InputStream inputStream, String contentType) throws TikaException {
+                return "[\"value1\"]";
+            }
+        });
+
+        InputStream inputStream = null;
+        textExtractor.extractContent(inputStream, "text/plain", "fake.txt");
+    }
 }
