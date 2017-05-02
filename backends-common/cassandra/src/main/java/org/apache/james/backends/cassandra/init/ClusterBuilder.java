@@ -154,8 +154,8 @@ public class ClusterBuilder {
                     .setRefreshSchemaIntervalMillis(refreshSchemaIntervalMillis)));
 
         SocketOptions socketOptions = new SocketOptions();
-        readTimeoutMillis.map(socketOptions::setReadTimeoutMillis);
-        connectTimeoutMillis.map(socketOptions::setConnectTimeoutMillis);
+        readTimeoutMillis.ifPresent(socketOptions::setReadTimeoutMillis);
+        connectTimeoutMillis.ifPresent(socketOptions::setConnectTimeoutMillis);
         clusterBuilder.withSocketOptions(socketOptions);
 
         Cluster cluster = clusterBuilder.build();

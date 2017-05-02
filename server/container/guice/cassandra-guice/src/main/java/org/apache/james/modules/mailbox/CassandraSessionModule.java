@@ -116,22 +116,15 @@ public class CassandraSessionModule extends AbstractModule {
         LOGGER.info("Trying to connect to Cassandra service");
 
         return context -> ClusterWithKeyspaceCreatedFactory
-            .config(getCluster(servers, 
-                        queryLoggerConfiguration, 
-                        configuration.getInt("cassandra.readTimeoutMillis", DEFAULT_READ_TIMEOUT_MILLIS),
-                        configuration.getInt("cassandra.connectTimeoutMillis", DEFAULT_CONNECT_TIMEOUT_MILLIS)), 
+            .config(ClusterBuilder.builder()
+                    .servers(servers)
+                    .queryLoggerConfiguration(queryLoggerConfiguration)
+                    .readTimeoutMillis(configuration.getInt("cassandra.readTimeoutMillis", DEFAULT_READ_TIMEOUT_MILLIS))
+                    .connectTimeoutMillis(configuration.getInt("cassandra.connectTimeoutMillis", DEFAULT_CONNECT_TIMEOUT_MILLIS))
+                    .build(),
                     configuration.getString("cassandra.keyspace", DEFAULT_KEYSPACE))
             .replicationFactor(configuration.getInt("cassandra.replication.factor", DEFAULT_REPLICATION_FACTOR))
             .clusterWithInitializedKeyspace();
-    }
-
-    private Cluster getCluster(List<Host> servers, QueryLoggerConfiguration queryLoggerConfiguration, int readTimeoutMillis, int connectTimeoutMillis) {
-        return ClusterBuilder.builder()
-            .servers(servers)
-            .queryLoggerConfiguration(queryLoggerConfiguration)
-            .readTimeoutMillis(readTimeoutMillis)
-            .connectTimeoutMillis(connectTimeoutMillis)
-            .build();
     }
 
     private List<Host> listCassandraServers(PropertiesConfiguration configuration) {
