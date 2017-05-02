@@ -355,7 +355,7 @@ First step, you have to build the Docker image
 
 Where:
 
-- ITERATION is the iteration to give to the package.
+- ITERATION is increment of the release of the package (e.g. 3.0-beta6-1, 3.0-beta6-2, 3.0-beta6-3...)
 
 Then, you have to run the container:
 
