@@ -34,7 +34,7 @@ import com.google.common.collect.Maps;
 public class JsoupTextExtractor implements TextExtractor {
 
     @Override
-    public ParsedContent extractContent(InputStream inputStream, String contentType, String fileName) throws Exception {
+    public ParsedContent extractContent(InputStream inputStream, String contentType) throws Exception {
         Map<String, List<String>> emptyMetadata = Maps.newHashMap();
         if (contentType != null) {
            if (contentType.equals("text/plain")) {
