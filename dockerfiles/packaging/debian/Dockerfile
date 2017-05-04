@@ -11,9 +11,11 @@ COPY james.postinst /debian/james.postinst
 COPY james.prerm /debian/james.prerm
 COPY james.service /debian/james.service
 
+ARG RELEASE
+ENV RELEASE $RELEASE
 ARG ITERATION
 ENV ITERATION $ITERATION
 
 WORKDIR /debian
 
-ENTRYPOINT [ "sh", "-c", "/root/package.sh $ITERATION" ]
+ENTRYPOINT [ "sh", "-c", "/root/package.sh $RELEASE $ITERATION" ]

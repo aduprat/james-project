@@ -351,7 +351,7 @@ You can generate a debian package for James by using the following process.
 
 First step, you have to build the Docker image used to generate the package
 
-    $ docker build -t build-james-deb --build-arg ITERATION=1 dockerfiles/packaging/debian/
+    $ docker build -t build-james-deb --build-arg RELEASE=3.0-beta6 --build-arg ITERATION=1 dockerfiles/packaging/debian/
 
 Where:
 
