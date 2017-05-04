@@ -56,8 +56,6 @@ public class TikaMailboxModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(TikaHttpClientImpl.class).in(Scopes.SINGLETON);
-        bind(TikaHttpClient.class).to(TikaHttpClientImpl.class);
         bind(TikaTextExtractor.class).in(Scopes.SINGLETON);
         bind(TextExtractor.class).to(TikaTextExtractor.class);
     }
