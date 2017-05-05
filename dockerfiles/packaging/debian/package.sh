@@ -30,6 +30,12 @@ fpm -s dir -t deb \
  --provides mail-transport-agent \
  --provides default-mta \
  --iteration $ITERATION \
+ --license http://www.apache.org/licenses/LICENSE-2.0 \
+ --description "$(printf "James stands for Java Apache Mail Enterprise Server!\nIt has a modular architecture based on a rich set of modern and efficient components which provides at the end complete, stable, secure and extendable Mail Servers running on the JVM.")" \
+ --vendor "Apache" \
+ --maintainer "Apache" \
+ --url http://james.apache.org/ \
+ --category web \
  .
 
 cp /debian/james*.deb /result/
