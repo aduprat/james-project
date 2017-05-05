@@ -47,9 +47,8 @@ import org.apache.james.mailbox.tika.TikaConfiguration;
 import org.apache.james.mailbox.tika.TikaContainer;
 import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableList;
@@ -59,24 +58,18 @@ public class IndexableMessageTest {
 
     public static final MessageUid MESSAGE_UID = MessageUid.of(154);
 
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
 
     private TikaTextExtractor textExtractor;
 
     @Before
     public void setUp() throws Exception {
-        tika.start();
         textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
                 .timeoutInMillis(tika.getTimeoutInMillis())
                 .build()));
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test

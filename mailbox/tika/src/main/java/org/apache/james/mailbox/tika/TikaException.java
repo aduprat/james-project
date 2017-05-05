@@ -18,7 +18,7 @@
  ****************************************************************/
 package org.apache.james.mailbox.tika;
 
-public class TikaException extends Exception {
+public class TikaException extends RuntimeException {
 
     public TikaException(Exception exception) {
         super(exception);

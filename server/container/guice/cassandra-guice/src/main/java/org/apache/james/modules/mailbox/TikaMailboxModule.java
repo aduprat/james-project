@@ -77,7 +77,7 @@ public class TikaMailboxModule extends AbstractModule {
                     .timeoutInMillis(configuration.getInt(TIKA_TIMEOUT_IN_MS, DEFAULT_TIMEOUT_IN_MS))
                     .build();
         } catch (FileNotFoundException e) {
-            LOGGER.warn("Could not find " + TIKA_CONFIGURATION_NAME + " configuration file. Using 127.0.0.1:9998 as contact point");
+            LOGGER.warn("Could not find {} configuration file. Using {}:{} as contact point", TIKA_CONFIGURATION_NAME, DEFAULT_HOST, DEFAULT_PORT);
             return TikaConfiguration.builder()
                     .host(DEFAULT_HOST)
                     .port(DEFAULT_PORT)

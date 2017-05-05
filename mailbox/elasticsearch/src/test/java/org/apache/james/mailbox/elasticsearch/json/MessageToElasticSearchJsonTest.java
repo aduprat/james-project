@@ -50,9 +50,8 @@ import org.apache.james.mailbox.tika.TikaConfiguration;
 import org.apache.james.mailbox.tika.TikaContainer;
 import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.google.common.base.Charsets;
@@ -74,12 +73,11 @@ public class MessageToElasticSearchJsonTest {
     private Date date;
     private PropertyBuilder propertyBuilder;
 
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
 
     @Before
     public void setUp() throws Exception {
-        tika.start();
         textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
@@ -92,11 +90,6 @@ public class MessageToElasticSearchJsonTest {
         propertyBuilder.setSubType("text");
         propertyBuilder.setTextualLineCount(18L);
         propertyBuilder.setContentDescription("An e-mail");
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test

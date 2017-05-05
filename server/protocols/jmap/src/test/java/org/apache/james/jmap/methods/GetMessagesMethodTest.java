@@ -63,9 +63,8 @@ import org.apache.james.util.mime.MessageContentExtractor;
 import org.assertj.core.api.Condition;
 import org.assertj.core.data.MapEntry;
 import org.assertj.core.groups.Tuple;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,8 +107,8 @@ public class GetMessagesMethodTest {
         }
     }
 
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
     
     private static final User ROBERT = new User("robert", "secret");
 
@@ -124,7 +123,6 @@ public class GetMessagesMethodTest {
     @Before
     public void setup() throws Exception {
         clientId = ClientId.of("#0");
-        tika.start();
         TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
@@ -144,11 +142,6 @@ public class GetMessagesMethodTest {
         mailboxManager.createMailbox(inboxPath, session);
         mailboxManager.createMailbox(customMailboxPath, session);
         testee = new GetMessagesMethod(messageFactory, inMemoryIntegrationResources.createMessageIdManager(mailboxManager), new DefaultMetricFactory());
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test

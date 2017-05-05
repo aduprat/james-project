@@ -20,16 +20,26 @@
 package org.apache.james.mailbox.tika;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.extractor.TextExtractor;
-import org.junit.After;
+import org.apache.james.mailbox.tika.TikaTextExtractor.ContentAndMetadataDeserializer;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 
 public class TikaTextExtractorTest {
 
@@ -37,23 +47,17 @@ public class TikaTextExtractorTest {
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
-    
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
 
     @Before
     public void setUp() throws Exception {
-        tika.start();
         textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
                 .timeoutInMillis(tika.getTimeoutInMillis())
                 .build()));
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test
@@ -156,8 +160,8 @@ public class TikaTextExtractorTest {
         TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClient() {
             
             @Override
-            public String metadataAndContent(InputStream inputStream, String contentType) throws TikaException {
-                return "[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]";
+            public InputStream rmetaAsJson(InputStream inputStream, String contentType) throws TikaException {
+                return new ByteArrayInputStream("[{\"key1\":\"value1\"},{\"key2\":\"value2\"}]".getBytes(Charsets.UTF_8));
             }
         });
 
@@ -173,12 +177,50 @@ public class TikaTextExtractorTest {
         TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClient() {
             
             @Override
-            public String metadataAndContent(InputStream inputStream, String contentType) throws TikaException {
-                return "[\"value1\"]";
+            public InputStream rmetaAsJson(InputStream inputStream, String contentType) throws TikaException {
+                return new ByteArrayInputStream("[\"value1\"]".getBytes(Charsets.UTF_8));
             }
         });
 
         InputStream inputStream = null;
         textExtractor.extractContent(inputStream, "text/plain");
+    }
+
+    @Test
+    public void asListOfStringShouldReturnASingletonWhenOneElement() {
+        JsonNode jsonNode = mock(JsonNode.class);
+        when(jsonNode.getNodeType())
+            .thenReturn(JsonNodeType.STRING);
+        String expectedContent = "text";
+        when(jsonNode.asText())
+            .thenReturn(expectedContent);
+        
+        ContentAndMetadataDeserializer deserializer = new TikaTextExtractor.ContentAndMetadataDeserializer();
+        List<String> listOfString = deserializer.asListOfString(jsonNode);
+        
+        assertThat(listOfString).containsOnly(expectedContent);
+    }
+
+    @Test
+    public void asListOfStringShouldReturnAListWhenMultipleElements() {
+        JsonNode mainNode = mock(JsonNode.class);
+        when(mainNode.getNodeType())
+            .thenReturn(JsonNodeType.ARRAY);
+        JsonNode firstNode = mock(JsonNode.class);
+        when(firstNode.asText())
+            .thenReturn("first");
+        JsonNode secondNode = mock(JsonNode.class);
+        when(secondNode.asText())
+            .thenReturn("second");
+        JsonNode thirdNode = mock(JsonNode.class);
+        when(thirdNode.asText())
+            .thenReturn("third");
+        when(mainNode.elements())
+            .thenReturn(ImmutableList.of(firstNode, secondNode, thirdNode).iterator());
+        
+        ContentAndMetadataDeserializer deserializer = new TikaTextExtractor.ContentAndMetadataDeserializer();
+        List<String> listOfString = deserializer.asListOfString(mainNode);
+        
+        assertThat(listOfString).containsOnly("first", "second", "third");
     }
 }

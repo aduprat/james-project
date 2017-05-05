@@ -44,11 +44,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Maps;
 
 public class TikaTextExtractor implements TextExtractor {
 
@@ -71,15 +70,15 @@ public class TikaTextExtractor implements TextExtractor {
 
     @Override
     public ParsedContent extractContent(InputStream inputStream, String contentType) throws Exception {
-        ContentAndMetadata contentAndMetadata = convert(tikaHttpClient.metadataAndContent(inputStream, contentType));
+        ContentAndMetadata contentAndMetadata = convert(tikaHttpClient.rmetaAsJson(inputStream, contentType));
         return new ParsedContent(contentAndMetadata.getContent(), contentAndMetadata.getMetadata());
     }
 
-    private ContentAndMetadata convert(String tika) throws IOException, JsonParseException, JsonMappingException {
-        return objectMapper.readValue(tika, ContentAndMetadata.class);
+    private ContentAndMetadata convert(InputStream json) throws IOException, JsonParseException, JsonMappingException {
+        return objectMapper.readValue(json, ContentAndMetadata.class);
     }
 
-    private static class ContentAndMetadataDeserializer extends JsonDeserializer<ContentAndMetadata> {
+    @VisibleForTesting static class ContentAndMetadataDeserializer extends JsonDeserializer<ContentAndMetadata> {
 
         @Override
         public ContentAndMetadata deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
@@ -92,7 +91,7 @@ public class TikaTextExtractor implements TextExtractor {
                 .collect(Collectors.toMap(Pair::getLeft, Pair::getRight)));
         }
 
-        private List<String> asListOfString(JsonNode jsonNode) {
+        @VisibleForTesting List<String> asListOfString(JsonNode jsonNode) {
             if (jsonNode.isArray()) {
                 return ImmutableList.copyOf(jsonNode.elements()).stream()
                     .map(node -> node.asText())
@@ -109,22 +108,18 @@ public class TikaTextExtractor implements TextExtractor {
         private static final String CONTENT_METADATA_HEADER_NAME = TIKA_HEADER + ":content";
 
         public static ContentAndMetadata from(Map<String, List<String>> contentAndMetadataMap) {
-            String onlySpaces = null;
-            return new ContentAndMetadata(content(contentAndMetadataMap, onlySpaces),
-                    Maps.filterEntries(contentAndMetadataMap, new Predicate<Map.Entry<String, List<String>>>() {
-
-                        @Override
-                        public boolean apply(Map.Entry<String, List<String>> entry) {
-                            return !entry.getKey().startsWith(TIKA_HEADER);
-                        }
-                    }));
+            return new ContentAndMetadata(content(contentAndMetadataMap),
+                    contentAndMetadataMap.entrySet().stream()
+                        .filter(entry -> { return !entry.getKey().startsWith(TIKA_HEADER); })
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
         }
 
-        private static String content(Map<String, List<String>> contentAndMetadataMap, String onlySpaces) {
+        private static String content(Map<String, List<String>> contentAndMetadataMap) {
             List<String> content = contentAndMetadataMap.get(CONTENT_METADATA_HEADER_NAME);
             if (content == null) {
                 return null;
             }
+            String onlySpaces = null;
             return StringUtils.stripStart(content.get(0), onlySpaces);
         }
 

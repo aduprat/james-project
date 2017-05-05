@@ -28,32 +28,25 @@ import org.apache.james.mailbox.tika.TikaConfiguration;
 import org.apache.james.mailbox.tika.TikaContainer;
 import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 public class MailboxBasedHtmlTextExtractorTest {
 
     private MailboxBasedHtmlTextExtractor textExtractor;
 
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
 
     @Before
     public void setUp() throws Exception {
-        tika.start();
         TikaTextExtractor tikaTextExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
                 .timeoutInMillis(tika.getTimeoutInMillis())
                 .build()));
         textExtractor = new MailboxBasedHtmlTextExtractor(tikaTextExtractor);
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test

@@ -23,24 +23,20 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.utils.URIBuilder;
-
-import com.google.common.base.Charsets;
+import org.apache.http.entity.ContentType;
 
 public class TikaHttpClientImpl implements TikaHttpClient {
 
     private static final String RMETA_AS_TEXT_ENDPOINT = "/rmeta/text";
 
     private final TikaConfiguration tikaConfiguration;
-    private final Executor executor;
-    private final URI uri;
+    private final URI rmeta;
 
     public TikaHttpClientImpl(TikaConfiguration tikaConfiguration) throws URISyntaxException {
         this.tikaConfiguration = tikaConfiguration;
-        this.executor = Executor.newInstance();
-        this.uri = buildURI(tikaConfiguration);
+        this.rmeta = buildURI(tikaConfiguration).resolve(RMETA_AS_TEXT_ENDPOINT);
     }
 
     private URI buildURI(TikaConfiguration tikaConfiguration) throws URISyntaxException {
@@ -52,18 +48,14 @@ public class TikaHttpClientImpl implements TikaHttpClient {
     }
 
     @Override
-    public String metadataAndContent(InputStream inputStream, String contentType) throws TikaException {
-        return executePut(uri.resolve(RMETA_AS_TEXT_ENDPOINT), inputStream, contentType);
-    }
-
-    private String executePut(URI uri, InputStream inputStream, String contentType) throws TikaException {
+    public InputStream rmetaAsJson(InputStream inputStream, String contentType) throws TikaException {
         try {
-            return executor.execute(Request.Put(uri)
-                        .addHeader("Content-type", contentType)
-                        .socketTimeout(tikaConfiguration.getTimeoutInMillis())
-                        .bodyStream(inputStream))
+            return Request.Put(rmeta)
+                    .socketTimeout(tikaConfiguration.getTimeoutInMillis())
+                    .bodyStream(inputStream, ContentType.create(contentType))
+                    .execute()
                     .returnContent()
-                    .asString(Charsets.UTF_8);
+                    .asStream();
         } catch (IOException e) {
             throw new TikaException(e);
         }

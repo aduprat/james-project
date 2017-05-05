@@ -21,7 +21,6 @@ package org.apache.james.mailbox.tika;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.james.util.streams.SwarmGenericContainer;
@@ -39,36 +38,26 @@ public class TikaContainer extends ExternalResource {
 
     private static final ConditionFactory CALMLY_AWAIT = Awaitility.with()
             .pollInterval(Duration.FIVE_HUNDRED_MILLISECONDS)
-            .and().with()
+            .and()
+            .with()
             .pollDelay(Duration.ONE_HUNDRED_MILLISECONDS)
             .await()
             .atMost(30, TimeUnit.SECONDS);
-
+    
     private final SwarmGenericContainer tika;
 
     public TikaContainer() {
         tika = new SwarmGenericContainer("logicalspark/docker-tikaserver:latest");
     }
 
-    public String getIp() {
-        return tika.getIp();
-    }
-
-    public int getPort() {
-        return DEFAULT_TIKA_PORT;
-    }
-
-    public int getTimeoutInMillis() {
-        return DEFAULT_TIMEOUT_IN_MS;
+    @Override
+    protected void before() throws Throwable {
+        start();
     }
 
     public void start() throws Exception {
         tika.start();
         awaitForTika();
-    }
-
-    public void stop() {
-        tika.stop();
     }
 
     private void awaitForTika() throws Exception {
@@ -82,13 +71,34 @@ public class TikaContainer extends ExternalResource {
                     .setPort(DEFAULT_TIKA_PORT)
                     .setScheme("http")
                     .build();
-            return Executor.newInstance()
-                .execute(Request.Get(uri.resolve("/tika")))
-                .returnResponse()
-                .getStatusLine()
-                .getStatusCode() == 200;
+            return Request.Get(uri.resolve("/tika"))
+                    .execute()
+                    .returnResponse()
+                    .getStatusLine()
+                    .getStatusCode() == 200;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    @Override
+    protected void after() {
+        stop();
+    }
+
+    public void stop() {
+        tika.stop();
+    }
+
+    public String getIp() {
+        return tika.getIp();
+    }
+
+    public int getPort() {
+        return DEFAULT_TIKA_PORT;
+    }
+
+    public int getTimeoutInMillis() {
+        return DEFAULT_TIMEOUT_IN_MS;
     }
 }

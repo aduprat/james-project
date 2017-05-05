@@ -45,9 +45,8 @@ import org.apache.james.mailbox.tika.TikaContainer;
 import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
 import org.apache.james.util.mime.MessageContentExtractor;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.google.common.base.Charsets;
@@ -64,12 +63,11 @@ public class MessageFactoryTest {
     private MessagePreviewGenerator messagePreview ;
     private HtmlTextExtractor htmlTextExtractor;
 
-    @Rule
-    public TikaContainer tika = new TikaContainer();
+    @ClassRule
+    public static TikaContainer tika = new TikaContainer();
 
     @Before
     public void setUp() throws Exception {
-        tika.start();
         TikaTextExtractor textExtractor = new TikaTextExtractor(new TikaHttpClientImpl(TikaConfiguration.builder()
                 .host(tika.getIp())
                 .port(tika.getPort())
@@ -81,11 +79,6 @@ public class MessageFactoryTest {
         MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
 
         messageFactory = new MessageFactory(messagePreview, messageContentExtractor, htmlTextExtractor);
-    }
-
-    @After
-    public void tearDown() {
-        tika.stop();
     }
 
     @Test
