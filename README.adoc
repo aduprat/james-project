@@ -355,7 +355,7 @@ First step, you have to build the Docker image used to generate the package
 
 Where:
 
-- ITERATION is increment of the release of the package (e.g. 3.0-beta6-1, 3.0-beta6-2, 3.0-beta6-3...)
+- ITERATION is the release number used after the last hyphen (e.g. 3.0-beta6-1, 3.0-beta6-2, 3.0-beta6-3...)
 
 Then, you have to run the container:
 
@@ -363,5 +363,5 @@ Then, you have to run the container:
 
 Where:
 
-- $PWD/jars is the path to the folder containing the James jars/libs
+- $PWD/jars is the path to the folder containing the maven result (main jar and lib folder)
 - $PWD/result is the folder where the debian package will be copied
