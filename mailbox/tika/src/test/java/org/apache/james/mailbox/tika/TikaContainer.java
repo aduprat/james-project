@@ -18,36 +18,27 @@
  ****************************************************************/
 package org.apache.james.mailbox.tika;
 
-import java.net.URI;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.http.client.fluent.Request;
-import org.apache.http.client.utils.URIBuilder;
 import org.apache.james.util.streams.SwarmGenericContainer;
 import org.junit.rules.ExternalResource;
+import org.testcontainers.containers.wait.Wait;
 
 import com.google.common.primitives.Ints;
-import com.jayway.awaitility.Awaitility;
-import com.jayway.awaitility.Duration;
-import com.jayway.awaitility.core.ConditionFactory;
 
 public class TikaContainer extends ExternalResource {
     
     private static final int DEFAULT_TIKA_PORT = 9998;
     private static final int DEFAULT_TIMEOUT_IN_MS = Ints.checkedCast(TimeUnit.MINUTES.toMillis(3));
 
-    private static final ConditionFactory CALMLY_AWAIT = Awaitility.with()
-            .pollInterval(Duration.FIVE_HUNDRED_MILLISECONDS)
-            .and()
-            .with()
-            .pollDelay(Duration.ONE_HUNDRED_MILLISECONDS)
-            .await()
-            .atMost(30, TimeUnit.SECONDS);
-    
     private final SwarmGenericContainer tika;
 
     public TikaContainer() {
-        tika = new SwarmGenericContainer("logicalspark/docker-tikaserver:latest");
+        tika = new SwarmGenericContainer("logicalspark/docker-tikaserver:latest")
+                .withExposedPorts(DEFAULT_TIKA_PORT)
+                .waitingFor(Wait.forHttp("/tika"))
+                .withStartupTimeout(Duration.ofSeconds(30));
     }
 
     @Override
@@ -57,28 +48,6 @@ public class TikaContainer extends ExternalResource {
 
     public void start() throws Exception {
         tika.start();
-        awaitForTika();
-    }
-
-    private void awaitForTika() throws Exception {
-        CALMLY_AWAIT.until(() -> isTikaUp());
-    }
-
-    private boolean isTikaUp() {
-        try {
-            URI uri = new URIBuilder()
-                    .setHost(tika.getIp())
-                    .setPort(DEFAULT_TIKA_PORT)
-                    .setScheme("http")
-                    .build();
-            return Request.Get(uri.resolve("/tika"))
-                    .execute()
-                    .returnResponse()
-                    .getStatusLine()
-                    .getStatusCode() == 200;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @Override

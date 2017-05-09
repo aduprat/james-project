@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -110,8 +112,12 @@ public class TikaTextExtractor implements TextExtractor {
         public static ContentAndMetadata from(Map<String, List<String>> contentAndMetadataMap) {
             return new ContentAndMetadata(content(contentAndMetadataMap),
                     contentAndMetadataMap.entrySet().stream()
-                        .filter(entry -> { return !entry.getKey().startsWith(TIKA_HEADER); })
+                        .filter(allHeadersButTika())
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+        }
+
+        private static Predicate<? super Entry<String, List<String>>> allHeadersButTika() {
+            return entry -> { return !entry.getKey().startsWith(TIKA_HEADER); };
         }
 
         private static String content(Map<String, List<String>> contentAndMetadataMap) {
