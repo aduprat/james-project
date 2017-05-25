@@ -446,6 +446,36 @@ public abstract class AbstractCombinationManagerTest {
             .isEqualTo(expected);
     }
 
+    @Test
+    public void getUidsShouldInteractWellWithSetInMailboxes() throws Exception {
+        MessageId messageId = messageManager1.appendMessage(new ByteArrayInputStream(MAIL_CONTENT), new Date(), session, false, new Flags())
+            .getMessageId();
+
+        messageIdManager.setInMailboxes(messageId, ImmutableList.of(mailbox1.getMailboxId(), mailbox2.getMailboxId()), session);
+
+        List<MessageResult> listMessages = messageIdManager.getMessages(ImmutableList.of(messageId), FetchGroupImpl.MINIMAL, session);
+        MessageUid uid2 = FluentIterable.from(listMessages)
+            .filter(messageInMailbox2())
+            .get(0)
+            .getUid();
+
+        SearchQuery searchQuery = new SearchQuery(SearchQuery.all());
+        assertThat(messageManager2.search(searchQuery, session))
+            .hasSize(1)
+            .containsOnly(uid2);
+    }
+
+    @Test
+    public void getUidsShouldInteractWellWithDelete() throws Exception {
+        MessageId messageId = messageManager1.appendMessage(new ByteArrayInputStream(MAIL_CONTENT), new Date(), session, false, new Flags())
+            .getMessageId();
+
+        messageIdManager.delete(messageId, ImmutableList.of(mailbox1.getMailboxId()), session);
+
+        SearchQuery searchQuery = new SearchQuery(SearchQuery.all());
+        assertThat(messageManager1.search(searchQuery, session)).isEmpty();
+    }
+
     private Predicate<MessageResult> messageInMailbox2() {
         return new Predicate<MessageResult>() {
             @Override
