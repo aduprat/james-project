@@ -67,6 +67,7 @@ import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.io.ByteStreams;
 import com.google.common.net.MediaType;
 
+@SuppressWarnings("deprecation")
 public class MIMEMessageConverter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MIMEMessageConverter.class);
