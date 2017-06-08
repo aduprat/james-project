@@ -18,15 +18,16 @@
  ****************************************************************/
 package org.apache.james.mailbox;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import javax.mail.Flags;
+
 import org.assertj.core.api.JUnitSoftAssertions;
 import org.junit.Rule;
 import org.junit.Test;
 
-import javax.mail.Flags;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 public class ApplicableFlagBuilderTest {
+
     @Rule
     public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
 
@@ -79,6 +80,18 @@ public class ApplicableFlagBuilderTest {
 
         softly.assertThat(result.contains("yolo")).isTrue();
         softly.assertThat(result.contains("vibes")).isTrue();
+    }
+
+    @Test
+    public void addShouldAddMultipleFlagsAtOnce() {
+        Flags flags = new Flags("cartman");
+        Flags flags2 = new Flags("butters");
+        Flags result = ApplicableFlagBuilder.builder()
+                .add(flags, flags2)
+                .build();
+
+        softly.assertThat(result.contains(flags)).isTrue();
+        softly.assertThat(result.contains(flags2)).isTrue();
     }
 
     @Test

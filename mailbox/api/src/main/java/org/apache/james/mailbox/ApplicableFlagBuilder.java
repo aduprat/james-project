@@ -24,20 +24,29 @@ import com.google.common.annotations.VisibleForTesting;
 
 public class ApplicableFlagBuilder {
 
-    @VisibleForTesting
-    static final Flags DEFAULT_APPLICABLE_FLAGS = FlagsBuilder.builder().add(
-        Flags.Flag.ANSWERED,
-        Flags.Flag.DELETED,
-        Flags.Flag.DRAFT,
-        Flags.Flag.FLAGGED,
-        Flags.Flag.SEEN)
-        .build();
-
-    private final FlagsBuilder builder;
+    @VisibleForTesting static final Flags DEFAULT_APPLICABLE_FLAGS = FlagsBuilder.builder()
+            .add(Flags.Flag.ANSWERED,
+                    Flags.Flag.DELETED,
+                    Flags.Flag.DRAFT,
+                    Flags.Flag.FLAGGED,
+                    Flags.Flag.SEEN)
+            .build();
 
     public static ApplicableFlagBuilder builder() {
         return new ApplicableFlagBuilder();
     }
+
+    public static ApplicableFlagBuilder from(Flags... flags) {
+        return new ApplicableFlagBuilder()
+                .add(flags);
+    }
+
+    public static ApplicableFlagBuilder from(String... flags) {
+        return new ApplicableFlagBuilder()
+                .add(flags);
+    }
+
+    private final FlagsBuilder builder;
 
     private ApplicableFlagBuilder() {
         builder = FlagsBuilder.builder().add(DEFAULT_APPLICABLE_FLAGS);
@@ -45,13 +54,11 @@ public class ApplicableFlagBuilder {
 
     public ApplicableFlagBuilder add(String... flags) {
         builder.add(flags);
-
         return this;
     }
 
-    public ApplicableFlagBuilder add(Flags flags) {
+    public ApplicableFlagBuilder add(Flags... flags) {
         builder.add(flags);
-
         return this;
     }
 
@@ -59,7 +66,6 @@ public class ApplicableFlagBuilder {
         Flags flags = builder.build();
         flags.remove(Flags.Flag.RECENT);
         flags.remove(Flags.Flag.USER);
-
         return flags;
     }
 }
