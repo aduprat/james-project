@@ -78,7 +78,7 @@ public class StoreMailboxMessageResultIteratorTest {
         }
 
         @Override
-        public Iterator<MessageUid> getUids(Mailbox mailbox) throws MailboxException {
+        public Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException {
             return messageRange.iterator();
         }
 

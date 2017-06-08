@@ -158,7 +158,7 @@ public abstract class AbstractMessageMapper extends TransactionalMapper implemen
     protected abstract MessageMetaData copy(Mailbox mailbox, MessageUid uid, long modSeq, MailboxMessage original) throws MailboxException;
 
     @Override
-    public Iterator<MessageUid> getUids(Mailbox mailbox) throws MailboxException {
+    public Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException {
         return Iterators.transform(findInMailbox(mailbox, MessageRange.all(), FetchType.Metadata, UNLIMITED), TO_UID);
     }
 }

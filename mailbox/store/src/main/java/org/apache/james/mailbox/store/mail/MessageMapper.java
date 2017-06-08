@@ -172,7 +172,10 @@ public interface MessageMapper extends Mapper {
 
     Flags getApplicableFlag(Mailbox mailbox) throws MailboxException;
 
-    Iterator<MessageUid> getUids(Mailbox mailbox) throws MailboxException;
+    /**
+     * Return the list of all uids of the {@link Mailbox}
+     */
+    Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException;
 
     /**
      * Specify what data needs to get filled in a {@link MailboxMessage} before returning it

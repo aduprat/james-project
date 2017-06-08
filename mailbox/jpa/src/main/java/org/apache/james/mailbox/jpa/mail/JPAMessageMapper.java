@@ -89,7 +89,7 @@ public class JPAMessageMapper extends JPATransactionalMapper implements MessageM
     }
 
     @Override
-    public Iterator<MessageUid> getUids(final Mailbox mailbox) throws MailboxException {
+    public Iterator<MessageUid> listAllMessageUids(final Mailbox mailbox) throws MailboxException {
         return Iterators.transform(findInMailbox(mailbox, MessageRange.all(), FetchType.Full, UNLIMITED), TO_UID);
     }
 

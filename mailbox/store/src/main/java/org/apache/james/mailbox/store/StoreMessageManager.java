@@ -882,7 +882,7 @@ public class StoreMessageManager implements org.apache.james.mailbox.MessageMana
         return messageMapper.execute(new Mapper.Transaction<Iterator<MessageUid>>() {
             @Override
             public Iterator<MessageUid> run() throws MailboxException {
-                return messageMapper.getUids(mailbox);
+                return messageMapper.listAllMessageUids(mailbox);
             }
         });
     }
