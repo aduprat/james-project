@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import org.apache.james.mailbox.MessageUid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
@@ -33,7 +35,8 @@ import com.google.common.collect.Ordering;
 
 public class UidMsnConverter {
 
-    public final static int FIRST_MSN = 1;
+    public static final int FIRST_MSN = 1;
+    private static final Logger LOGGER = LoggerFactory.getLogger(UidMsnConverter.class);
 
     private final ArrayList<MessageUid> uids;
 
@@ -43,11 +46,13 @@ public class UidMsnConverter {
     }
 
     public synchronized Optional<Integer> getMsn(MessageUid uid) {
-        if (!uids.contains(uid)) {
+        try {
+            int position = Ordering.explicit(uids).binarySearch(uids, uid);
+            return Optional.of(position + 1);
+        } catch (Exception e) {
+            LOGGER.trace("Error while converting uid to msn, uid not found: " + uid.asLong());
             return Optional.absent();
         }
-        int position = Ordering.explicit(uids).binarySearch(uids, uid);
-        return Optional.of(position + 1);
     }
 
     public synchronized Optional<MessageUid> getUid(int msn) {
@@ -103,7 +108,7 @@ public class UidMsnConverter {
     }
 
     @VisibleForTesting
-    ImmutableBiMap<Integer, MessageUid> getConvertion() {
+    ImmutableBiMap<Integer, MessageUid> getConversion() {
         ImmutableBiMap.Builder<Integer, MessageUid> result = ImmutableBiMap.builder();
         for (int i = 0; i < uids.size(); i++) {
             result.put(i + 1, uids.get(i));
