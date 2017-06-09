@@ -19,8 +19,6 @@
 
 package org.apache.james.mailbox.store.mail.utils;
 
-import java.util.List;
-
 import javax.mail.Flags;
 
 import org.apache.james.mailbox.ApplicableFlagBuilder;
@@ -49,15 +47,10 @@ public class ApplicableFlagCalculator {
     }
 
     public Flags computeApplicableFlags() {
-        ApplicableFlagBuilder flagsBuilder = ApplicableFlagBuilder.builder();
-        List<Flags> messageFlags = FluentIterable.from(mailboxMessages)
-            .transform(toFlags())
-            .toList();
-
-        for (Flags flags: messageFlags) {
-            flagsBuilder.add(flags);
-        }
-
-        return flagsBuilder.build();
+        return ApplicableFlagBuilder.builder()
+                .add(FluentIterable.from(mailboxMessages)
+                    .transform(toFlags())
+                    .toArray(Flags.class))
+                .build();
     }
 }
