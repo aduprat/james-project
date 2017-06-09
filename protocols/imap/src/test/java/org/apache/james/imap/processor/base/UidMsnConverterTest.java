@@ -240,7 +240,7 @@ public class UidMsnConverterTest {
     }
 
     @Test
-    public void addUidShouldLeadToValidConvertionWhenInsertInFirstPosition() {
+    public void addUidShouldLeadToValidConversionWhenInsertInFirstPosition() {
         testee.addUid(messageUid2);
         testee.addUid(messageUid3);
         testee.addUid(messageUid4);
@@ -255,7 +255,7 @@ public class UidMsnConverterTest {
     }
 
     @Test
-    public void constructorWithOutOfOrderIteratorShouldLeadToValidConvertion() {
+    public void constructorWithOutOfOrderIteratorShouldLeadToValidConversion() {
         testee = new UidMsnConverter(ImmutableList.of(messageUid2,
             messageUid3,
             messageUid4,
@@ -280,7 +280,7 @@ public class UidMsnConverterTest {
     }
 
     @Test
-    public void addAndRemoveShouldLeadToValidConvertionWhenMixed() throws Exception {
+    public void addAndRemoveShouldLeadToValidConversionWhenMixed() throws Exception {
         final int initialCount = 1000;
         for (int i = 1; i <= initialCount; i++) {
             testee.addUid(MessageUid.of(i));
@@ -310,7 +310,7 @@ public class UidMsnConverterTest {
     }
 
     @Test
-    public void addShouldLeadToValidConvertionWhenConcurrent() throws Exception {
+    public void addShouldLeadToValidConversionWhenConcurrent() throws Exception {
         final int operationCount = 1000;
         int threadCount = 2;
 
@@ -333,7 +333,7 @@ public class UidMsnConverterTest {
     }
 
     @Test
-    public void removeShouldLeadToValidConvertionWhenConcurrent() throws Exception {
+    public void removeShouldLeadToValidConversionWhenConcurrent() throws Exception {
         final int operationCount = 1000;
         int threadCount = 2;
         for (int i = 1; i <= operationCount * (threadCount + 1); i++) {
