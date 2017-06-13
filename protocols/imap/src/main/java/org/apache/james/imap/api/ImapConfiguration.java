@@ -59,20 +59,20 @@ public class ImapConfiguration {
             return !StringUtils.isBlank(disableCap);
         }
 
-        private static final boolean DEFAULT_IS_CONDSTORE_UNABLE = false;
+        private static final boolean DEFAULT_CONDSTORE_DISABLE = false;
 
         private Optional<Long> idleTimeInterval;
         private Optional<TimeUnit> idleTimeIntervalUnit;
         private Optional<Boolean> enableIdle;
         private ImmutableSet<String> disabledCaps;
-        private Optional<Boolean> isCondstoreUnable;
+        private Optional<Boolean> isCondstoreEnable;
 
         private Builder() {
             this.idleTimeInterval = Optional.absent();
             this.idleTimeIntervalUnit = Optional.absent();
             this.enableIdle = Optional.absent();
             this.disabledCaps = ImmutableSet.of();
-            this.isCondstoreUnable = Optional.absent();
+            this.isCondstoreEnable = Optional.absent();
         }
 
         public Builder idleTimeInterval(long idleTimeInterval) {
@@ -106,8 +106,8 @@ public class ImapConfiguration {
             return this;
         }
 
-        public Builder isCondstoreUnable(boolean isCondstoreUnable) {
-            this.isCondstoreUnable = Optional.of(isCondstoreUnable);
+        public Builder isCondstoreEnable(boolean isCondstoreEnable) {
+            this.isCondstoreEnable = Optional.of(isCondstoreEnable);
             return this;
         }
 
@@ -121,7 +121,7 @@ public class ImapConfiguration {
                     idleTimeInterval.or(DEFAULT_HEARTBEAT_INTERVAL_IN_SECONDS),
                     idleTimeIntervalUnit.or(DEFAULT_HEARTBEAT_INTERVAL_UNIT),
                     normalizeDisableCaps,
-                    isCondstoreUnable.or(DEFAULT_IS_CONDSTORE_UNABLE));
+                    isCondstoreEnable.or(DEFAULT_CONDSTORE_DISABLE));
         }
     }
 
@@ -129,14 +129,14 @@ public class ImapConfiguration {
     private final TimeUnit idleTimeIntervalUnit;
     private final ImmutableSet<String> disabledCaps;
     private final boolean enableIdle;
-    private final boolean isCondstoreUnable;
+    private final boolean isCondstoreEnable;
 
-    private ImapConfiguration(boolean enableIdle, long idleTimeInterval, TimeUnit idleTimeIntervalUnit, ImmutableSet<String> disabledCaps, boolean isCondstoreUnable) {
+    private ImapConfiguration(boolean enableIdle, long idleTimeInterval, TimeUnit idleTimeIntervalUnit, ImmutableSet<String> disabledCaps, boolean isCondstoreEnable) {
         this.enableIdle = enableIdle;
         this.idleTimeInterval = idleTimeInterval;
         this.idleTimeIntervalUnit = idleTimeIntervalUnit;
         this.disabledCaps = disabledCaps;
-        this.isCondstoreUnable = isCondstoreUnable;
+        this.isCondstoreEnable = isCondstoreEnable;
     }
 
     public long getIdleTimeInterval() {
@@ -155,8 +155,8 @@ public class ImapConfiguration {
         return enableIdle;
     }
     
-    public boolean isCondstoreUnable() {
-        return isCondstoreUnable;
+    public boolean isCondstoreEnable() {
+        return isCondstoreEnable;
     }
 
     @Override
@@ -167,14 +167,14 @@ public class ImapConfiguration {
                 && Objects.equal(that.getIdleTimeInterval(), idleTimeInterval)
                 && Objects.equal(that.getIdleTimeIntervalUnit(), idleTimeIntervalUnit)
                 && Objects.equal(that.getDisabledCaps(), disabledCaps)
-                && Objects.equal(that.isCondstoreUnable(), isCondstoreUnable);
+                && Objects.equal(that.isCondstoreEnable(), isCondstoreEnable);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hashCode(enableIdle, idleTimeInterval, idleTimeIntervalUnit, disabledCaps, isCondstoreUnable);
+        return Objects.hashCode(enableIdle, idleTimeInterval, idleTimeIntervalUnit, disabledCaps, isCondstoreEnable);
     }
 
     @Override
@@ -184,7 +184,7 @@ public class ImapConfiguration {
                 .add("idleTimeInterval", idleTimeInterval)
                 .add("idleTimeIntervalUnit", idleTimeIntervalUnit)
                 .add("disabledCaps", disabledCaps)
-                .add("isCondstoreUnable", isCondstoreUnable)
+                .add("isCondstoreEnable", isCondstoreEnable)
                 .toString();
     }
 }

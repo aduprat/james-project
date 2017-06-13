@@ -162,27 +162,27 @@ public class ImapConfigurationTest {
     }
 
     @Test
-    public void isCondstoreUnableShouldBeFalseWhenNoSetting() {
+    public void isCondstoreEnableShouldBeFalseWhenNoSetting() {
         ImapConfiguration imapConfiguration = ImapConfiguration.builder().build();
 
-        assertThat(imapConfiguration.isCondstoreUnable()).isFalse();
+        assertThat(imapConfiguration.isCondstoreEnable()).isFalse();
    }
 
     @Test
-    public void isCondstoreUnableShouldBeTrueWhenValueIsTrue() {
+    public void isCondstoreEnableShouldBeTrueWhenValueIsTrue() {
         ImapConfiguration imapConfiguration = ImapConfiguration.builder()
-                .isCondstoreUnable(true)
+                .isCondstoreEnable(true)
                 .build();
 
-        assertThat(imapConfiguration.isCondstoreUnable()).isTrue();
+        assertThat(imapConfiguration.isCondstoreEnable()).isTrue();
    }
 
     @Test
-    public void isCondstoreUnableShouldBeFalseWhenValueIsFalse() {
+    public void isCondstoreEnableShouldBeFalseWhenValueIsFalse() {
         ImapConfiguration imapConfiguration = ImapConfiguration.builder()
-                .isCondstoreUnable(false)
+                .isCondstoreEnable(false)
                 .build();
 
-        assertThat(imapConfiguration.isCondstoreUnable()).isFalse();
+        assertThat(imapConfiguration.isCondstoreEnable()).isFalse();
    }
 }
