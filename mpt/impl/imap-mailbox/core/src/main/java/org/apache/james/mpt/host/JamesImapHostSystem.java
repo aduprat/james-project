@@ -37,7 +37,6 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.Authenticator;
 import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mpt.api.Continuation;
-import org.apache.james.mpt.api.ImapFeatures.Feature;
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.helper.ByteBufferInputStream;
 import org.apache.james.mpt.helper.ByteBufferOutputStream;
@@ -162,19 +161,6 @@ public abstract class JamesImapHostSystem implements ImapHostSystem {
         return configuration;
     }
 
-    @Override
-    public boolean supports(Feature... features) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public void setQuotaLimits(long maxMessageQuota, long maxStorageQuota) throws Exception {
-        // TODO Auto-generated method stub
-        
-    }
-
-    @Override
     public void configure(ImapConfiguration imapConfiguration) {
         processor.configure(imapConfiguration);
     }

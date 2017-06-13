@@ -17,22 +17,22 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.mpt.imapmailbox.inmemory;
+package org.apache.james.mpt.imapmailbox.suite;
 
 import java.util.Locale;
 
 import javax.inject.Inject;
 
 import org.apache.james.imap.api.ImapConfiguration;
-import org.apache.james.mpt.api.ImapHostSystem;
+import org.apache.james.mpt.host.JamesImapHostSystem;
 import org.apache.james.mpt.imapmailbox.suite.base.BaseAuthenticatedState;
 import org.junit.Test;
 
 public class Condstore extends BaseAuthenticatedState {
 
     @Inject
-    private static ImapHostSystem system;
-    
+    private static JamesImapHostSystem system;
+
     public Condstore() throws Exception {
         super(system);
     }
@@ -44,8 +44,14 @@ public class Condstore extends BaseAuthenticatedState {
     }
 
     @Test
+    public void condstoreShouldBeDisableWhenGivenAndFalse() throws Exception {
+        system.configure(ImapConfiguration.builder().isCondstoreEnable(false).build());
+        scriptTest("CondstoreDisable", Locale.US);
+    }
+
+    @Test
     public void condstoreShouldBeEnableWhenGivenAndTrue() throws Exception {
-        system.configure(ImapConfiguration.builder().isCondstoreUnable(true).build());
+        system.configure(ImapConfiguration.builder().isCondstoreEnable(true).build());
         scriptTest("CondstoreEnable", Locale.US);
     }
 }
