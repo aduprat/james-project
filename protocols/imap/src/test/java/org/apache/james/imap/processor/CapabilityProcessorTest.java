@@ -47,14 +47,14 @@ public class CapabilityProcessorTest {
 
     @Test
     public void condstoreShouldBeSupportedWhenSelectedFor() {
-        testee.configure(ImapConfiguration.builder().isCondstoreUnable(true).build());
+        testee.configure(ImapConfiguration.builder().isCondstoreEnable(true).build());
 
         Set<String> supportedCapabilities = testee.getSupportedCapabilities(null);
         assertThat(supportedCapabilities).contains(ImapConstants.SUPPORTS_CONDSTORE);
     }
 
     @Test
-    public void condstoreShouldBeNotSupportedBeDefault() {
+    public void condstoreShouldBeNotSupportedByDefault() {
         testee.configure(ImapConfiguration.builder().build());
 
         Set<String> supportedCapabilities = testee.getSupportedCapabilities(null);

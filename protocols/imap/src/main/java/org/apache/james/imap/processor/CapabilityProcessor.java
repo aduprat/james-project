@@ -89,7 +89,7 @@ public class CapabilityProcessor extends AbstractMailboxProcessor<CapabilityRequ
     }
 
     private boolean shouldDisableCondstore(ImapConfiguration imapConfiguration) {
-        return !imapConfiguration.isCondstoreUnable() 
+        return !imapConfiguration.isCondstoreEnable() 
                 && !disabledCaps.contains(SUPPORTS_CONDSTORE);
     }
 
