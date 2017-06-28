@@ -223,7 +223,7 @@ public class HeaderCollectionTest {
     }
 
     @Test
-    public void centuryShouldBeAppenToDateWhenNone() {
+    public void partialYearShouldBeCompleted() {
         HeaderCollection headerCollection = HeaderCollection.builder()
             .add(new FieldImpl("Date", "Thu, 4 Jun 15 06:08:41 +0200"))
             .build();
