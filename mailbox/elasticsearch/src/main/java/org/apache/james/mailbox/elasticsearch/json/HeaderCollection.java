@@ -157,7 +157,7 @@ public class HeaderCollection {
             try {
                 return Optional.of(ZonedDateTime.parse(
                     sanitizeDateStringHeaderValue(value),
-                    ImapDateTimeFormatter.RFC_5322_DATE_TIME));
+                    ImapDateTimeFormatter.rfc5322()));
             } catch (Exception e) {
                 LOGGER.info("Can not parse receive date " + value);
                 return Optional.empty();
