@@ -24,8 +24,8 @@ import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.init.CassandraModuleComposite;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
-import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.CassandraMailboxSessionMapperFactory;
+import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId.Factory;
 import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
@@ -114,6 +114,7 @@ public class CassandraMapperProvider implements MapperProvider {
         CassandraBlobsDAO blobsDAO = new CassandraBlobsDAO(cassandra.getConf());
         CassandraMessageDAO messageDAO = new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider());
         CassandraMessageDAOV2 messageDAOV2 = new CassandraMessageDAOV2(cassandra.getConf(), cassandra.getTypesProvider(), blobsDAO);
+        CassandraAttachmentMapper attachmentMapper = new CassandraAttachmentMapper(cassandra.getConf());
         return new CassandraMailboxSessionMapperFactory(
             new CassandraUidProvider(cassandra.getConf()),
             cassandraModSeqProvider,
@@ -128,7 +129,8 @@ public class CassandraMapperProvider implements MapperProvider {
             mailboxPathDAO,
             firstUnseenDAO,
             new CassandraApplicableFlagDAO(cassandra.getConf()),
-            deletedMessageDAO);
+            deletedMessageDAO,
+            attachmentMapper);
     }
 
     @Override

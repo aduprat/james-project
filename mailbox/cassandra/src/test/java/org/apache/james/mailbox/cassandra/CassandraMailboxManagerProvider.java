@@ -26,6 +26,7 @@ import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
+import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraBlobsDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraDeletedMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraFirstUnseenDAO;
@@ -68,6 +69,7 @@ public class CassandraMailboxManagerProvider {
         CassandraFirstUnseenDAO firstUnseenDAO = new CassandraFirstUnseenDAO(session);
         CassandraApplicableFlagDAO applicableFlagDAO = new CassandraApplicableFlagDAO(session);
         CassandraDeletedMessageDAO deletedMessageDAO = new CassandraDeletedMessageDAO(session);
+        CassandraAttachmentMapper attachmentMapper = new CassandraAttachmentMapper(session);
 
         CassandraMailboxSessionMapperFactory mapperFactory = new CassandraMailboxSessionMapperFactory(uidProvider,
             modSeqProvider,
@@ -82,7 +84,8 @@ public class CassandraMailboxManagerProvider {
             mailboxPathDAO,
             firstUnseenDAO,
             applicableFlagDAO,
-            deletedMessageDAO);
+            deletedMessageDAO,
+            attachmentMapper);
 
         MailboxACLResolver aclResolver = new UnionMailboxACLResolver();
         GroupMembershipResolver groupMembershipResolver = new SimpleGroupMembershipResolver();

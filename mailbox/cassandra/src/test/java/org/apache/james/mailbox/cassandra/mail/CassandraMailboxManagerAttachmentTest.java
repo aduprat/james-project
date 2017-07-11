@@ -91,6 +91,7 @@ public class CassandraMailboxManagerAttachmentTest extends AbstractMailboxManage
         CassandraBlobsDAO blobsDAO = new CassandraBlobsDAO(cassandra.getConf());
         CassandraMessageDAO messageDAO = new CassandraMessageDAO(cassandra.getConf(), cassandra.getTypesProvider());
         CassandraMessageDAOV2 messageDAOV2 = new CassandraMessageDAOV2(cassandra.getConf(), cassandra.getTypesProvider(), blobsDAO);
+        CassandraAttachmentMapper attachmentMapper = new CassandraAttachmentMapper(cassandra.getConf());
         mailboxSessionMapperFactory = new CassandraMailboxSessionMapperFactory(
                 new CassandraUidProvider(cassandra.getConf()),
                 new CassandraModSeqProvider(cassandra.getConf()),
@@ -105,7 +106,8 @@ public class CassandraMailboxManagerAttachmentTest extends AbstractMailboxManage
                 mailboxPathDAO,
                 firstUnseenDAO,
                 new CassandraApplicableFlagDAO(cassandra.getConf()),
-                deletedMessageDAO);
+                deletedMessageDAO,
+                attachmentMapper);
         Authenticator noAuthenticator = null;
         Authorizator noAuthorizator = null;
         mailboxManager = new CassandraMailboxManager(mailboxSessionMapperFactory, noAuthenticator, noAuthorizator, new NoMailboxPathLocker(), new MessageParser(), messageIdFactory); 
