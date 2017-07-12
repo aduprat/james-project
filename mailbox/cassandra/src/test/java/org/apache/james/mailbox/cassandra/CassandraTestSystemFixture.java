@@ -103,8 +103,9 @@ public class CassandraTestSystemFixture {
     }
 
     public static CassandraMailboxManager createMailboxManager(CassandraMailboxSessionMapperFactory mapperFactory) throws Exception{
+        CassandraAttachmentMapper attachmentMapper = new CassandraAttachmentMapper(cassandra.getConf());
         CassandraMailboxManager cassandraMailboxManager = new CassandraMailboxManager(mapperFactory, mock(Authenticator.class), mock(Authorizator.class),
-            new NoMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory());
+            new NoMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory(), attachmentMapper);
         cassandraMailboxManager.init();
 
         return cassandraMailboxManager;

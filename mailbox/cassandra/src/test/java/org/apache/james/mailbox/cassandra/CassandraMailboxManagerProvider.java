@@ -94,7 +94,7 @@ public class CassandraMailboxManagerProvider {
         Authenticator noAuthenticator = null;
         Authorizator noAuthorizator = null;
         CassandraMailboxManager manager = new CassandraMailboxManager(mapperFactory, noAuthenticator, noAuthorizator, new NoMailboxPathLocker(), aclResolver, groupMembershipResolver,
-            messageParser, messageIdFactory, LIMIT_ANNOTATIONS, LIMIT_ANNOTATION_SIZE);
+            messageParser, messageIdFactory, LIMIT_ANNOTATIONS, LIMIT_ANNOTATION_SIZE, attachmentMapper);
         try {
             manager.init();
         } catch (MailboxException e) {

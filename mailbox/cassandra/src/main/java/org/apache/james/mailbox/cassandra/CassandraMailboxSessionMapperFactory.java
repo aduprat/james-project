@@ -48,7 +48,6 @@ import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
-import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.ModSeqProvider;
@@ -146,7 +145,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
                                           uidProvider,
                                           modSeqProvider,
                                           null,
-                                          (CassandraAttachmentMapper) createAttachmentMapper(mailboxSession),
+                                          cassandraAttachmentMapper,
                                           messageDAOV2,
                                           messageIdDAO,
                                           imapUidDAO,
@@ -162,8 +161,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
 
     @Override
     public MessageIdMapper createMessageIdMapper(MailboxSession mailboxSession) throws MailboxException {
-        return new CassandraMessageIdMapper(getMailboxMapper(mailboxSession), mailboxDAO,
-                (CassandraAttachmentMapper) getAttachmentMapper(mailboxSession),
+        return new CassandraMessageIdMapper(getMailboxMapper(mailboxSession), mailboxDAO, cassandraAttachmentMapper,
                 imapUidDAO, messageIdDAO, messageDAO, messageDAOV2, indexTableHandler, modSeqProvider, mailboxSession,
                 v1ToV2Migration, cassandraConfiguration);
     }
@@ -171,11 +169,6 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     @Override
     public MailboxMapper createMailboxMapper(MailboxSession mailboxSession) {
         return new CassandraMailboxMapper(session, mailboxDAO, mailboxPathDAO, cassandraConfiguration);
-    }
-
-    @Override
-    public AttachmentMapper createAttachmentMapper(MailboxSession mailboxSession) {
-        return cassandraAttachmentMapper;
     }
 
     @Override

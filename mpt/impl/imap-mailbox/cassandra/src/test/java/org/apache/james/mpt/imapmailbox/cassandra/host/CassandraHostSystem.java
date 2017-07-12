@@ -142,7 +142,7 @@ public class CassandraHostSystem extends JamesImapHostSystem {
             deletedMessageDAO,
             attachmentMapper);
 
-        mailboxManager = new CassandraMailboxManager(mapperFactory, authenticator, authorizator, new JVMMailboxPathLocker(), new MessageParser(), messageIdFactory);
+        mailboxManager = new CassandraMailboxManager(mapperFactory, authenticator, authorizator, new JVMMailboxPathLocker(), new MessageParser(), messageIdFactory, attachmentMapper);
         QuotaRootResolver quotaRootResolver = new DefaultQuotaRootResolver(mapperFactory);
 
         perUserMaxQuotaManager = new CassandraPerUserMaxQuotaManager(session);

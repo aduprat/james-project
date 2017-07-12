@@ -64,6 +64,7 @@ public class CassandraMapperProvider implements MapperProvider {
     private final MessageUidProvider messageUidProvider;
     private final CassandraModSeqProvider cassandraModSeqProvider;
     private final MockMailboxSession mailboxSession = new MockMailboxSession("benwa");
+    private final CassandraAttachmentMapper attachmentMapper;
 
 
     public CassandraMapperProvider() {
@@ -84,6 +85,7 @@ public class CassandraMapperProvider implements MapperProvider {
                     new CassandraBlobModule()));
         messageUidProvider = new MessageUidProvider();
         cassandraModSeqProvider = new CassandraModSeqProvider(this.cassandra.getConf());
+        attachmentMapper = new CassandraAttachmentMapper(cassandra.getConf());
     }
 
     @Override
@@ -104,6 +106,11 @@ public class CassandraMapperProvider implements MapperProvider {
     @Override
     public MessageIdMapper createMessageIdMapper() throws MailboxException {
         return createMapperFactory().getMessageIdMapper(mailboxSession);
+    }
+
+    @Override
+    public AttachmentMapper getAttachmentMapper() {
+        return attachmentMapper;
     }
 
     private CassandraMailboxSessionMapperFactory createMapperFactory() {
@@ -131,11 +138,6 @@ public class CassandraMapperProvider implements MapperProvider {
             new CassandraApplicableFlagDAO(cassandra.getConf()),
             deletedMessageDAO,
             attachmentMapper);
-    }
-
-    @Override
-    public AttachmentMapper createAttachmentMapper() throws MailboxException {
-        return createMapperFactory().getAttachmentMapper(mailboxSession);
     }
 
     @Override
