@@ -68,6 +68,7 @@ public class AttachmentLoader {
         Stream<MessageAttachmentRepresentation>>> messageRepresentations, MessageMapper.FetchType fetchType) {
 
         if (fetchType == MessageMapper.FetchType.Body || fetchType == MessageMapper.FetchType.Full) {
+            System.out.println("Load full");
             return FluentFutureStream.<SimpleMessage> of(
                 messageRepresentations
                     .map(pair -> getAttachments(pair.getRight().collect(Guavate.toImmutableList()))

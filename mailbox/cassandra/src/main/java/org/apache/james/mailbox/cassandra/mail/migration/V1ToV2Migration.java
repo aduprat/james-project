@@ -72,9 +72,11 @@ public class V1ToV2Migration {
     }
 
     private void executeMigrationThread(CassandraMessageDAO messageDAOV1, CassandraMessageDAOV2 messageDAOV2, CassandraConfiguration cassandraConfiguration) {
-        IntStream.range(0, cassandraConfiguration.getV1ToV2ThreadCount())
-            .mapToObj(i -> new V1ToV2MigrationThread(messagesToBeMigrated, messageDAOV1, messageDAOV2, attachmentLoader, migrationTracking))
-            .forEach(migrationExecutor::execute);
+        if (cassandraConfiguration.isOnTheFlyV1ToV2Migration()) {
+            IntStream.range(0, cassandraConfiguration.getV1ToV2ThreadCount())
+                .mapToObj(i -> new V1ToV2MigrationThread(messagesToBeMigrated, messageDAOV1, messageDAOV2, attachmentLoader, migrationTracking))
+                .forEach(migrationExecutor::execute);
+        }
     }
 
     @PreDestroy

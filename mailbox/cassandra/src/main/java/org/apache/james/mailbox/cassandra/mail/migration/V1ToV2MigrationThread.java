@@ -30,14 +30,10 @@ import org.apache.james.mailbox.cassandra.mail.AttachmentLoader;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraMessageDAOV2;
 import org.apache.james.mailbox.cassandra.mail.MessageAttachmentRepresentation;
-import org.apache.james.mailbox.cassandra.mail.MessageWithoutAttachment;
 import org.apache.james.mailbox.cassandra.mail.RawMessageWithoutAttachment;
 import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.Attachment;
-import org.apache.james.mailbox.model.MessageAttachment;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.Message;
-import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

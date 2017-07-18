@@ -168,7 +168,7 @@ public class V1ToV2MigrationTest {
             new PropertyBuilder(), ImmutableList.of());
         messageDAOV1.save(originalMessage).join();
 
-        testee.getFromV2orElseFromV1AfterMigration(CassandraMessageDAOV2.notFound(metaData)).join();
+        testee.runFullMigration();
 
         awaitMigration();
 
@@ -181,28 +181,6 @@ public class V1ToV2MigrationTest {
 
     @Test
     public void fullMigrationShouldRemoveAllMessageFromOldDao() throws Exception {
-        SimpleMailboxMessage originalMessage = createMessage(messageId, CONTENT, BODY_START,
-            new PropertyBuilder(), ImmutableList.of());
-
-        SimpleMailboxMessage originalMessage2 = createMessage(messageId2, CONTENT, BODY_START,
-            new PropertyBuilder(), ImmutableList.of());
-
-        SimpleMailboxMessage originalMessage3 = createMessage(messageId3, CONTENT, BODY_START,
-            new PropertyBuilder(), ImmutableList.of());
-
-        FluentFutureStream.ofFutures(
-            messageDAOV1.save(originalMessage),
-            messageDAOV1.save(originalMessage2),
-            messageDAOV1.save(originalMessage3)
-        ).join();
-
-        testee.runFullMigration();
-
-        awaitFullMigration();
-    }
-
-    @Test
-    public void fullMigrationShouldRemoveAllMessageFromOldDaoWhenMigrationOnFlyIsFalse() throws Exception {
         testee = new V1ToV2Migration(
                 messageDAOV1,
                 messageDAOV2,
@@ -299,7 +277,7 @@ public class V1ToV2MigrationTest {
 
         messageDAOV1.save(originalMessage).join();
 
-        testee.getFromV2orElseFromV1AfterMigration(CassandraMessageDAOV2.notFound(metaData)).join();
+        testee.runFullMigration();
 
         awaitMigration();
 
