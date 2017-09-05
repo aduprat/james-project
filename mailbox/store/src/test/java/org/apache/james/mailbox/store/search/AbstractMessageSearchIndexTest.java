@@ -208,6 +208,7 @@ public abstract class AbstractMessageSearchIndexTest {
             otherSession,
             RECENT,
             new Flags());
+
         await();
     }
 
@@ -574,7 +575,7 @@ public abstract class AbstractMessageSearchIndexTest {
     }
 
     @Test
-    public void flagIsUnSetShouldReturnUidOfMessageNotMarkedAsSeendWhenUsedWithFlagSeen() throws MailboxException {
+    public void flagIsUnSetShouldReturnUidOfMessageNotMarkedAsSeenWhenUsedWithFlagSeen() throws MailboxException {
         // Only message 6 is marked as read.
         SearchQuery searchQuery = new SearchQuery(SearchQuery.flagIsUnSet(Flags.Flag.SEEN));
 
@@ -1099,6 +1100,23 @@ public abstract class AbstractMessageSearchIndexTest {
 
         assertThat(messageSearchIndex.search(session, mailbox, searchQuery))
             .containsExactly(m7.getUid());
+    }
+
+    @Test
+    public void searchWithAttachmentTextShouldReturnMailsWhenAttachmentContentMatches() throws Exception {
+        Assume.assumeTrue(storeMailboxManager.getSupportedSearchCapabilities().contains(MailboxManager.SearchCapabilities.Attachment));
+        ComposedMessageId messageWithBeautifulBananaAsTextAttachment = myFolderMessageManager.appendMessage(
+                ClassLoader.getSystemResourceAsStream("eml/emailWithTextAttachment.eml"),
+                new Date(1404252000000L),
+                session,
+                RECENT,
+                new Flags());
+        await();
+
+        SearchQuery searchQuery = new SearchQuery(SearchQuery.attachmentContains("beautiful banana"));
+
+        assertThat(messageSearchIndex.search(session, mailbox2, searchQuery))
+            .containsExactly(messageWithBeautifulBananaAsTextAttachment.getUid());
     }
 
     @Test

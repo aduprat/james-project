@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+
 import javax.inject.Inject;
 
 import org.apache.james.mailbox.MailboxManager.SearchCapabilities;
@@ -73,7 +74,7 @@ public class SimpleMessageSearchIndex implements MessageSearchIndex {
     
     @Override
     public EnumSet<SearchCapabilities> getSupportedCapabilities() {
-        return EnumSet.of(SearchCapabilities.MultimailboxSearch, SearchCapabilities.Text);
+        return EnumSet.of(SearchCapabilities.MultimailboxSearch, SearchCapabilities.Text, SearchCapabilities.Attachment);
     }
     
     /**

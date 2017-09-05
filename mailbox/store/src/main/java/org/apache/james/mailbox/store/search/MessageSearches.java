@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.TimeZone;
+
 import javax.mail.Flags;
 
 import org.apache.james.mailbox.MessageUid;
@@ -207,6 +208,8 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
                 return textContains(value, message);
             case FULL:
                 return messageContains(value, message);
+            case ATTACHMENTS:
+                return atachmentContains(value, message);
             }
             throw new UnsupportedSearchException();
         } catch (IOException | MimeException e) {
@@ -237,6 +240,11 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
     private boolean textContains(String value, MailboxMessage message) throws IOException, MimeException, MailboxException {
         InputStream bodyContent = message.getBodyContent();
         return isInMessage(value, new SequenceInputStream(textHeaders(message), bodyContent), true);
+    }
+
+    private boolean atachmentContains(String value, MailboxMessage message) throws IOException, MimeException {
+        final InputStream input = message.getFullContent();
+        return isInMessage(value, input, true);
     }
 
     private InputStream textHeaders(MailboxMessage message) throws MimeIOException, IOException {

@@ -543,6 +543,17 @@ public class SearchQuery implements Serializable {
     }
 
     /**
+     * Creates a filter matching messages which has an attachment containing the given text.
+     * 
+     * @param value
+     *            search value
+     * @return <code>Criterion</code>, not null
+     */
+    public static Criterion attachmentContains(String value) {
+        return new TextCriterion(value, Scope.ATTACHMENTS);
+    }
+
+    /**
      * Creates a filter matching messages within any of the given ranges.
      * 
      * @param range
@@ -1093,7 +1104,9 @@ public class SearchQuery implements Serializable {
         TEXT,
 
         /** Full message content including headers */
-        FULL
+        FULL,
+        /** Attachment content */
+        ATTACHMENTS
     }
 
     /**
