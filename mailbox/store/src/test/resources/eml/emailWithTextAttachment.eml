@@ -1,20 +1,8 @@
-Return-Path: <aduprat@linagora.com>
-Received: from smtp.linagora.com (smtp.linagora.dc1 [172.16.18.53])
-	 by imap (Cyrus v2.2.13-Debian-2.2.13-19+squeeze3) with LMTPA;
-	 Tue, 05 Sep 2017 09:52:31 +0200
-X-Sieve: CMU Sieve 2.2
-Received: from [192.168.1.14] (LFbn-1-1558-141.w90-65.abo.wanadoo.fr [90.65.173.141])
-	(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	by smtp.linagora.com (Postfix) with ESMTPSA id BFB696DD
-	for <aduprat@linagora.com>; Tue,  5 Sep 2017 09:54:16 +0200 (CEST)
-To: Antoine DUPRAT <aduprat@linagora.com>
-From: aduprat <aduprat@linagora.com>
+To: James User <user@james.org>
+From: James Sender <sender@james.org>
 Subject: Message with text attachment
 Message-ID: <ffaa7bce-fbe3-83b5-de3f-9a7301233615@linagora.com>
 Date: Tue, 5 Sep 2017 09:54:16 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
- Thunderbird/52.2.1
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
  boundary="------------D24E361990BDBA143D4D8794"

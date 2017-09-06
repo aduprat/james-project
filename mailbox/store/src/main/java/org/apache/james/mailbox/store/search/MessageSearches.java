@@ -38,9 +38,12 @@ import java.util.TimeZone;
 
 import javax.mail.Flags;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedSearchException;
+import org.apache.james.mailbox.model.Attachment;
+import org.apache.james.mailbox.model.MessageAttachment;
 import org.apache.james.mailbox.model.MessageResult.Header;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.SearchQuery.AddressType;
@@ -70,9 +73,12 @@ import org.apache.james.mime4j.message.HeaderImpl;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.james.mime4j.utils.search.MessageMatcher;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -80,6 +86,8 @@ import com.google.common.collect.Lists;
  * Utility methods to help perform search operations.
  */
 public class MessageSearches implements Iterable<SimpleMessageSearchIndex.SearchResult> {
+
+    private static final String PDF_EXTENSION = "pdf";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageSearches.class);
 
@@ -209,7 +217,7 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
             case FULL:
                 return messageContains(value, message);
             case ATTACHMENTS:
-                return atachmentContains(value, message);
+                return atachmentsContain(value, message);
             }
             throw new UnsupportedSearchException();
         } catch (IOException | MimeException e) {
@@ -242,9 +250,46 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
         return isInMessage(value, new SequenceInputStream(textHeaders(message), bodyContent), true);
     }
 
-    private boolean atachmentContains(String value, MailboxMessage message) throws IOException, MimeException {
-        final InputStream input = message.getFullContent();
-        return isInMessage(value, input, true);
+    private boolean atachmentsContain(String value, MailboxMessage message) throws IOException, MimeException {
+        List<MessageAttachment> attachments = message.getAttachments();
+        return isInAttachments(value, attachments);
+    }
+
+    private boolean isInAttachments(String value, List<MessageAttachment> attachments) {
+        return attachments.stream()
+            .map(this::extractText)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .filter(string -> string.contains(value))
+            .findAny()
+            .isPresent();
+    }
+
+    private Optional<String> extractText(MessageAttachment attachment) {
+        if (isPDF(attachment)) {
+            return extractTextFromPDF(attachment.getAttachment());
+        }
+        try {
+            return Optional.of(IOUtils.toString(attachment.getAttachment().getStream(), Charsets.UTF_8));
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    private boolean isPDF(MessageAttachment attachment) {
+        return attachment.getName()
+                .filter(name -> name.trim().endsWith(PDF_EXTENSION))
+                .isPresent();
+    }
+
+    private Optional<String> extractTextFromPDF(Attachment attachment) {
+        try {
+            return Optional.of(
+                    new PDFTextStripper().getText(
+                            PDDocument.load(attachment.getStream())));
+        } catch (IOException e) {
+            return Optional.empty();
+        }
     }
 
     private InputStream textHeaders(MailboxMessage message) throws MimeIOException, IOException {

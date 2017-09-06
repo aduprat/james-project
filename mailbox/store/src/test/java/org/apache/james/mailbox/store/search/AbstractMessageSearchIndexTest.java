@@ -1137,6 +1137,23 @@ public abstract class AbstractMessageSearchIndexTest {
     }
 
     @Test
+    public void searchWithPDFAttachmentShouldReturnMailsWhenAttachmentContentMatches() throws Exception {
+        Assume.assumeTrue(storeMailboxManager.getSupportedSearchCapabilities().contains(MailboxManager.SearchCapabilities.Attachment));
+        ComposedMessageId messageWithBeautifulBananaAsPDFAttachment = myFolderMessageManager.appendMessage(
+                ClassLoader.getSystemResourceAsStream("eml/emailWithPDFAttachment.eml"),
+                new Date(1404252000000L),
+                session,
+                RECENT,
+                new Flags());
+        await();
+
+        SearchQuery searchQuery = new SearchQuery(SearchQuery.attachmentContains("beautiful banana"));
+
+        assertThat(messageSearchIndex.search(session, mailbox2, searchQuery))
+            .containsExactly(messageWithBeautifulBananaAsPDFAttachment.getUid());
+    }
+
+    @Test
     public void sortShouldNotDiscardResultWhenSearchingFieldIsIdentical() throws Exception {
         SearchQuery searchQuery = new SearchQuery(SearchQuery.all());
         searchQuery.setSorts(ImmutableList.of(new Sort(SortClause.Arrival)));
