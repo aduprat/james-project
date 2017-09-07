@@ -1103,7 +1103,7 @@ public class SearchQuery implements Serializable {
          */
         TEXT,
 
-        /** Full message content including headers */
+        /** Full message content including headers and attachments */
         FULL,
         /** Attachment content */
         ATTACHMENTS
