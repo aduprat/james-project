@@ -20,10 +20,10 @@
 package org.apache.james.mailbox.inmemory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import org.apache.james.mailbox.extractor.TextExtractor;
 
 import java.io.InputStream;
 
+import org.apache.james.mailbox.extractor.TextExtractor;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class JsoupTextExtractorTest {
     public void extractedTextFromHtmlShouldNotContainTheContentOfTitleTag() throws Exception {
         InputStream inputStream = ClassLoader.getSystemResourceAsStream("documents/html.txt");
 
-        assertThat(textExtractor.extractContent(inputStream, "text/html").getTextualContent())
+        assertThat(textExtractor.extractContent(inputStream, "text/html").getTextualContent().get())
                 .doesNotContain("*|MC:SUBJECT|*");
     }
 

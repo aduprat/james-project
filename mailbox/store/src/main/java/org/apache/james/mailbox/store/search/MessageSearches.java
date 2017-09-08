@@ -256,11 +256,14 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
 
     private Stream<String> toAttachmentContent(Attachment attachment) {
         try {
-            return Stream.of(textExtractor
+            Stream.Builder<String> streamBuilder = Stream.builder();
+            textExtractor
                 .extractContent(
                     attachment.getStream(),
                     attachment.getType())
-                .getTextualContent());
+                .getTextualContent()
+                .ifPresent(text -> streamBuilder.add(text));
+            return streamBuilder.build();
         } catch (Exception e) {
             LOGGER.error("Error while parsing attachment content", e);
             return Stream.of();
