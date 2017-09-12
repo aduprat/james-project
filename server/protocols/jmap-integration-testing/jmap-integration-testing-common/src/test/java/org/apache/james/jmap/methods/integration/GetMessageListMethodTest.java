@@ -1549,7 +1549,6 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void getMessageListNotKeywordFilterShouldReturnMessagesWithoutKeywordsWhenMultipleNotKeywordAndFilterOperator() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 
@@ -1573,8 +1572,8 @@ public abstract class GetMessageListMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", allOf(
-                containsInAnyOrder(messageNotFlagged.getMessageId().serialize(), messageFlagged.getMessageId().serialize())));
+            .body(ARGUMENTS + ".messageIds",
+                containsInAnyOrder(messageNotFlagged.getMessageId().serialize(), messageFlagged.getMessageId().serialize()));
     }
 
     @Test
@@ -1602,7 +1601,6 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void getMessageListHasKeywordShouldIgnoreDeleted() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 
@@ -1621,12 +1619,11 @@ public abstract class GetMessageListMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", allOf(
-                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize())));
+            .body(ARGUMENTS + ".messageIds",
+                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize()));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void getMessageListHasKeywordShouldIgnoreRecent() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 
@@ -1645,12 +1642,11 @@ public abstract class GetMessageListMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", allOf(
-                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize())));
+            .body(ARGUMENTS + ".messageIds",
+                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize()));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void getMessageListNotKeywordShouldIgnoreDeleted() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 
@@ -1669,12 +1665,11 @@ public abstract class GetMessageListMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", allOf(
-                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize())));
+            .body(ARGUMENTS + ".messageIds",
+                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize()));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void getMessageListNotKeywordShouldIgnoreRecent() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, "mailbox");
 
@@ -1693,8 +1688,8 @@ public abstract class GetMessageListMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", allOf(
-                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize())));
+            .body(ARGUMENTS + ".messageIds",
+                containsInAnyOrder(messageFlagged.getMessageId().serialize(), messageNotFlagged.getMessageId().serialize()));
     }
 
     @Test
