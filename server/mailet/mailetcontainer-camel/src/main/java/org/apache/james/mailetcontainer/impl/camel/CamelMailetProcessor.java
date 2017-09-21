@@ -64,7 +64,7 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
     private final UseLatestAggregationStrategy aggr = new UseLatestAggregationStrategy();
     private final MetricFactory metricFactory;
     private List<MatcherMailetPair> pairs;
-    private Optional<ExecutorService> executorService;
+    private Optional<ExecutorService> executorService = Optional.empty();
 
     public CamelMailetProcessor(MetricFactory metricFactory) {
         this.metricFactory = metricFactory;
