@@ -23,6 +23,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -51,6 +53,7 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
 
     private JMXStateCompositeProcessorListener jmxListener;
     private boolean enableJmx = true;
+    private Optional<ExecutorService> executorService = Optional.empty();
 
 
     public void addListener(CompositeProcessorListener listener) {
@@ -65,6 +68,10 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
         listeners.remove(listener);
     }
 
+    public void setExecutorService(Optional<ExecutorService> executorService) {
+        this.executorService = executorService;
+    }
+ 
     /**
      * @see
      * org.apache.james.lifecycle.api.Configurable#configure(org.apache.commons.configuration.HierarchicalConfiguration)
@@ -164,7 +171,7 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
             if (!processorConf.containsKey("[@enableJmx]")) {
                 processorConf.addProperty("[@enableJmx]", enableJmx);
             }
-            processors.put(processorName, createMailProcessor(processorName, processorConf));
+            processors.put(processorName, createMailProcessor(processorName, processorConf, executorService));
         }
 
         if (enableJmx) {
@@ -200,7 +207,7 @@ public abstract class AbstractStateCompositeProcessor implements MailProcessor, 
      * @return container
      * @throws Exception
      */
-    protected abstract MailProcessor createMailProcessor(String state, HierarchicalConfiguration config) throws Exception;
+    protected abstract MailProcessor createMailProcessor(String state, HierarchicalConfiguration config, Optional<ExecutorService> executorService) throws Exception;
 
     /**
      * A Listener which will get called after

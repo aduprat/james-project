@@ -24,15 +24,17 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 
 import javax.mail.MessagingException;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.DefaultConfigurationBuilder;
 import org.apache.commons.configuration.HierarchicalConfiguration;
-import org.apache.james.server.core.MailImpl;
 import org.apache.james.mailetcontainer.api.MailProcessor;
 import org.apache.james.mailetcontainer.api.mock.MockMailProcessor;
+import org.apache.james.server.core.MailImpl;
 import org.apache.mailet.Mail;
 import org.junit.Rule;
 import org.junit.Test;
@@ -48,7 +50,7 @@ public abstract class AbstractStateCompositeProcessorTest {
         AbstractStateCompositeProcessor processor = new AbstractStateCompositeProcessor() {
 
             @Override
-            protected MailProcessor createMailProcessor(final String state, HierarchicalConfiguration config) throws
+            protected MailProcessor createMailProcessor(final String state, HierarchicalConfiguration config, Optional<ExecutorService> executorService) throws
                 Exception {
                 return new MockMailProcessor("") {
 

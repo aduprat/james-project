@@ -19,6 +19,8 @@
 package org.apache.james.mailetcontainer.impl.camel;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 
 import javax.annotation.PostConstruct;
 import javax.mail.MessagingException;
@@ -44,6 +46,7 @@ import org.apache.mailet.Matcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -51,6 +54,7 @@ import com.google.common.collect.ImmutableList;
  * the {@link Matcher} / {@link Mailet} routing
  */
 public class CamelMailetProcessor extends AbstractStateMailetProcessor implements CamelContextAware {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CamelMailetProcessor.class);
 
     private CamelContext context;
@@ -60,9 +64,14 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
     private final UseLatestAggregationStrategy aggr = new UseLatestAggregationStrategy();
     private final MetricFactory metricFactory;
     private List<MatcherMailetPair> pairs;
+    private Optional<ExecutorService> executorService;
 
     public CamelMailetProcessor(MetricFactory metricFactory) {
         this.metricFactory = metricFactory;
+    }
+
+    public void setExecutorService(Optional<ExecutorService> executorService) {
+        this.executorService = executorService;
     }
 
     /**
@@ -125,7 +134,21 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
     protected void setupRouting(List<MatcherMailetPair> pairs) throws MessagingException {
         try {
             this.pairs = pairs;
-            context.addRoutes(new MailetContainerRouteBuilder(pairs));
+            if (executorService.isPresent()) {
+                executorService.get().submit(new Runnable() {
+    
+                    @Override
+                    public void run() {
+                        try {
+                            context.addRoutes(new MailetContainerRouteBuilder(pairs));
+                        } catch (Exception e) {
+                            Throwables.propagate(e);
+                        }
+                    }
+                });
+            } else {
+                context.addRoutes(new MailetContainerRouteBuilder(pairs));
+            }
         } catch (Exception e) {
             throw new MessagingException("Unable to setup routing for MailetMatcherPairs", e);
         }

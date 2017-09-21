@@ -19,6 +19,9 @@
 
 package org.apache.james.mailetcontainer.impl.camel;
 
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -103,16 +106,18 @@ public class CamelCompositeProcessor extends AbstractStateCompositeProcessor imp
     }
 
     /**
+     * @param executorService 
      * @see org.apache.james.mailetcontainer.lib.AbstractStateCompositeProcessor
      * #createMailProcessor(java.lang.String, org.apache.commons.configuration.HierarchicalConfiguration)
      */
-    protected MailProcessor createMailProcessor(String name, HierarchicalConfiguration config) throws Exception {
+    protected MailProcessor createMailProcessor(String name, HierarchicalConfiguration config, Optional<ExecutorService> executorService) throws Exception {
         CamelMailetProcessor processor = new CamelMailetProcessor(metricFactory);
         try {
             processor.setCamelContext(camelContext);
             processor.setMailetContext(mailetContext);
             processor.setMailetLoader(mailetLoader);
             processor.setMatcherLoader(matcherLoader);
+            processor.setExecutorService(executorService);
             processor.configure(config);
             processor.setRootMailProcessor(this);
             processor.init();

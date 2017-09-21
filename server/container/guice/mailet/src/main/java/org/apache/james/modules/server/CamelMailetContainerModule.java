@@ -19,6 +19,7 @@
 
 package org.apache.james.modules.server;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -43,6 +44,7 @@ import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.transport.mailets.RemoveMimeHeader;
 import org.apache.james.transport.matchers.All;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.util.SandglassExecutorService;
 import org.apache.james.utils.ConfigurationPerformer;
 import org.apache.james.utils.ConfigurationProvider;
 import org.apache.james.utils.GuiceMailetLoader;
@@ -106,6 +108,7 @@ public class CamelMailetContainerModule extends AbstractModule {
         private final MailQueueFactory mailQueueFactory;
         private final DefaultProcessorsConfigurationSupplier defaultProcessorsConfigurationSupplier;
         private final Set<TransportProcessorCheck> transportProcessorCheckSet;
+        private final SandglassExecutorService executorService;
 
         @Inject
         public MailetModuleConfigurationPerformer(ConfigurationProvider configurationProvider,
@@ -122,6 +125,7 @@ public class CamelMailetContainerModule extends AbstractModule {
             this.mailQueueFactory = mailQueueFactory;
             this.transportProcessorCheckSet = transportProcessorCheckSet;
             this.defaultProcessorsConfigurationSupplier = defaultProcessorsConfigurationSupplier;
+            this.executorService = new SandglassExecutorService(Duration.ofMinutes(1));
         }
 
         @Override
@@ -136,11 +140,13 @@ public class CamelMailetContainerModule extends AbstractModule {
                 configureMailetContext();
             } catch (Exception e) {
                 throw Throwables.propagate(e);
+            } finally {
+                executorService.waitThenCheck();
             }
-
         }
 
         private void configureProcessors(DefaultCamelContext camelContext) throws Exception {
+            camelCompositeProcessor.setExecutorService(Optional.of(executorService));
             camelCompositeProcessor.setCamelContext(camelContext);
             camelCompositeProcessor.configure(getProcessorConfiguration());
             camelCompositeProcessor.init();
