@@ -34,6 +34,18 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * The goal of this ExecutorService is to execute tasks in a dedicated time (sandglass).
+ * 
+ * <p>It's running the tasks in 10 threads, hard coded yet.
+ * 
+ * <p>The usage is simple, just submit tasks to it;
+ * then call the {@link SandglassExecutorService#waitThenCheck} method.
+ * This method ensure that all tasks are done during the sandglass time.
+ * If one of them isn't finished at the end of the duration, the method should throw an {@link IllegalStateException}.
+ * If all tasks are finished, then the method will return directly without waiting for the end of the duration.
+ *
+ */
 public class SandglassExecutorService implements ExecutorService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SandglassExecutorService.class);
