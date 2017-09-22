@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.impl.SimpleRegistry;
@@ -53,6 +54,7 @@ import org.apache.mailet.MailetContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
@@ -101,6 +103,8 @@ public class CamelMailetContainerModule extends AbstractModule {
     @Singleton
     public static class MailetModuleConfigurationPerformer implements ConfigurationPerformer {
 
+        @VisibleForTesting static final long ONE_MINUTE_IN_MILLIS = TimeUnit.MINUTES.toMillis(1);
+        
         private final ConfigurationProvider configurationProvider;
         private final CamelCompositeProcessor camelCompositeProcessor;
         private final JamesMailSpooler jamesMailSpooler;
@@ -125,7 +129,17 @@ public class CamelMailetContainerModule extends AbstractModule {
             this.mailQueueFactory = mailQueueFactory;
             this.transportProcessorCheckSet = transportProcessorCheckSet;
             this.defaultProcessorsConfigurationSupplier = defaultProcessorsConfigurationSupplier;
-            this.executorService = new SandglassExecutorService(Duration.ofMinutes(1));
+            this.executorService = new SandglassExecutorService(getInitializationTimeout());
+        }
+
+        @VisibleForTesting Duration getInitializationTimeout() {
+            try {
+                return Duration.ofMillis(configurationProvider.getConfiguration("mailetcontainer")
+                        .getLong("initTimeoutInMillis", ONE_MINUTE_IN_MILLIS));
+            } catch (ConfigurationException e) {
+                LOGGER.warn("Could not locate configuration for initTimeoutInMillis. Default to one minute.");
+                return Duration.ofMillis(ONE_MINUTE_IN_MILLIS);
+            }
         }
 
         @Override

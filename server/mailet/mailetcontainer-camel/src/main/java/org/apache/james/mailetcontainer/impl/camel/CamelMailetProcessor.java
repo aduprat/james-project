@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.MoreExecutors;
 
 /**
  * {@link org.apache.james.mailetcontainer.lib.AbstractStateMailetProcessor} implementation which use Camel DSL for
@@ -134,21 +135,14 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
     protected void setupRouting(List<MatcherMailetPair> pairs) throws MessagingException {
         try {
             this.pairs = pairs;
-            if (executorService.isPresent()) {
-                executorService.get().submit(new Runnable() {
-    
-                    @Override
-                    public void run() {
-                        try {
-                            context.addRoutes(new MailetContainerRouteBuilder(pairs));
-                        } catch (Exception e) {
-                            Throwables.propagate(e);
-                        }
+            executorService.orElse(MoreExecutors.newDirectExecutorService())
+                .submit(() -> {
+                    try {
+                        context.addRoutes(new MailetContainerRouteBuilder(pairs));
+                    } catch (Exception e) {
+                        Throwables.propagate(e);
                     }
                 });
-            } else {
-                context.addRoutes(new MailetContainerRouteBuilder(pairs));
-            }
         } catch (Exception e) {
             throw new MessagingException("Unable to setup routing for MailetMatcherPairs", e);
         }

@@ -39,6 +39,8 @@
 	  <threads>20</threads>
 	</spooler>
       
+    <!-- Default timeout of processors initialization, (default one minute) -->
+    <initTimeoutInMillis>60000</initTimeoutInMillis>
   <processors>
   
     <!-- The root processor is a required processor - James routes all mail on the spool -->
