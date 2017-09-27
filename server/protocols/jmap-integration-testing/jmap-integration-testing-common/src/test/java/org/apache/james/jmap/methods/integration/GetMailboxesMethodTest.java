@@ -45,13 +45,11 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.DefaultMailboxes;
 import org.apache.james.jmap.HttpJmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
-import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.probe.MailboxProbe;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.probe.DataProbe;
@@ -511,5 +509,20 @@ public abstract class GetMailboxesMethodTest {
             .body(ARGUMENTS + ".list.name", hasItem(mailboxName));
     }
 
+    @Test
+    public void getAllMailboxesShouldReturnMailboxesWhenShared() throws Exception {
+        String mailboxName = "name";
+        mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, bob, mailboxName);
+        mailboxProbe.addRights(MailboxConstants.USER_NAMESPACE, bob, mailboxName, alice, new Rfc4314Rights(Right.Read).serialize());
 
+        given()
+            .header("Authorization", accessToken.serialize())
+            .body("[[\"getMailboxes\", {}, \"#0\"]]")
+            .when()
+            .post("/jmap")
+            .then()
+            .statusCode(200)
+            .body(NAME, equalTo("mailboxes"))
+            .body(ARGUMENTS + ".list.name", hasItem(mailboxName));
+    }
 }
