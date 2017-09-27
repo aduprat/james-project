@@ -34,6 +34,9 @@ public interface MailboxConstants {
     /** The namespace used for store user inboxes */
     String USER_NAMESPACE = NAMESPACE_PREFIX_CHAR + "private";
 
+    /** All namespaces */
+    String ALL_NAMESPACES = "*";
+
     /** The default delimiter used to seperated parent/child folders */
     char DEFAULT_DELIMITER = '.';
 

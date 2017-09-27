@@ -25,10 +25,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MailboxSession.User;
 import org.apache.james.mailbox.model.MailboxQuery.Builder;
 import org.junit.Before;
 import org.junit.Test;
-import org.apache.james.mailbox.MailboxSession.User;
 
 public class MailboxQueryTest {
 
@@ -1224,6 +1224,33 @@ public class MailboxQueryTest {
         Builder testee = MailboxQuery.builder()
                 .username("user")
                 .privateUserMailboxes()
+                .pathDelimiter('.');
+        //When
+        MailboxQuery actual = testee.build();
+        //Then
+        assertThat(actual.isExpressionMatch("folder")).isTrue();
+    }
+
+    @Test
+    public void buildShouldConstructMailboxPathWhenAllNamespaces() throws Exception {
+        //Given
+        MailboxPath expected = new MailboxPath("*", "user", "");
+        //When
+        MailboxQuery actual = MailboxQuery.builder()
+                .username("user")
+                .allNamespaces()
+                .pathDelimiter('.')
+                .build();
+        //Then
+        assertThat(actual.getBase()).isEqualTo(expected);
+    }
+
+    @Test
+    public void buildShouldMatchAllValuesWhenAllNamespaces() throws Exception {
+        //Given
+        Builder testee = MailboxQuery.builder()
+                .username("user")
+                .allNamespaces()
                 .pathDelimiter('.');
         //When
         MailboxQuery actual = testee.build();

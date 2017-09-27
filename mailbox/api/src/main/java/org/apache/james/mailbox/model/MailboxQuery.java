@@ -94,6 +94,11 @@ public final class MailboxQuery {
             return matchesAll();
         }
         
+        public Builder allNamespaces() {
+            this.namespace = Optional.of(MailboxConstants.ALL_NAMESPACES);
+            return matchesAll();
+        }
+
         public Builder expression(String expression) {
             this.expression = expression;
             return this;
