@@ -69,6 +69,8 @@ public abstract class GetMailboxesMethodTest {
     private static final String NAME = "[0][0]";
     private static final String ARGUMENTS = "[0][1]";
     private static final String FIRST_MAILBOX = ARGUMENTS + ".list[0]";
+    public static final String MAILBOX_NAME = FIRST_MAILBOX + ".name";
+    public static final String SHARED_WITH = FIRST_MAILBOX + ".sharedWith";
 
     protected abstract GuiceJamesServer createJmapServer();
 
@@ -258,9 +260,9 @@ public abstract class GetMailboxesMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
-            .body(FIRST_MAILBOX + ".name", equalTo(mailboxName))
-            .body(FIRST_MAILBOX + ".sharedWith", hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")))
-            .body(FIRST_MAILBOX + ".sharedWith", hasEntry(targetUser2, ImmutableList.of("a", "e", "s", "w")));
+            .body(MAILBOX_NAME, equalTo(mailboxName))
+            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")))
+            .body(SHARED_WITH, hasEntry(targetUser2, ImmutableList.of("a", "e", "s", "w")));
     }
 
     @Test
@@ -277,8 +279,8 @@ public abstract class GetMailboxesMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
-            .body(FIRST_MAILBOX + ".name", equalTo(mailboxName))
-            .body(FIRST_MAILBOX + ".sharedWith", is(ImmutableMap.of()));
+            .body(MAILBOX_NAME, equalTo(mailboxName))
+            .body(SHARED_WITH, is(ImmutableMap.of()));
     }
 
     @Test
@@ -297,8 +299,8 @@ public abstract class GetMailboxesMethodTest {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
-            .body(FIRST_MAILBOX + ".name", equalTo(mailboxName))
-            .body(FIRST_MAILBOX + ".sharedWith", hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")));
+            .body(MAILBOX_NAME, equalTo(mailboxName))
+            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")));
     }
     
     @Test
@@ -419,7 +421,7 @@ public abstract class GetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(FIRST_MAILBOX + ".id", not(isEmptyOrNullString()))
-            .body(FIRST_MAILBOX + ".name", nullValue())
+            .body(MAILBOX_NAME, nullValue())
             .body(FIRST_MAILBOX + ".parentId", nullValue())
             .body(FIRST_MAILBOX + ".role", nullValue())
             .body(FIRST_MAILBOX + ".sortOrder", equalTo(1000))
@@ -448,7 +450,7 @@ public abstract class GetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(FIRST_MAILBOX + ".id", not(isEmptyOrNullString()))
-            .body(FIRST_MAILBOX + ".name", nullValue());
+            .body(MAILBOX_NAME, nullValue());
     }
 
     @Test
@@ -464,7 +466,7 @@ public abstract class GetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(FIRST_MAILBOX + ".id", not(isEmptyOrNullString()))
-            .body(FIRST_MAILBOX + ".name", nullValue());
+            .body(MAILBOX_NAME, nullValue());
     }
 
     @Test
