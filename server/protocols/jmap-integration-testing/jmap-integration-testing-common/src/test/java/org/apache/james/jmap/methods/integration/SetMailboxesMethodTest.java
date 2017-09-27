@@ -1192,8 +1192,10 @@ public abstract class SetMailboxesMethodTest {
         jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         String mailboxId = mailbox.getMailboxId().serialize();
-        String requestBody =
-            "[" +
+
+        given()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1204,11 +1206,7 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-
-        given()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody)
+                "]")
         .when()
             .post("/jmap")
         .then()
@@ -1224,8 +1222,10 @@ public abstract class SetMailboxesMethodTest {
         jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, myBox);
         Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         String mailboxId = mailbox.getMailboxId().serialize();
-        String requestBody =
-            "[" +
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1236,11 +1236,7 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody)
+                "]")
             .post("/jmap");
 
         given()
@@ -1262,8 +1258,10 @@ public abstract class SetMailboxesMethodTest {
         jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, myBox);
         Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         String mailboxId = mailbox.getMailboxId().serialize();
-        String requestBody1 =
-            "[" +
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1274,9 +1272,12 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-        String requestBody2 =
-            "[" +
+                "]")
+            .post("/jmap");
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1287,16 +1288,7 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody1)
-            .post("/jmap");
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody2)
+                "]")
             .post("/jmap");
 
         given()
@@ -1318,8 +1310,10 @@ public abstract class SetMailboxesMethodTest {
         jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, myBox);
         Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         String mailboxId = mailbox.getMailboxId().serialize();
-        String requestBody1 =
-            "[" +
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1330,9 +1324,12 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-        String requestBody2 =
-            "[" +
+                "]")
+            .post("/jmap");
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1343,16 +1340,7 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody1)
-            .post("/jmap");
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody2)
+                "]")
             .post("/jmap");
 
         given()
@@ -1375,8 +1363,10 @@ public abstract class SetMailboxesMethodTest {
         jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, myBox);
         Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
         String mailboxId = mailbox.getMailboxId().serialize();
-        String requestBody1 =
-            "[" +
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1387,9 +1377,12 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-        String requestBody2 =
-            "[" +
+                "]")
+            .post("/jmap");
+
+        with()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
                 "  [ \"setMailboxes\"," +
                 "    {" +
                 "      \"update\": {" +
@@ -1400,16 +1393,7 @@ public abstract class SetMailboxesMethodTest {
                 "    }," +
                 "    \"#0\"" +
                 "  ]" +
-                "]";
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody1)
-            .post("/jmap");
-
-        with()
-            .header("Authorization", this.accessToken.serialize())
-            .body(requestBody2)
+                "]")
             .post("/jmap");
 
         given()
