@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+
 import javax.inject.Inject;
 
 import org.apache.james.jmap.model.ClientId;
@@ -138,8 +139,12 @@ public class GetMailboxesMethod implements Method {
 
     private Stream<Mailbox> retrieveAllMailboxes(MailboxSession mailboxSession) throws MailboxException {
         List<MailboxMetaData> userMailboxes = mailboxManager.search(
-            MailboxQuery.builder(mailboxSession).privateUserMailboxes().build(),
-            mailboxSession);
+                MailboxQuery.builder(mailboxSession)
+                    .expression(mailboxSession.getUser().getUserName())
+                    .allNamespaces()
+                    .username(mailboxSession.getUser().getUserName())
+                    .build(),
+                mailboxSession);
         return userMailboxes
             .stream()
             .map(MailboxMetaData::getId)
