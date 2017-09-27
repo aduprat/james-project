@@ -185,14 +185,6 @@ public class MailboxACL {
             this.value = EnumSet.of(Right.forChar(right.asCharacter()));
         }
 
-        /* Used for json serialization (probably a bad idea) */
-        public Rfc4314Rights(int serializedRights) {
-            this(copyOf(Right.allRights
-                .stream()
-                .filter(right -> ((serializedRights >> right.ordinal()) & 1) != 0)
-                .collect(Collectors.toList())));
-        }
-
         public Rfc4314Rights(String serializedRfc4314Rights) throws UnsupportedRightException {
             this.value = copyOf(serializedRfc4314Rights.chars()
                 .mapToObj(i -> (char) i)
