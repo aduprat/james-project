@@ -45,11 +45,14 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.DefaultMailboxes;
 import org.apache.james.jmap.HttpJmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
+import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
+import org.apache.james.mailbox.store.probe.ACLProbe;
 import org.apache.james.mailbox.store.probe.MailboxProbe;
+import org.apache.james.modules.ACLProbeImpl;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.probe.DataProbe;
 import org.apache.james.utils.DataProbeImpl;
@@ -78,13 +81,15 @@ public abstract class GetMailboxesMethodTest {
     private String username;
     private GuiceJamesServer jmapServer;
     private MailboxProbe mailboxProbe;
+    private ACLProbe aclProbe;
     
     @Before
     public void setup() throws Throwable {
         jmapServer = createJmapServer();
         jmapServer.start();
         mailboxProbe = jmapServer.getProbe(MailboxProbeImpl.class);
-        
+        aclProbe = jmapServer.getProbe(ACLProbeImpl.class);
+
         RestAssured.requestSpecification = new RequestSpecBuilder()
                 .setContentType(ContentType.JSON)
                 .setAccept(ContentType.JSON)
@@ -247,10 +252,10 @@ public abstract class GetMailboxesMethodTest {
         String mailboxName = "myMailbox";
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
         String targetUser1 = "toUser1@domain.com";
-        mailboxProbe.addRights(MailboxConstants.USER_NAMESPACE, username,  mailboxName, targetUser1, "rtews");
         String targetUser2 = "toUser2@domain.com";
-        mailboxProbe.addRights(MailboxConstants.USER_NAMESPACE, username,  mailboxName, targetUser2, "awse");
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
+        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtews"));
+        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser2, new Rfc4314Rights("awse"));
 
         given()
             .header("Authorization", accessToken.serialize())
@@ -288,8 +293,8 @@ public abstract class GetMailboxesMethodTest {
         String mailboxName = "myMailbox";
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
         String targetUser1 = "toUser1@domain.com";
-        mailboxProbe.addRights(MailboxConstants.USER_NAMESPACE, username,  mailboxName, targetUser1, "rtewskxp");
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
+        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtewskxp"));
 
         given()
             .header("Authorization", accessToken.serialize())
