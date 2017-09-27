@@ -24,48 +24,63 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BinaryOperator;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.EntryKey;
+import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
+import org.apache.james.util.OptionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 
 public class Rights {
     public enum Right {
-        Administer('a'),
-        Expunge('e'),
-        Insert('i'),
-        Lookup('l'),
-        Read('r'),
-        Seen('s'),
-        T_Delete('t'),
-        Write('w');
+        Administer(MailboxACL.Right.Administer),
+        Expunge(MailboxACL.Right.PerformExpunge),
+        Insert(MailboxACL.Right.Insert),
+        Lookup(MailboxACL.Right.Lookup),
+        Read(MailboxACL.Right.Read),
+        Seen(MailboxACL.Right.WriteSeenFlag),
+        T_Delete(MailboxACL.Right.DeleteMessages),
+        Write(MailboxACL.Right.Write);
 
-        private final char imapRight;
+        private final MailboxACL.Right right;
 
-        Right(char imapRight) {
-            this.imapRight = imapRight;
+        Right(MailboxACL.Right right) {
+            this.right = right;
         }
 
         @JsonValue
-        public char getImapRight() {
-            return imapRight;
+        public char asCharacter() {
+            return right.asCharacter();
         }
 
-        public static boolean exists(char c) {
-            return Arrays.stream(values())
-                .anyMatch(right -> right.getImapRight() == c);
+        public MailboxACL.Right getRight() {
+            return right;
+        }
+
+        public static Optional<Right> forRight(MailboxACL.Right right) {
+            return OptionalUtils.ifEmpty(
+                Arrays.stream(values())
+                    .filter(jmapRight -> jmapRight.right == right)
+                    .findAny(),
+                () -> LOGGER.warn("Non handled right '" + right + "'"));
         }
 
         public static Right forChar(char c) {
             return Arrays.stream(values())
-                .filter(right -> right.getImapRight() == c)
+                .filter(right -> right.asCharacter() == c)
                 .findAny()
                 .orElseThrow(() -> new IllegalArgumentException("No matching right for '" + c + "'"));
         }
@@ -74,6 +89,7 @@ public class Rights {
     public static class Username {
         private final String value;
 
+     //   @JsonCreator
         public Username(String value) {
             this.value = value;
         }
@@ -149,18 +165,8 @@ public class Rights {
     private static List<Right> fromACL(MailboxACL.Rfc4314Rights rights) {
         return rights.list()
             .stream()
-            .map(MailboxACL.Right::asCharacter)
-            .filter(Rights::existingChar)
-            .map(Right::forChar)
+            .flatMap(right -> OptionalUtils.toStream(Right.forRight(right)))
             .collect(Guavate.toImmutableList());
-    }
-
-    private static boolean existingChar(Character c) {
-        if (!Right.exists(c)) {
-            LOGGER.warn("Non handled right '" + c + "'");
-            return false;
-        }
-        return true;
     }
 
     private static boolean isSupported(EntryKey key) {
@@ -181,13 +187,43 @@ public class Rights {
 
     private final Multimap<Username, Right> rights;
 
-    public Rights(Multimap<Username, Right> rights) {
+    @JsonCreator
+    public Rights(Map<Username, List<Right>> rights) {
+        this(rights.entrySet()
+            .stream()
+            .flatMap(e -> e.getValue().stream().map(value -> Pair.of(e.getKey(), value)))
+            .collect(Guavate.toImmutableListMultimap(Pair::getKey, Pair::getValue)));
+    }
+
+    private Rights(Multimap<Username, Right> rights) {
         this.rights = rights;
     }
 
     @JsonAnyGetter
     public Map<Username, Collection<Right>> getRights() {
         return rights.asMap();
+    }
+
+    public MailboxACL toMailboxAcl() {
+        BinaryOperator<MailboxACL> union = Throwing.binaryOperator(MailboxACL::union);
+
+        return rights.asMap()
+            .entrySet()
+            .stream()
+            .map(entry -> new MailboxACL(
+                ImmutableMap.of(
+                    EntryKey.createUser(entry.getKey().value),
+                    toMailboxAclRights(entry.getValue()))))
+            .reduce(MailboxACL.EMPTY, union);
+    }
+
+    private Rfc4314Rights toMailboxAclRights(Collection<Right> rights) {
+        BinaryOperator<Rfc4314Rights> union = Throwing.binaryOperator(Rfc4314Rights::union);
+
+        return rights.stream()
+            .map(Right::getRight)
+            .map(Throwing.function(Rfc4314Rights::new))
+            .reduce(new Rfc4314Rights(), union);
     }
 
     @Override

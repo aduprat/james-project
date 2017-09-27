@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Entry;
 import org.apache.james.mailbox.model.MailboxACL.EntryKey;
 import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.junit.Test;
@@ -98,18 +99,6 @@ public class RightsTest {
     }
 
     @Test
-    public void existsShouldReturnTrueOnManagedRights() {
-        assertThat(Rights.Right.exists('t'))
-            .isTrue();
-    }
-
-    @Test
-    public void existsShouldReturnFalseOnUnManagedRights() {
-        assertThat(Rights.Right.exists('k'))
-            .isFalse();
-    }
-
-    @Test
     public void fromACLShouldFilterOutGroups() throws Exception {
         MailboxACL acl = new MailboxACL(ImmutableMap.of(
             EntryKey.createGroup("group"), new Rfc4314Rights("aet")));
@@ -147,6 +136,29 @@ public class RightsTest {
             .isEqualTo(Rights.builder()
                 .delegateTo(new Rights.Username("user"), Rights.Right.Administer, Rights.Right.Expunge, Rights.Right.T_Delete)
                 .build());
+    }
+
+    @Test
+    public void toMailboxAclShouldReturnEmptyAclWhenEmpty() {
+        Rights rights = Rights.EMPTY;
+
+        assertThat(rights.toMailboxAcl())
+            .isEqualTo(new MailboxACL());
+    }
+
+    @Test
+    public void toMailboxActShouldReturnActConversion() throws Exception {
+        String user1 = "user1";
+        String user2 = "user2";
+        Rights rights = Rights.builder()
+            .delegateTo(new Rights.Username(user1), Rights.Right.Administer, Rights.Right.T_Delete)
+            .delegateTo(new Rights.Username(user2), Rights.Right.Expunge, Rights.Right.Lookup)
+            .build();
+
+        assertThat(rights.toMailboxAcl())
+            .isEqualTo(new MailboxACL(
+                new Entry(user1, MailboxACL.Right.Administer, MailboxACL.Right.DeleteMessages),
+                new Entry(user2, MailboxACL.Right.PerformExpunge, MailboxACL.Right.Lookup)));
     }
 
 }

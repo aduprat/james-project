@@ -336,6 +336,11 @@ public class MailboxACL {
         public Entry(String key, String value) throws UnsupportedRightException {
             this(EntryKey.deserialize(key), new Rfc4314Rights(value));
         }
+
+        public Entry(String key, Right... rights) throws UnsupportedRightException {
+            this(EntryKey.deserialize(key), new Rfc4314Rights(rights));
+        }
+
     }
 
     /**
