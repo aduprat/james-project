@@ -41,7 +41,7 @@ public class ACLProbeImpl implements GuiceProbe, ACLProbe {
     }
 
     @Override
-    public void addRights(MailboxPath mailboxPath, String targetUser, Rfc4314Rights rights) throws MailboxException {
+    public void replaceRights(MailboxPath mailboxPath, String targetUser, Rfc4314Rights rights) throws MailboxException {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(mailboxPath.getUser());
 
         EntryKey key = EntryKey.createUser(targetUser);

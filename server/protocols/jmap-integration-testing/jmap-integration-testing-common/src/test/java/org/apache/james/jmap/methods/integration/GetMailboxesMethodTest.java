@@ -254,8 +254,8 @@ public abstract class GetMailboxesMethodTest {
         String targetUser1 = "toUser1@domain.com";
         String targetUser2 = "toUser2@domain.com";
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
-        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtews"));
-        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser2, new Rfc4314Rights("awse"));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtews"));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser2, new Rfc4314Rights("awse"));
 
         given()
             .header("Authorization", accessToken.serialize())
@@ -294,7 +294,7 @@ public abstract class GetMailboxesMethodTest {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
         String targetUser1 = "toUser1@domain.com";
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
-        aclProbe.addRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtewskxp"));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtewskxp"));
 
         given()
             .header("Authorization", accessToken.serialize())
