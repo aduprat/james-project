@@ -115,9 +115,4 @@ public class JmxMailboxProbe implements MailboxProbe, JmxProbe {
     public Collection<String> listSubscriptions(String user) throws Exception {
         throw new NotImplementedException();
     }
-
-    @Override
-    public void addRights(String namespace, String user, String mailboxName, String targetUser, String rights) {
-        throw new NotImplementedException();
-    }
 }
