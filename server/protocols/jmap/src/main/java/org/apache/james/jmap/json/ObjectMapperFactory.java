@@ -118,7 +118,7 @@ public class ObjectMapperFactory {
         @Override
         public Rights.Right deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
             String nodeValue = p.getValueAsString();
-            Preconditions.checkArgument(nodeValue.length() == 1);
+            Preconditions.checkArgument(nodeValue.length() == 1, "Rights should be represented as single value characters");
 
             return Rights.Right.forChar(nodeValue.charAt(0));
         }
