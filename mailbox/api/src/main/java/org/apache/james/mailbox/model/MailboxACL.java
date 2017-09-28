@@ -241,7 +241,8 @@ public class MailboxACL {
          */
         public Rfc4314Rights except(Rfc4314Rights toRemove) throws UnsupportedRightException {
             EnumSet<Right> copy = copyOf(value);
-            copy.removeAll(toRemove.value);
+            Optional.ofNullable(toRemove)
+                .ifPresent(rights -> copy.removeAll(rights.value));
             return new Rfc4314Rights(copy);
         }
 
