@@ -37,11 +37,6 @@ import org.junit.rules.ExpectedException;
 
 import com.google.common.collect.ImmutableMap;
 
-/**
- * Generic purpose tests for your implementation MailboxMapper.
- * 
- * You then just need to instantiate your mailbox mapper and an IdGenerator.
- */
 public abstract class MailboxMapperACLTest {
     private final static long UID_VALIDITY = 42;
     public static final boolean POSITIVE = true;
@@ -62,7 +57,6 @@ public abstract class MailboxMapperACLTest {
         Assume.assumeTrue(mapperProvider.getSupportedCapabilities().contains(MapperProvider.Capabilities.ACL_STORAGE));
 
         this.mailboxMapper = mapperProvider.createMailboxMapper();
-
 
         MailboxPath benwaInboxPath = new MailboxPath("#private", "benwa", "INBOX");
         benwaInboxMailbox = createMailbox(benwaInboxPath);
