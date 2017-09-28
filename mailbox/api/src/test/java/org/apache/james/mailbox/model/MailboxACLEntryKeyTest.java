@@ -94,6 +94,7 @@ public class MailboxACLEntryKeyTest {
         assertThat(EntryKey.deserialize(MailboxACL.DEFAULT_NEGATIVE_MARKER + SpecialName.authenticated.toString()))
             .isEqualTo(new EntryKey(SpecialName.authenticated.toString(), NameType.special, true));
     }
+
     @Test
     public void testSerializeUser() throws UnsupportedRightException {
         assertThat(new EntryKey(USER_1, NameType.user, false).serialize())
@@ -141,7 +142,6 @@ public class MailboxACLEntryKeyTest {
         assertThat(new EntryKey(SpecialName.anybody.toString(), NameType.special, true).serialize())
             .isEqualTo(MailboxACL.DEFAULT_NEGATIVE_MARKER + SpecialName.anybody.toString());
     }
-
 
     @Test
     public void testSerializeAuthenticated() throws UnsupportedRightException {
