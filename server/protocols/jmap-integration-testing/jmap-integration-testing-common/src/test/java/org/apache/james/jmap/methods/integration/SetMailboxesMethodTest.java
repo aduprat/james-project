@@ -1216,6 +1216,90 @@ public abstract class SetMailboxesMethodTest {
     }
 
     @Test
+    public void test() {
+        jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+
+        given()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"update\": {" +
+                "        \"" + mailboxId + "\" : {" +
+                "          \"sharedWith\" : {\"user\": [\"aw\"]}" +
+                "        }" +
+                "      }" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type", is("invalidArguments"));
+    }
+
+    @Test
+    public void test1() {
+        jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+
+        given()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"update\": {" +
+                "        \"" + mailboxId + "\" : {" +
+                "          \"sharedWith\" : {\"user\": [\"p\"]}" +
+                "        }" +
+                "      }" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type", is("invalidArguments"));
+    }
+
+    @Test
+    public void test2() {
+        jmapServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        Mailbox mailbox = jmapServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, username, "myBox");
+        String mailboxId = mailbox.getMailboxId().serialize();
+
+        given()
+            .header("Authorization", this.accessToken.serialize())
+            .body("[" +
+                "  [ \"setMailboxes\"," +
+                "    {" +
+                "      \"update\": {" +
+                "        \"" + mailboxId + "\" : {" +
+                "          \"sharedWith\" : {\"user\": [\"z\"]}" +
+                "        }" +
+                "      }" +
+                "    }," +
+                "    \"#0\"" +
+                "  ]" +
+                "]")
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type", is("invalidArguments"));
+    }
+
+    @Test
     public void updateShouldCreateStoredDataWhenSettingNewACL() {
         String myBox = "myBox";
         String user = "user";

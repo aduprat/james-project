@@ -19,6 +19,7 @@
 package org.apache.james.jmap.json;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 
@@ -102,6 +103,30 @@ public class ObjectMapperFactoryTest {
             .isEqualTo(Rights.builder()
                 .delegateTo(new Rights.Username(username), Rights.Right.Administer, Rights.Right.Expunge)
                 .build());
+    }
+
+    @Test
+    public void readValueShouldRejectMultiCharacterRights() throws Exception {
+        assertThatThrownBy(() ->
+            testee.forParsing()
+                .readValue("\"ae\"", Rights.Right.class))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void readValueShouldRejectUnsupportedRights() throws Exception {
+        assertThatThrownBy(() ->
+            testee.forParsing()
+                .readValue("\"p\"", Rights.Right.class))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void readValueShouldRejectUnExistingRights() throws Exception {
+        assertThatThrownBy(() ->
+            testee.forParsing()
+                .readValue("\"z\"", Rights.Right.class))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     public static class MailboxIdTestContainer {
