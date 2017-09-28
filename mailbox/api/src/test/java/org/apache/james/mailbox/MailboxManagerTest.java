@@ -19,11 +19,13 @@
 package org.apache.james.mailbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+
 import javax.mail.Flags;
 
 import org.apache.james.mailbox.MailboxManager.MailboxCapabilities;
@@ -240,7 +242,13 @@ public abstract class MailboxManagerTest {
         session = mailboxManager.createSystemSession(USER_1);
         mailboxManager.createMailbox(new MailboxPath("#namespace", USER_1, "Other"), session);
         mailboxManager.createMailbox(MailboxPath.inbox(session), session);
-        List<MailboxMetaData> metaDatas = mailboxManager.search(new MailboxQuery(new MailboxPath("#private", USER_1, ""), "*", '.'), session);
+        List<MailboxMetaData> metaDatas = mailboxManager.search(
+                MailboxQuery.builder()
+                    .base(new MailboxPath("#private", USER_1, ""))
+                    .expression("*")
+                    .pathDelimiter('.')
+                    .build(), 
+                session);
         assertThat(metaDatas).hasSize(1);
         assertThat(metaDatas.get(0).getPath()).isEqualTo(MailboxPath.inbox(session));
     }
@@ -250,7 +258,13 @@ public abstract class MailboxManagerTest {
         session = mailboxManager.createSystemSession(USER_1);
         mailboxManager.createMailbox(new MailboxPath("#namespace", USER_2, "Other"), session);
         mailboxManager.createMailbox(MailboxPath.inbox(session), session);
-        List<MailboxMetaData> metaDatas = mailboxManager.search(new MailboxQuery(new MailboxPath("#private", USER_1, ""), "*", '.'), session);
+        List<MailboxMetaData> metaDatas = mailboxManager.search(
+                MailboxQuery.builder()
+                .base(new MailboxPath("#private", USER_1, ""))
+                .expression("*")
+                .pathDelimiter('.')
+                .build(), 
+            session);
         assertThat(metaDatas).hasSize(1);
         assertThat(metaDatas.get(0).getPath()).isEqualTo(MailboxPath.inbox(session));
     }
