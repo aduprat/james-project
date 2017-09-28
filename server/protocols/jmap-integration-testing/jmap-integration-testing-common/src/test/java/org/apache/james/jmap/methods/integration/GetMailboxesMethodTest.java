@@ -46,6 +46,7 @@ import org.apache.james.jmap.DefaultMailboxes;
 import org.apache.james.jmap.HttpJmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
 import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -74,6 +75,10 @@ public abstract class GetMailboxesMethodTest {
     private static final String FIRST_MAILBOX = ARGUMENTS + ".list[0]";
     public static final String MAILBOX_NAME = FIRST_MAILBOX + ".name";
     public static final String SHARED_WITH = FIRST_MAILBOX + ".sharedWith";
+
+    public static final String READ = String.valueOf(Right.Read.asCharacter());
+    public static final String LOOKUP = String.valueOf(Right.Lookup.asCharacter());
+    public static final String ADMINISTER = String.valueOf(Right.Administer.asCharacter());
 
     protected abstract GuiceJamesServer createJmapServer();
 
@@ -254,8 +259,8 @@ public abstract class GetMailboxesMethodTest {
         String targetUser1 = "toUser1@domain.com";
         String targetUser2 = "toUser2@domain.com";
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
-        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtews"));
-        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser2, new Rfc4314Rights("awse"));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights(Right.Read, Right.Administer));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser2, new Rfc4314Rights(Right.Read, Right.Lookup));
 
         given()
             .header("Authorization", accessToken.serialize())
@@ -266,8 +271,8 @@ public abstract class GetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(MAILBOX_NAME, equalTo(mailboxName))
-            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")))
-            .body(SHARED_WITH, hasEntry(targetUser2, ImmutableList.of("a", "e", "s", "w")));
+            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of(ADMINISTER, READ)))
+            .body(SHARED_WITH, hasEntry(targetUser2, ImmutableList.of(LOOKUP, READ)));
     }
 
     @Test
@@ -294,7 +299,7 @@ public abstract class GetMailboxesMethodTest {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
         String targetUser1 = "toUser1@domain.com";
         Mailbox myMailbox = mailboxProbe.getMailbox(MailboxConstants.USER_NAMESPACE, username, mailboxName);
-        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights("rtewskxp"));
+        aclProbe.replaceRights(myMailbox.generateAssociatedPath(), targetUser1, new Rfc4314Rights(Right.Read, Right.Post));
 
         given()
             .header("Authorization", accessToken.serialize())
@@ -305,7 +310,7 @@ public abstract class GetMailboxesMethodTest {
             .statusCode(200)
             .body(NAME, equalTo("mailboxes"))
             .body(MAILBOX_NAME, equalTo(mailboxName))
-            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of("e", "r", "s", "t", "w")));
+            .body(SHARED_WITH, hasEntry(targetUser1, ImmutableList.of(READ)));
     }
     
     @Test
