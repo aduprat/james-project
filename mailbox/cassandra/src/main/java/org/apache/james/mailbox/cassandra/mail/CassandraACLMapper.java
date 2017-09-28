@@ -54,9 +54,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Throwables;
 
 public class CassandraACLMapper {
+    public static final int INITIAL_VALUE = 0;
     private static final Logger LOG = LoggerFactory.getLogger(CassandraACLMapper.class);
     private static final String OLD_VERSION = "oldVersion";
-    public static final int INITIAL_VALUE = 0;
 
     @FunctionalInterface
     public interface CodeInjector {
