@@ -31,6 +31,7 @@ import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxAnnotation;
 import org.apache.james.mailbox.model.MailboxAnnotationKey;
 import org.apache.james.mailbox.model.MailboxId;
@@ -242,6 +243,17 @@ public interface MailboxManager extends RequestAware, MailboxListenerSupport {
      * @throws MailboxException
      */
     List<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException;
+
+    /**
+     * Searches for mailboxes which has the given right for the current user.
+     * 
+     * @param right
+     *            the given right, not null
+     * @param session
+     *            the context for this call (contains current user), not null
+     * @throws MailboxException
+     */
+    List<MailboxId> search(Right right, MailboxSession session) throws MailboxException;
 
     /**
      * Does the given mailbox exist?

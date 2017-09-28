@@ -50,6 +50,7 @@ import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.NotAdminException;
 import org.apache.james.mailbox.exception.UserDoesNotExistException;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxAnnotation;
 import org.apache.james.mailbox.model.MailboxAnnotationKey;
 import org.apache.james.mailbox.model.MailboxConstants;
@@ -714,6 +715,11 @@ public class StoreMailboxManager implements MailboxManager {
     @Override
     public List<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException {
         return index.search(session, expression, limit);
+    }
+
+    @Override
+    public List<MailboxId> search(Right right, MailboxSession session) throws MailboxException {
+        return null;
     }
 
     public boolean belongsToNamespaceAndUser(MailboxPath base, Mailbox mailbox) {
