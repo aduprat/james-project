@@ -227,4 +227,11 @@ public class MailboxACLTest {
             .isEqualTo(MailboxACL.EMPTY);
     }
 
+    @Test
+    public void applyShouldNotThrowWhenRemovingANonExistingEntry() throws Exception{
+        assertThat(MailboxACL.EMPTY
+            .apply(new MailboxACL.ACLCommand(EntryKey.createUser("bob"), MailboxACL.EditMode.REPLACE, null)))
+            .isEqualTo(MailboxACL.EMPTY);
+    }
+
 }
