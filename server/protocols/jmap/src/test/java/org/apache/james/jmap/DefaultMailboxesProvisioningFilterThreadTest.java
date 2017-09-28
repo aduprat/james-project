@@ -31,6 +31,7 @@ import org.apache.james.mailbox.exception.BadCredentialsException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxAnnotation;
 import org.apache.james.mailbox.model.MailboxAnnotationKey;
 import org.apache.james.mailbox.model.MailboxId;
@@ -248,6 +249,11 @@ public class DefaultMailboxesProvisioningFilterThreadTest {
 
         @Override
         public List<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException {
+            return null;
+        }
+
+        @Override
+        public List<MailboxId> search(Right right, MailboxSession session) throws MailboxException {
             return null;
         }
 

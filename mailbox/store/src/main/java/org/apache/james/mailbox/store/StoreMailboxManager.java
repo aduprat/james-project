@@ -725,6 +725,12 @@ public class StoreMailboxManager implements MailboxManager {
         return index.search(session, expression, limit);
     }
 
+    @Override
+    public List<MailboxId> search(Right right, MailboxSession session) throws MailboxException {
+        MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
+        return mapper.findMailboxes(session.getUser().getUserName(), right);
+    }
+
     public boolean belongsToNamespaceAndUser(MailboxPath base, Mailbox mailbox) {
         if (mailbox.getUser() == null) {
             return  base.getUser() == null

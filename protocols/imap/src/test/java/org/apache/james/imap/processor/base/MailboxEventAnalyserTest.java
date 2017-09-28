@@ -409,6 +409,11 @@ public class MailboxEventAnalyserTest {
         }
 
         @Override
+        public List<MailboxId> search(Right right, MailboxSession session) throws MailboxException {
+            return null;
+        }
+
+        @Override
         public List<MailboxAnnotation> getAnnotationsByKeysWithOneDepth(MailboxPath mailboxPath, MailboxSession session,
                 Set<MailboxAnnotationKey> keys) throws MailboxException {
             return null;

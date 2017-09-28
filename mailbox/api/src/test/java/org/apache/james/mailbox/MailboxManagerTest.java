@@ -33,6 +33,10 @@ import org.apache.james.mailbox.exception.AnnotationException;
 import org.apache.james.mailbox.exception.BadCredentialsException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.mock.MockMailboxManager;
+import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.EntryKey;
+import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxAnnotation;
 import org.apache.james.mailbox.model.MailboxAnnotationKey;
 import org.apache.james.mailbox.model.MailboxId;
@@ -45,6 +49,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -436,4 +441,35 @@ public abstract class MailboxManagerTest {
         builder.add(MailboxAnnotation.newInstance(new MailboxAnnotationKey("/private/comment4"), "AnyValue"));
 
         mailboxManager.updateAnnotations(inbox, session, builder.build());
-    }}
+    }
+
+    @Test
+    public void searchByRightShouldReturnMailboxesFromOtherUser() throws Exception {
+        Assume.assumeTrue(mailboxManager.hasCapability(MailboxCapabilities.RightSearch));
+        MailboxSession user2Session = mailboxManager.createSystemSession(USER_2);
+        MailboxPath mailbox = MailboxPath.inbox(user2Session);
+        MailboxId mailboxId = mailboxManager.createMailbox(mailbox, user2Session).get();
+        mailboxManager.setRights(mailbox, new MailboxACL(ImmutableMap.of(EntryKey.createUser(USER_1), new Rfc4314Rights(Right.Read))), user2Session);
+
+        MailboxPath mailbox2 = new MailboxPath("#namespace", USER_2, "Other");
+        MailboxId mailboxId2 = mailboxManager.createMailbox(mailbox2, user2Session).get();
+        mailboxManager.setRights(mailbox2, new MailboxACL(ImmutableMap.of(EntryKey.createUser(USER_1), new Rfc4314Rights(Right.Read, Right.Administer))), user2Session);
+        
+        MailboxSession user1Session = mailboxManager.createSystemSession(USER_1);
+        List<MailboxId> mailboxIds = mailboxManager.search(Right.Read, user1Session);
+        assertThat(mailboxIds).containsOnly(mailboxId, mailboxId2);
+    }
+
+    @Test
+    public void searchByRightShouldReturnEmptyWhenRightDoesntMatch() throws Exception {
+        Assume.assumeTrue(mailboxManager.hasCapability(MailboxCapabilities.RightSearch));
+        MailboxSession user2Session = mailboxManager.createSystemSession(USER_2);
+        MailboxPath mailbox = MailboxPath.inbox(user2Session);
+        mailboxManager.createMailbox(mailbox, user2Session);
+        mailboxManager.setRights(mailbox, new MailboxACL(ImmutableMap.of(EntryKey.createUser(USER_1), new Rfc4314Rights(Right.Read))), user2Session);
+        
+        MailboxSession user1Session = mailboxManager.createSystemSession(USER_1);
+        List<MailboxId> mailboxIds = mailboxManager.search(Right.Write, user1Session);
+        assertThat(mailboxIds).isEmpty();
+    }
+}
