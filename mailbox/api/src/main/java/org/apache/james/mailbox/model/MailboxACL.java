@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.model;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -36,6 +37,7 @@ import org.apache.james.mailbox.exception.UnsupportedRightException;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -155,7 +157,7 @@ public class MailboxACL {
     }
 
     /**
-     * Iterable set of {@link MailboxACL.MailboxACLRight}s.
+     * Holds the collection of {@link MailboxACL.Right}s.
      *
      * Implementations may decide to support only a specific range of rights,
      * e.g. the Standard Rights of RFC 4314 section 2.1.
@@ -206,10 +208,7 @@ public class MailboxACL {
         /**
          * Tells whether this contains the given right.
          *
-         * @param right
-         * @return
-         * @throws UnsupportedRightException
-         *             iff the given right is not supported.
+         * @throws UnsupportedRightException if the given right is not supported.
          */
         public boolean contains(char flag) throws UnsupportedRightException {
             return contains(Right.forChar(flag));
@@ -238,8 +237,6 @@ public class MailboxACL {
          * return this or toRemove parameter value in case the result would be
          * equal to the respective one of those.
          *
-         * @param toRemove
-         * @return
          * @throws UnsupportedRightException
          */
         public Rfc4314Rights except(Rfc4314Rights toRemove) throws UnsupportedRightException {
@@ -282,7 +279,7 @@ public class MailboxACL {
         }
 
         /**
-         * Returns a serialized form of this {@link MailboxACL.MailboxACLRights} as
+         * Returns a serialized form of this {@link MailboxACL.Right} as
          * {@link String}.
          *
          * @return a {@link String}
@@ -299,15 +296,13 @@ public class MailboxACL {
         }
 
         /**
-         * Performs the set theoretic operation of union of this
-         * MailboxACLRights and toAdd MailboxACLRights.
+         * Performs the theoretic operation of union of this
+         * Rfc4314Rights and toAdd Rfc4314Rights.
          *
          * A schematic example: "lr".union("rw") returns "lrw".
          *
          * Implementations must return a new unmodifiable instance of
-         * {@link MailboxACL.MailboxACLRights}. However, implementations may decide to
-         * return this or toAdd parameter value in case the result would be
-         * equal to the respective one of those.
+         * {@link MailboxACL.Rfc4314Rights}.
          *
          * @param toAdd
          * @return union of this and toAdd
@@ -330,35 +325,16 @@ public class MailboxACL {
 
     /**
      * A utility implementation of
-     * {@code Map.Entry<MailboxACLEntryKey, MailboxACLRights>}.
+     * {@code Map.Entry<EntryKey, Rfc4314Rights>}.
      */
-    public static class Entry implements Map.Entry {
-        private final EntryKey key;
-
-        private final Rfc4314Rights value;
-
+    public static class Entry extends AbstractMap.SimpleEntry<EntryKey, Rfc4314Rights> {
         public Entry(EntryKey key, Rfc4314Rights value) {
-            super();
-            this.key = key;
-            this.value = value;
+            super(key, value);
         }
+
         public Entry(String key, String value) throws UnsupportedRightException {
             this(EntryKey.deserialize(key), new Rfc4314Rights(value));
         }
-
-        public EntryKey getKey() {
-            return key;
-        }
-
-        public Rfc4314Rights getValue() {
-            return value;
-        }
-
-        @Override
-        public Object setValue(Object value) {
-            throw new UnsupportedOperationException("Fields of " + Entry.class.getName() + " are read only.");
-        }
-
     }
 
     /**
@@ -772,7 +748,9 @@ public class MailboxACL {
     }
 
     public String toString() {
-        return entries == null ? "" : entries.toString();
+        return MoreObjects.toStringHelper(this)
+            .add("entries", entries)
+            .toString();
     }
 
     /**
