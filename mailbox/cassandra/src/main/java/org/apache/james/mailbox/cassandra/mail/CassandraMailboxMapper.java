@@ -38,6 +38,7 @@ import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.TooLongMailboxNameException;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
 
@@ -64,11 +66,13 @@ public class CassandraMailboxMapper implements MailboxMapper {
     private final CassandraMailboxPathDAO mailboxPathDAO;
     private final CassandraMailboxDAO mailboxDAO;
     private final CassandraACLMapper cassandraACLMapper;
+    private final CassandraUserMailboxRightsDAO userMailboxRightsDAO;
 
     @Inject
-    public CassandraMailboxMapper(Session session, CassandraMailboxDAO mailboxDAO, CassandraMailboxPathDAO mailboxPathDAO, CassandraConfiguration cassandraConfiguration) {
+    public CassandraMailboxMapper(Session session, CassandraMailboxDAO mailboxDAO, CassandraMailboxPathDAO mailboxPathDAO, CassandraUserMailboxRightsDAO userMailboxRightsDAO, CassandraConfiguration cassandraConfiguration) {
         this.mailboxDAO = mailboxDAO;
         this.mailboxPathDAO = mailboxPathDAO;
+        this.userMailboxRightsDAO = userMailboxRightsDAO;
         this.cassandraACLMapper = new CassandraACLMapper(session, cassandraConfiguration);
     }
 
@@ -219,12 +223,17 @@ public class CassandraMailboxMapper implements MailboxMapper {
     public void updateACL(Mailbox mailbox, MailboxACL.ACLCommand mailboxACLCommand) throws MailboxException {
         CassandraId cassandraId = (CassandraId) mailbox.getMailboxId();
         cassandraACLMapper.updateACL(cassandraId, mailboxACLCommand);
+        if (mailboxACLCommand.getEntryKey().isUser()) {
+            userMailboxRightsDAO.save(mailboxACLCommand.getEntryKey().getName(), cassandraId, mailboxACLCommand.getRights());
+        }
     }
 
     @Override
     public void setACL(Mailbox mailbox, MailboxACL mailboxACL) throws MailboxException {
         CassandraId cassandraId = (CassandraId) mailbox.getMailboxId();
         cassandraACLMapper.setACL(cassandraId, mailboxACL);
+        mailboxACL.usersACL()
+            .forEach((userName, rights) -> userMailboxRightsDAO.save(userName, cassandraId, rights));
     }
 
     @Override
@@ -255,6 +264,15 @@ public class CassandraMailboxMapper implements MailboxMapper {
                 mailbox.setACL(acl);
                 return mailbox;
             });
+    }
+
+    @Override
+    public List<MailboxId> findMailboxes(String userName, Right right) throws MailboxException {
+        return userMailboxRightsDAO.retrieveUser(userName).join()
+                .entrySet().stream()
+                .filter(Throwing.predicate(entry -> entry.getValue().contains(right)))
+                .map(entry -> entry.getKey())
+                .collect(Guavate.toImmutableList());
     }
 
 }
