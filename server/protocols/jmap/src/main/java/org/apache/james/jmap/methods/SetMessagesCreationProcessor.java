@@ -258,17 +258,17 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
     }
 
     @VisibleForTesting void validateIsUserOwnerOfMailboxes(CreationMessageEntry entry, MailboxSession session) throws MailboxRightsException {
-        if (containsAnyDelegatedMailbox(entry.getValue().getMailboxIds(), session)) {
+        if (containsMailboxNotOwn(entry.getValue().getMailboxIds(), session)) {
             throw new MailboxRightsException();
         }
     }
 
-    private boolean containsAnyDelegatedMailbox(List<String> mailboxIds, MailboxSession session) {
+    private boolean containsMailboxNotOwn(List<String> mailboxIds, MailboxSession session) {
         return mailboxIds.stream()
             .map(mailboxIdFactory::fromString)
             .map(Throwing.function(mailboxId -> mailboxManager.getMailbox(mailboxId, session)))
             .map(Throwing.function(MessageManager::getMailboxPath))
-            .anyMatch(path -> !path.getUser().equals(session.getUser().getUserName()));
+            .anyMatch(path -> !session.getUser().isSameUser(path.getUser()));
     }
 
     private MessageWithId handleOutboxMessages(CreationMessageEntry entry, MailboxSession session) throws MailboxException, MessagingException {
