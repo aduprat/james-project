@@ -137,7 +137,6 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
             validateImplementedFeature(create, mailboxSession);
             validateArguments(create, mailboxSession);
             validateRights(create, mailboxSession);
-            validateIsUserOwnerOfMailboxes(create, mailboxSession);
             MessageWithId created = handleOutboxMessages(create, mailboxSession);
             responseBuilder.created(created.getCreationId(), created.getValue());
 
@@ -242,7 +241,12 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
         return AttachmentId.from(attachment.getBlobId().getRawValue());
     }
 
-    private void validateRights(CreationMessageEntry entry, MailboxSession session) throws MailboxSendingNotAllowedException {
+    private void validateRights(CreationMessageEntry entry, MailboxSession session) throws MailboxSendingNotAllowedException, MailboxRightsException {
+        validateUserIsInSenders(entry, session);
+        validateIsUserOwnerOfMailboxes(entry, session);
+    }
+
+    private void validateUserIsInSenders(CreationMessageEntry entry, MailboxSession session) throws MailboxSendingNotAllowedException {
         List<String> allowedSenders = ImmutableList.of(session.getUser().getUserName());
         if (!isAllowedFromAddress(entry.getValue(), allowedSenders)) {
             throw new MailboxSendingNotAllowedException(allowedSenders);
