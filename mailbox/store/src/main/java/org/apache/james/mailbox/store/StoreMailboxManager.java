@@ -856,6 +856,7 @@ public class StoreMailboxManager implements MailboxManager {
         storeRightManager.setRights(mailboxPath, mailboxACL, session);
     }
 
+    @Deprecated
     @Override
     public void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException {
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);

@@ -20,7 +20,6 @@
 package org.apache.james.mailbox;
 
 import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxId;
@@ -29,15 +28,15 @@ import org.apache.james.mailbox.model.MailboxPath;
 public interface RightManager {
     /**
      * Tells whether the given {@link MailboxSession}'s user has the given
-     * {@link MailboxACL.MailboxACLRight} for this {@link MessageManager}'s mailbox.
+     * {@link MailboxACL.Right} for this {@link MessageManager}'s mailbox.
      *
-     * @param session MailboxSession of the user we want to check
+     * @param mailboxPath MailboxPath of the mailbox we want to check
      * @param right Right we want to check.
      * @param session Session of the user we want to check this right against.
      * @return true if the given {@link MailboxSession}'s user has the given
-     *         {@link MailboxACL.MailboxACLRight} for this {@link MessageManager}'s
+     *         {@link MailboxACL.Right} for this {@link MessageManager}'s
      *         mailbox; false otherwise.
-     * @throws MailboxException
+     * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     boolean hasRight(MailboxPath mailboxPath, Right right, MailboxSession session) throws MailboxException;
 
@@ -61,7 +60,7 @@ public interface RightManager {
      *            the identifier from the LISTRIGHTS command.
      * @param session Right of the user performing the request.
      * @return result suitable for the LISTRIGHTS IMAP command
-     * @throws UnsupportedRightException
+     * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     MailboxACL.Rfc4314Rights[] listRigths(MailboxPath mailboxPath, MailboxACL.EntryKey identifier, MailboxSession session) throws MailboxException;
 
@@ -74,26 +73,50 @@ public interface RightManager {
      * @return the rights applicable to the user who has sent the request,
      *         returns {@link MailboxACL#NO_RIGHTS} if
      *         {@code session.getUser()} is null.
-     * @throws UnsupportedRightException
+     * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     MailboxACL.Rfc4314Rights myRights(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
 
+
+    /**
+     * Returns the rights applicable to the user who has sent the current
+     * request on the mailbox designated by this mailboxPath.
+     *
+     * @param mailboxId Id of the mailbox you want to get your rights on.
+     * @param session The session used to determine the user we should retrieve the rights of.
+     * @return the rights applicable to the user who has sent the request,
+     *         returns {@link MailboxACL#NO_RIGHTS} if
+     *         {@code session.getUser()} is null.
+     * @throws MailboxException in case of unknown mailbox or unsupported right
+     */
     MailboxACL.Rfc4314Rights myRights(MailboxId mailboxId, MailboxSession session) throws MailboxException;
 
     /**
      * Update the Mailbox ACL of the designated mailbox. We can either ADD REPLACE or REMOVE entries.
      *
      * @param mailboxACLCommand Update to perform.
-     * @throws UnsupportedRightException
+     * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     void applyRightsCommand(MailboxPath mailboxPath, MailboxACL.ACLCommand mailboxACLCommand, MailboxSession session) throws MailboxException;
+
+    /**
+     * Reset the Mailbox ACL of the designated mailbox.
+     *
+     * @param mailboxPath Path of the mailbox you want to get the rights list.
+     * @param mailboxACL New ACL value
+     * @param session The session used to determine the user we should retrieve the rights of.
+     * @throws MailboxException in case of unknown mailbox or unsupported right
+     */
+    void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
 
 
     /**
      * Reset the Mailbox ACL of the designated mailbox.
      *
+     * @param mailboxId Id of the mailbox you want to get your rights on.
      * @param mailboxACL New ACL value
-     * @throws UnsupportedRightException
+     * @param session The session used to determine the user we should retrieve the rights of.
+     * @throws MailboxException in case of unknown mailbox or unsupported right
      */
-    void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
+    void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
 }

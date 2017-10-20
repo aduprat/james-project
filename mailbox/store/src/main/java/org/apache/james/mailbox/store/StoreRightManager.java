@@ -22,8 +22,6 @@ package org.apache.james.mailbox.store;
 import javax.inject.Inject;
 import javax.mail.Flags;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.acl.GroupMembershipResolver;
@@ -40,6 +38,9 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.transaction.Mapper;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 
 public class StoreRightManager implements RightManager {
 
@@ -110,6 +111,14 @@ public class StoreRightManager implements RightManager {
     public boolean isReadWrite(MailboxSession session, Mailbox mailbox, Flags sharedPermanentFlags) throws UnsupportedRightException {
         return aclResolver.isReadWrite(myRights(session, mailbox), sharedPermanentFlags);
     }
+
+    @Override
+    public void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException {
+        MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
+        Mailbox mailbox = mapper.findMailboxById(mailboxId);
+        setRights(mailbox.generateAssociatedPath(), mailboxACL, session);
+    }
+
     /**
      * Applies the global ACL (if there are any) to the mailbox ACL.
      *
