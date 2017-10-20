@@ -29,7 +29,6 @@ import static org.mockito.Mockito.when;
 
 import javax.mail.Flags;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.james.mailbox.acl.GroupMembershipResolver;
 import org.apache.james.mailbox.acl.MailboxACLResolver;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
@@ -82,7 +81,8 @@ public class StoreRightManagerTest {
         expectedException.expect(MailboxNotFoundException.class);
 
         MailboxPath mailboxPath = MailboxPath.forUser(alice, "unexisting mailbox");
-        when(mockedMailboxMapper.findMailboxByPath(mailboxPath)).thenThrow(MailboxNotFoundException.class);
+        when(mockedMailboxMapper.findMailboxByPath(mailboxPath))
+            .thenThrow(new MailboxNotFoundException(""));
         storeRightManager.hasRight(mailboxPath, Right.Read, aliceSession);
     }
 
