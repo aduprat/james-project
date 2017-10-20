@@ -190,9 +190,9 @@ public class StoreRightManagerTest {
     @Test
     public void isReadWriteShouldReturnFalseWhenUserDoesNotHaveInsertOrPerformExpungeRightOnMailboxAndNullFlag() throws Exception {
         Mailbox mailbox = mock(Mailbox.class);
-        when(mailbox.getACL()).thenReturn(new MailboxACL(new MailboxACL.Entry(alice, Right.PerformExpunge)));
+        when(mailbox.getACL()).thenReturn(new MailboxACL(new MailboxACL.Entry(alice, Right.Administer)));
         assertThat(storeRightManager.isReadWrite(aliceSession, mailbox, null))
-            .isTrue();
+            .isFalse();
     }
 
     @Test
