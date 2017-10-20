@@ -154,5 +154,4 @@ public class StoreRightManager implements RightManager {
             return MailboxACL.NO_RIGHTS;
         }
     }
-
 }
