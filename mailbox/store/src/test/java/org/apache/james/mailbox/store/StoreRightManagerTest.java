@@ -106,7 +106,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHasAtLeastTheCorrectedRightOnIt() throws MailboxException {
+    public void hasRighShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHasAtLeastTheCorrectRightOnIt() throws MailboxException {
         Mailbox mailbox = mock(Mailbox.class);
         when(mailbox.getUser()).thenReturn("bob");
         when(mailbox.getACL()).thenReturn(new MailboxACL(new MailboxACL.Entry(alice, Right.Write, Right.Lookup)));
