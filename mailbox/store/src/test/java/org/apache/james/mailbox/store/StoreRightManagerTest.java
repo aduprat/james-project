@@ -76,7 +76,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldThrowMailboxNotFoundExceptionWhenMailboxDoesNotExist() throws MailboxException {
+    public void hasRightShouldThrowMailboxNotFoundExceptionWhenMailboxDoesNotExist() throws MailboxException {
         expectedException.expect(MailboxNotFoundException.class);
 
         MailboxPath mailboxPath = MailboxPath.forUser(MailboxFixture.ALICE, "unexisting mailbox");
@@ -86,7 +86,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldReturnTrueWhenTheUserOwnTheMailbox() throws MailboxException {
+    public void hasRightShouldReturnTrueWhenTheUserOwnTheMailbox() throws MailboxException {
         Mailbox mailbox = mock(Mailbox.class);
         when(mailbox.getUser()).thenReturn(MailboxFixture.ALICE);
 
@@ -95,7 +95,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHaveTheCorrectRightOnIt() throws MailboxException {
+    public void hasRightShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHaveTheCorrectRightOnIt() throws MailboxException {
         Mailbox mailbox = mock(Mailbox.class);
         when(mailbox.getUser()).thenReturn(MailboxFixture.BOB);
         when(mailbox.getACL()).thenReturn(new MailboxACL(new MailboxACL.Entry(MailboxFixture.ALICE, Right.Write)));
@@ -105,7 +105,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHasAtLeastTheCorrectRightOnIt() throws MailboxException {
+    public void hasRightShouldReturnTrueWhenTheUserDoesnotOwnTheMailboxButHasAtLeastTheCorrectRightOnIt() throws MailboxException {
         Mailbox mailbox = mock(Mailbox.class);
         when(mailbox.getUser()).thenReturn(MailboxFixture.BOB);
         when(mailbox.getACL()).thenReturn(new MailboxACL(new MailboxACL.Entry(MailboxFixture.ALICE, Right.Write, Right.Lookup)));
@@ -115,7 +115,7 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void hasRighShouldReturnFalseWhenTheUserDoesNotOwnTheMailboxAndHasNoRightOnIt() throws MailboxException {
+    public void hasRightShouldReturnFalseWhenTheUserDoesNotOwnTheMailboxAndHasNoRightOnIt() throws MailboxException {
         Mailbox mailbox = mock(Mailbox.class);
         when(mailbox.getUser()).thenReturn(MailboxFixture.BOB);
 
