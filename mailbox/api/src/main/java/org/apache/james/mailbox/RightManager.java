@@ -107,7 +107,9 @@ public interface RightManager {
     /**
      * Update the Mailbox ACL of the designated mailbox. We can either ADD REPLACE or REMOVE entries.
      *
+     * @param mailboxPath Path of the mailbox you want to apply rights on.
      * @param mailboxACLCommand Update to perform.
+     * @param session The session used to determine the user used to apply rights.
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     void applyRightsCommand(MailboxPath mailboxPath, MailboxACL.ACLCommand mailboxACLCommand, MailboxSession session) throws MailboxException;
@@ -115,9 +117,9 @@ public interface RightManager {
     /**
      * Reset the Mailbox ACL of the designated mailbox.
      *
-     * @param mailboxPath Path of the mailbox you want to get the rights list.
+     * @param mailboxPath Path of the mailbox you want to set the rights.
      * @param mailboxACL New ACL value
-     * @param session The session used to determine the user we should retrieve the rights of.
+     * @param session The session used to determine the user used to set rights.
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
@@ -126,9 +128,9 @@ public interface RightManager {
     /**
      * Reset the Mailbox ACL of the designated mailbox.
      *
-     * @param mailboxId Id of the mailbox you want to get your rights on.
+     * @param mailboxId Id of the mailbox you want to set the rights.
      * @param mailboxACL New ACL value
-     * @param session The session used to determine the user we should retrieve the rights of.
+     * @param session The session used to determine the user used to set rights.
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
     void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
