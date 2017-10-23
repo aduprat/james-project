@@ -39,6 +39,7 @@ import org.apache.james.mailbox.MailboxSession.SessionType;
 import org.apache.james.mailbox.MailboxSessionIdGenerator;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.RequestAware;
+import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.StandardMailboxMetaDataComparator;
 import org.apache.james.mailbox.exception.AnnotationException;
 import org.apache.james.mailbox.exception.BadCredentialsException;
@@ -941,5 +942,10 @@ public class StoreMailboxManager implements MailboxManager {
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         Mailbox mailbox = mapper.findMailboxByPath(mailboxPath);
         return mapper.hasChildren(mailbox, session.getPathDelimiter());
+    }
+
+    @Override
+    public RightManager getRightManager() {
+        return storeRightManager;
     }
 }
