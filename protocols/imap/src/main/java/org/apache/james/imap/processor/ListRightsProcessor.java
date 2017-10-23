@@ -34,6 +34,7 @@ import org.apache.james.imap.message.request.ListRightsRequest;
 import org.apache.james.imap.message.response.ListRightsResponse;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.MailboxACL;
@@ -85,11 +86,11 @@ public class ListRightsProcessor extends AbstractMailboxProcessor<ListRightsRequ
              * would be used if the mailbox did not exist, thus revealing no
              * existence information, much less the mailbox’s ACL.
              */
-            if (!mailboxManager.hasRight(mailboxPath, MailboxACL.Right.Lookup, mailboxSession)) {
+            if (!mailboxManager.getRightManager().hasRight(mailboxPath, MailboxACL.Right.Lookup, mailboxSession)) {
                 no(command, tag, responder, HumanReadableText.MAILBOX_NOT_FOUND);
             }
             /* RFC 4314 section 4. */
-            else if (!mailboxManager.hasRight(mailboxPath, MailboxACL.Right.Administer, mailboxSession)) {
+            else if (!mailboxManager.getRightManager().hasRight(mailboxPath, MailboxACL.Right.Administer, mailboxSession)) {
                 Object[] params = new Object[] {
                         MailboxACL.Right.Administer.toString(),
                         command.getName(),
@@ -112,7 +113,7 @@ public class ListRightsProcessor extends AbstractMailboxProcessor<ListRightsRequ
                 // Note that Section 6 recommends additional identifier’s verification
                 // steps.
                 
-                Rfc4314Rights[] rights = mailboxManager.listRigths(mailboxPath, key, mailboxSession);
+                Rfc4314Rights[] rights = mailboxManager.getRightManager().listRigths(mailboxPath, key, mailboxSession);
                 ListRightsResponse aclResponse = new ListRightsResponse(mailboxName, identifier, rights);
                 responder.respond(aclResponse);
                 okComplete(command, tag, responder);
