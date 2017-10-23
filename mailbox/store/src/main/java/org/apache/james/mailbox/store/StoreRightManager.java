@@ -125,7 +125,7 @@ public class StoreRightManager implements RightManager {
          * Changing flags: STORE
          * - the server MUST check if the user has "t" (expunge) right
          * - when the user modifies \Deleted flag "s" (seen) right
-         * - when the user modifies \Seen flag "w" (right) - for all other message flags.
+         * - when the user modifies \Seen flag "w" (write) - for all other message flags.
          */
         return rights.contains(Right.Insert) ||
             rights.contains(Right.PerformExpunge) ||
