@@ -26,12 +26,14 @@ import static org.mockito.Mockito.when;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.store.event.MailboxEventDispatcher;
+import org.apache.james.mailbox.store.mail.model.Mailbox;
 import org.apache.james.mailbox.store.quota.DefaultQuotaRootResolver;
 import org.junit.Before;
 
@@ -45,11 +47,15 @@ public class StoreMessageIdManagerSideEffectTest extends AbstractMessageIdManage
     @Override
     protected MessageIdManagerTestSystem createTestSystem(QuotaManager quotaManager, MailboxEventDispatcher dispatcher) throws Exception {
 
+
         TestMailboxSessionMapperFactory testMailboxSessionMapperFactory = new TestMailboxSessionMapperFactory();
         MessageId.Factory messageIdFactory = new TestMessageId.Factory();
         MailboxManager mailboxManager = mock(MailboxManager.class);
-        when(mailboxManager.myRights(any(MailboxId.class), any(MailboxSession.class)))
+        RightManager rightManager = mock(RightManager.class);
+        when(rightManager.myRights(any(MailboxId.class), any(MailboxSession.class)))
             .thenReturn(MailboxACL.FULL_RIGHTS);
+        when(mailboxManager.getRightManager())
+            .thenReturn(rightManager);
 
         MessageIdManager messageIdManager = new StoreMessageIdManager(mailboxManager,
             testMailboxSessionMapperFactory, dispatcher, messageIdFactory,
