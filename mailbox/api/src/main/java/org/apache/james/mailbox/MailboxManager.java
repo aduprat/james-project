@@ -426,7 +426,7 @@ public interface MailboxManager extends RequestAware, MailboxListenerSupport {
     void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
 
     /** 
-    * @deprecated use {@link RightManager#hasRight} instead.
+    * @deprecated use {@link RightManager#setRights} instead.
     */
     @Deprecated
     void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
