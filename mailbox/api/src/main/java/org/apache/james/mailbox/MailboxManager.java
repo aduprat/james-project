@@ -428,6 +428,7 @@ public interface MailboxManager extends RequestAware, MailboxListenerSupport {
     /** 
     * @deprecated use {@link RightManager#hasRight} instead.
     */
+    @Deprecated
     void setRights(MailboxId mailboxId, MailboxACL mailboxACL, MailboxSession session) throws MailboxException;
 
     /**
@@ -500,4 +501,7 @@ public interface MailboxManager extends RequestAware, MailboxListenerSupport {
     void updateAnnotations(MailboxPath mailboxPath, MailboxSession session, List<MailboxAnnotation> mailboxAnnotations) throws MailboxException, AnnotationException;
     
     boolean hasChildren(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
+
+    RightManager getRightManager();
+
 }
