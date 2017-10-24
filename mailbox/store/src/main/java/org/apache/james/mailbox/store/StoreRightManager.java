@@ -179,8 +179,12 @@ public class StoreRightManager implements RightManager {
      *         there are any).
      * @throws UnsupportedRightException
      */
-    protected MailboxACL getResolvedMailboxACL(Mailbox mailbox, MailboxSession mailboxSession) throws UnsupportedRightException {
-        return filteredForSession(mailbox, aclResolver.applyGlobalACL(mailbox.getACL(), new GroupFolderResolver(mailboxSession).isGroupFolder(mailbox)), mailboxSession);
+    public MailboxACL getResolvedMailboxACL(Mailbox mailbox, MailboxSession mailboxSession) throws UnsupportedRightException {
+        MailboxACL acl = aclResolver.applyGlobalACL(
+            mailbox.getACL(),
+            new GroupFolderResolver(mailboxSession).isGroupFolder(mailbox));
+
+        return filteredForSession(mailbox, acl, mailboxSession);
     }
 
     /**
