@@ -28,11 +28,13 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.acl.GroupMembershipResolver;
 import org.apache.james.mailbox.acl.MailboxACLResolver;
+import org.apache.james.mailbox.exception.DifferentDomainException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.ACLCommand;
 import org.apache.james.mailbox.model.MailboxACL.EntryKey;
+import org.apache.james.mailbox.model.MailboxACL.NameType;
 import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxId;
@@ -161,10 +163,43 @@ public class StoreRightManager implements RightManager {
 
     @Override
     public void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException {
+        validateDomainsAreIdentical(mailboxPath.getUser(), mailboxACL);
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         Mailbox mailbox = mapper.findMailboxByPath(mailboxPath);
 
         setRights(mailboxACL, mapper, mailbox);
+    }
+
+    @VisibleForTesting
+    void validateDomainsAreIdentical(String user, MailboxACL mailboxACL) throws DifferentDomainException {
+        if (mailboxACL.getEntries().keySet().stream()
+            .filter(entry -> !entry.getNameType().equals(NameType.special))
+            .map(EntryKey::getName)
+            .anyMatch(name -> areDomainsDifferent(name, user))) {
+            throw new DifferentDomainException();
+        }
+    }
+
+    @VisibleForTesting
+    boolean areDomainsDifferent(String user, String otherUser) {
+        Optional<String> domain = extractDomain(user);
+        Optional<String> otherDomain = extractDomain(otherUser);
+        if (domain.isPresent() != otherDomain.isPresent()) {
+            return true;
+        }
+        if (!domain.isPresent()) {
+            return false;
+        }
+        return !domain.get().equals(otherDomain.get());
+    }
+
+    @VisibleForTesting 
+    Optional<String> extractDomain(String user) {
+        String[] split = user.split("@");
+        if (split.length == 2) {
+            return Optional.of(split[1]);
+        }
+        return Optional.empty();
     }
 
     private void setRights(MailboxACL mailboxACL, MailboxMapper mapper, Mailbox mailbox) throws MailboxException {

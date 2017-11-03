@@ -24,6 +24,7 @@ import static org.apache.james.mailbox.fixture.MailboxFixture.BOB;
 import static org.apache.james.mailbox.fixture.MailboxFixture.CEDRIC;
 import static org.apache.james.mailbox.fixture.MailboxFixture.INBOX_ALICE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +34,7 @@ import org.apache.james.mailbox.acl.GroupMembershipResolver;
 import org.apache.james.mailbox.acl.MailboxACLResolver;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
+import org.apache.james.mailbox.exception.DifferentDomainException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
@@ -222,5 +224,70 @@ public class StoreRightManagerTest {
         MailboxACL actual = StoreRightManager.filteredForSession(
             new SimpleMailbox(INBOX_ALICE, UID_VALIDITY), acl, new MockMailboxSession(BOB));
         assertThat(actual.getEntries()).containsKey(MailboxACL.EntryKey.createUserEntryKey(BOB));
+    }
+
+    @Test
+    public void extractDomainShouldThrowWhenNull() {
+        assertThatThrownBy(() -> storeRightManager.extractDomain(null))
+            .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void extractDomainShouldReturnEmptyWhenNoDomainSeparator() {
+        assertThat(storeRightManager.extractDomain("user")).isEmpty();
+    }
+
+    @Test
+    public void extractDomainShouldReturnEmptyWhenNoDomainButSeparator() {
+        assertThat(storeRightManager.extractDomain("user@")).isEmpty();
+    }
+
+    @Test
+    public void extractDomainShouldReturnDomainWhenOne() {
+        assertThat(storeRightManager.extractDomain("user@domain.org")).contains("domain.org");
+    }
+
+    @Test
+    public void areDomainsDifferentShouldTrueWhenOneHasDomainNotTheOther() {
+        assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser")).isTrue();
+    }
+
+    @Test
+    public void areDomainsDifferentShouldTrueWhenOtherHasDomainNotTheOne() {
+        assertThat(storeRightManager.areDomainsDifferent("user", "otherUser@domain.org")).isTrue();
+    }
+
+    @Test
+    public void areDomainsDifferentShouldFalseWhenNoDomain() {
+        assertThat(storeRightManager.areDomainsDifferent("user", "otherUser")).isFalse();
+    }
+
+    @Test
+    public void areDomainsDifferentShouldTrueWhenDomainsAreDifferent() {
+        assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser@otherdomain.org")).isTrue();
+    }
+
+    @Test
+    public void areDomainsDifferentShouldFalseWhenDomainsAreIdentical() {
+        assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser@domain.org")).isFalse();
+    }
+
+    @Test
+    public void validateDomainsAreIdenticalShouldThrowWhenOneDomainIsDifferent() throws Exception  {
+        MailboxACL mailboxACL = new MailboxACL(new MailboxACL.Entry("a@domain.org", Right.Write), 
+                new MailboxACL.Entry("b@otherdomain.org", Right.Write), 
+                new MailboxACL.Entry("c@domain.org", Right.Write));
+        
+        assertThatThrownBy(() -> storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL))
+            .isInstanceOf(DifferentDomainException.class);
+    }
+
+    @Test
+    public void validateDomainsAreIdenticalShouldNotThrowWhenDomainsAreIdentical() throws Exception  {
+        MailboxACL mailboxACL = new MailboxACL(new MailboxACL.Entry("a@domain.org", Right.Write), 
+                new MailboxACL.Entry("b@domain.org", Right.Write), 
+                new MailboxACL.Entry("c@domain.org", Right.Write));
+        
+        storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL);
     }
 }
