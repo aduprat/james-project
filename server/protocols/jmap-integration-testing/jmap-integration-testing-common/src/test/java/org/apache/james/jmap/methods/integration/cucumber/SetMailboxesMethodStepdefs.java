@@ -33,7 +33,7 @@ import javax.mail.Flags;
 
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
-import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxShares;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
@@ -111,11 +111,11 @@ public class SetMailboxesMethodStepdefs {
     }
     
     private String rightsAsString(String rights) throws UnsupportedRightException {
-        return MailboxACL.Rfc4314Rights
+        return MailboxShares.Rfc4314Rights
             .fromSerializedRfc4314Rights(rights)
             .list()
             .stream()
-            .map(MailboxACL.Right::asCharacter)
+            .map(MailboxShares.Right::asCharacter)
             .map(String::valueOf)
             .map(this::surroundWithDoubleQuotes)
             .collect(Collectors.joining(", ", "[ ", " ]"));

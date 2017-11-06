@@ -44,8 +44,8 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.DefaultMailboxes;
 import org.apache.james.jmap.HttpJmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
-import org.apache.james.mailbox.model.MailboxACL;
-import org.apache.james.mailbox.model.MailboxACL.Right;
+import org.apache.james.mailbox.model.MailboxShares;
+import org.apache.james.mailbox.model.MailboxShares.Right;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -1492,11 +1492,11 @@ public abstract class SetMailboxesMethodTest {
                 "]")
             .post("/jmap");
 
-        MailboxACL acl = jmapServer.getProbe(ACLProbeImpl.class)
+        MailboxShares acl = jmapServer.getProbe(ACLProbeImpl.class)
             .retrieveRights(MailboxPath.forUser(username, myBox));
 
         assertThat(acl.getEntries())
-            .doesNotContainKeys(MailboxACL.EntryKey.createUserEntryKey(username));
+            .doesNotContainKeys(MailboxShares.EntryKey.createUserEntryKey(username));
     }
 
     @Test

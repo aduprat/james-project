@@ -221,7 +221,7 @@ public class SetMailboxesUpdateProcessor implements SetMailboxesProcessor {
                 updateRequest.getSharedWith()
                     .get()
                     .removeEntriesFor(Username.forMailboxPath(originMailboxPath))
-                    .toMailboxAcl(),
+                    .toMailboxShares(),
                 mailboxSession);
         }
         if (!originMailboxPath.equals(destinationMailboxPath)) {
