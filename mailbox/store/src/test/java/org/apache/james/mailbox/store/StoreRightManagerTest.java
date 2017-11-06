@@ -41,6 +41,7 @@ import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.fixture.MailboxFixture;
 import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.ACLCommand;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
@@ -278,7 +279,7 @@ public class StoreRightManagerTest {
                 new MailboxACL.Entry("b@otherdomain.org", Right.Write), 
                 new MailboxACL.Entry("c@domain.org", Right.Write));
         
-        assertThatThrownBy(() -> storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL))
+        assertThatThrownBy(() -> storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL.getEntries()))
             .isInstanceOf(DifferentDomainException.class);
     }
 
@@ -288,6 +289,18 @@ public class StoreRightManagerTest {
                 new MailboxACL.Entry("b@domain.org", Right.Write), 
                 new MailboxACL.Entry("c@domain.org", Right.Write));
         
-        storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL);
+        storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL.getEntries());
+    }
+
+    @Test
+    public void applyRightsCommandShouldThrowWhenDomainsAreDifferent() {
+        MailboxPath mailboxPath = MailboxPath.forUser("user@domain.org", "mailbox");
+        ACLCommand aclCommand = MailboxACL.command()
+            .forUser("otherUser@otherdomain.org")
+            .rights(MailboxACL.FULL_RIGHTS)
+            .asAddition();
+       
+        assertThatThrownBy(() -> storeRightManager.applyRightsCommand(mailboxPath, aclCommand, aliceSession))
+            .isInstanceOf(DifferentDomainException.class);
     }
 }
