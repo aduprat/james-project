@@ -195,7 +195,7 @@ public class SetMailboxesMethodStepdefs {
     }
 
     @Then("^\"([^\"]*)\" receives not updated on mailbox \"([^\"]*)\" with kind \"([^\"]*)\" and message \"([^\"]*)\"$")
-    public void assertSize(String userName, String mailboxName, String type, String message) throws Exception {
+    public void assertNotUpdatedWithGivenProperties(String userName, String mailboxName, String type, String message) throws Exception {
         Mailbox mailbox = mainStepdefs.mailboxProbe.getMailbox("#private", userName, mailboxName);
         assertThat(httpClient.response.getStatusLine().getStatusCode()).isEqualTo(200);
         assertThat(httpClient.jsonPath.<String>read(NAME)).isEqualTo("mailboxesSet");

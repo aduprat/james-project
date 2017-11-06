@@ -249,47 +249,47 @@ public class StoreRightManagerTest {
     }
 
     @Test
-    public void areDomainsDifferentShouldTrueWhenOneHasDomainNotTheOther() {
+    public void areDomainsDifferentShouldReturnTrueWhenOneHasDomainNotTheOther() {
         assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser")).isTrue();
     }
 
     @Test
-    public void areDomainsDifferentShouldTrueWhenOtherHasDomainNotTheOne() {
+    public void areDomainsDifferentShouldReturnTrueWhenOtherHasDomainNotTheOne() {
         assertThat(storeRightManager.areDomainsDifferent("user", "otherUser@domain.org")).isTrue();
     }
 
     @Test
-    public void areDomainsDifferentShouldFalseWhenNoDomain() {
+    public void areDomainsDifferentShouldReturnFalseWhenNoDomain() {
         assertThat(storeRightManager.areDomainsDifferent("user", "otherUser")).isFalse();
     }
 
     @Test
-    public void areDomainsDifferentShouldTrueWhenDomainsAreDifferent() {
+    public void areDomainsDifferentShouldReturnTrueWhenDomainsAreDifferent() {
         assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser@otherdomain.org")).isTrue();
     }
 
     @Test
-    public void areDomainsDifferentShouldFalseWhenDomainsAreIdentical() {
+    public void areDomainsDifferentShouldReturnFalseWhenDomainsAreIdentical() {
         assertThat(storeRightManager.areDomainsDifferent("user@domain.org", "otherUser@domain.org")).isFalse();
     }
 
     @Test
-    public void validateDomainsAreIdenticalShouldThrowWhenOneDomainIsDifferent() throws Exception  {
+    public void assertSharesBelongsToUserDomainShouldThrowWhenOneDomainIsDifferent() throws Exception  {
         MailboxACL mailboxACL = new MailboxACL(new MailboxACL.Entry("a@domain.org", Right.Write), 
                 new MailboxACL.Entry("b@otherdomain.org", Right.Write), 
                 new MailboxACL.Entry("c@domain.org", Right.Write));
         
-        assertThatThrownBy(() -> storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL.getEntries()))
+        assertThatThrownBy(() -> storeRightManager.assertSharesBelongsToUserDomain("user@domain.org", mailboxACL.getEntries()))
             .isInstanceOf(DifferentDomainException.class);
     }
 
     @Test
-    public void validateDomainsAreIdenticalShouldNotThrowWhenDomainsAreIdentical() throws Exception  {
+    public void assertSharesBelongsToUserDomainShouldNotThrowWhenDomainsAreIdentical() throws Exception  {
         MailboxACL mailboxACL = new MailboxACL(new MailboxACL.Entry("a@domain.org", Right.Write), 
                 new MailboxACL.Entry("b@domain.org", Right.Write), 
                 new MailboxACL.Entry("c@domain.org", Right.Write));
         
-        storeRightManager.validateDomainsAreIdentical("user@domain.org", mailboxACL.getEntries());
+        storeRightManager.assertSharesBelongsToUserDomain("user@domain.org", mailboxACL.getEntries());
     }
 
     @Test

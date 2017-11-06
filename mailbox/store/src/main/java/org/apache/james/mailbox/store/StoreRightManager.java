@@ -115,14 +115,14 @@ public class StoreRightManager implements RightManager {
 
     @Override
     public void applyRightsCommand(MailboxPath mailboxPath, ACLCommand mailboxACLCommand, MailboxSession session) throws MailboxException {
-        validateDomainsAreIdentical(mailboxPath.getUser(), mailboxACLCommand);
+        assertSharesBelongsToUserDomain(mailboxPath.getUser(), mailboxACLCommand);
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         Mailbox mailbox = mapper.findMailboxByPath(mailboxPath);
         mapper.execute(Mapper.toTransaction(() -> mapper.updateACL(mailbox, mailboxACLCommand)));
     }
 
-    private void validateDomainsAreIdentical(String user, ACLCommand mailboxACLCommand) throws DifferentDomainException {
-        validateDomainsAreIdentical(user, ImmutableMap.of(mailboxACLCommand.getEntryKey(), mailboxACLCommand.getRights()));
+    private void assertSharesBelongsToUserDomain(String user, ACLCommand mailboxACLCommand) throws DifferentDomainException {
+        assertSharesBelongsToUserDomain(user, ImmutableMap.of(mailboxACLCommand.getEntryKey(), mailboxACLCommand.getRights()));
     }
 
     public boolean isReadWrite(MailboxSession session, Mailbox mailbox, Flags sharedPermanentFlags) throws UnsupportedRightException {
@@ -169,7 +169,7 @@ public class StoreRightManager implements RightManager {
 
     @Override
     public void setRights(MailboxPath mailboxPath, MailboxACL mailboxACL, MailboxSession session) throws MailboxException {
-        validateDomainsAreIdentical(mailboxPath.getUser(), mailboxACL.getEntries());
+        assertSharesBelongsToUserDomain(mailboxPath.getUser(), mailboxACL.getEntries());
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
         Mailbox mailbox = mapper.findMailboxByPath(mailboxPath);
 
@@ -177,7 +177,7 @@ public class StoreRightManager implements RightManager {
     }
 
     @VisibleForTesting
-    void validateDomainsAreIdentical(String user, Map<EntryKey, Rfc4314Rights> entries) throws DifferentDomainException {
+    void assertSharesBelongsToUserDomain(String user, Map<EntryKey, Rfc4314Rights> entries) throws DifferentDomainException {
         if (entries.keySet().stream()
             .filter(entry -> !entry.getNameType().equals(NameType.special))
             .map(EntryKey::getName)
@@ -188,15 +188,7 @@ public class StoreRightManager implements RightManager {
 
     @VisibleForTesting
     boolean areDomainsDifferent(String user, String otherUser) {
-        Optional<String> domain = extractDomain(user);
-        Optional<String> otherDomain = extractDomain(otherUser);
-        if (domain.isPresent() != otherDomain.isPresent()) {
-            return true;
-        }
-        if (!domain.isPresent()) {
-            return false;
-        }
-        return !domain.get().equals(otherDomain.get());
+        return !extractDomain(user).equals(extractDomain(otherUser));
     }
 
     @VisibleForTesting 
