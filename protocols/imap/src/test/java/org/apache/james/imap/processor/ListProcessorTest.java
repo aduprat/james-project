@@ -19,6 +19,7 @@
 
 package org.apache.james.imap.processor;
 
+import org.apache.james.core.JamesConstants;
 import org.apache.james.imap.api.ImapCommand;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapProcessor;
@@ -79,7 +80,7 @@ public class ListProcessorTest  {
             boolean marked, boolean unmarked, boolean hasChildren,
             boolean hasNoChildren, char hierarchyDelimiter, String mailboxName) {
         return new ListResponse(noinferior, noselect, marked, unmarked,
-                hasChildren, hasNoChildren, MailboxConstants.USER_NAMESPACE + MailboxConstants.DEFAULT_DELIMITER + mailboxName, hierarchyDelimiter);
+                hasChildren, hasNoChildren, MailboxConstants.USER_NAMESPACE + JamesConstants.DEFAULT_DELIMITER + mailboxName, hierarchyDelimiter);
     }
 
     void setUpResult(final MailboxMetaData.Children children, final MailboxMetaData.Selectability selectability,
