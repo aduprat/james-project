@@ -118,4 +118,48 @@ public class MailboxTest {
 
         assertThat(mailbox.getUnreadMessages()).isEqualTo(0);
     }
+
+    @Test
+    public void totalMessagesShouldZeroWhenZero() {
+        Mailbox mailbox = Mailbox.builder()
+                .id(InMemoryId.of(1))
+                .name("name")
+                .totalMessages(0)
+                .build();
+
+        assertThat(mailbox.getTotalMessages()).isEqualTo(0);
+    }
+
+    @Test
+    public void unreadMessagesShouldZeroWhenZero() {
+        Mailbox mailbox = Mailbox.builder()
+                .id(InMemoryId.of(1))
+                .name("name")
+                .unreadMessages(0)
+                .build();
+
+        assertThat(mailbox.getUnreadMessages()).isEqualTo(0);
+    }
+
+    @Test
+    public void totalMessagesShouldAcceptPositiveValue() {
+        Mailbox mailbox = Mailbox.builder()
+                .id(InMemoryId.of(1))
+                .name("name")
+                .totalMessages(1234)
+                .build();
+
+        assertThat(mailbox.getTotalMessages()).isEqualTo(1234);
+    }
+
+    @Test
+    public void unreadMessagesShouldAcceptPositiveValue() {
+        Mailbox mailbox = Mailbox.builder()
+                .id(InMemoryId.of(1))
+                .name("name")
+                .unreadMessages(1234)
+                .build();
+
+        assertThat(mailbox.getUnreadMessages()).isEqualTo(1234);
+    }
 }

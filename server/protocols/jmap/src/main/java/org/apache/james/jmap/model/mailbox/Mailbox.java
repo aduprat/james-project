@@ -173,7 +173,7 @@ public class Mailbox {
 
         private long negativeToZero(Optional<Long> number) {
             return number.filter(value -> value >= 0)
-                .orElse(0l);
+                .orElse(0L);
         }
     }
 
