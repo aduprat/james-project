@@ -120,7 +120,7 @@ public class MailboxTest {
     }
 
     @Test
-    public void totalMessagesShouldZeroWhenZero() {
+    public void totalMessagesShouldReturnZeroWhenZero() {
         Mailbox mailbox = Mailbox.builder()
                 .id(InMemoryId.of(1))
                 .name("name")
@@ -131,7 +131,7 @@ public class MailboxTest {
     }
 
     @Test
-    public void unreadMessagesShouldZeroWhenZero() {
+    public void unreadMessagesShouldReturnZeroWhenZero() {
         Mailbox mailbox = Mailbox.builder()
                 .id(InMemoryId.of(1))
                 .name("name")
