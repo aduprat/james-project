@@ -58,9 +58,19 @@ public class CassandraConfiguration {
         private Optional<Integer> attachmentV2MigrationReadTimeout = Optional.empty();
         private Optional<Integer> messageAttachmentIdsReadTimeout = Optional.empty();
 
+        public Builder messageReadChunkSize(Optional<Integer> value) {
+            value.ifPresent(this::messageReadChunkSize);
+            return this;
+        }
+
         public Builder messageReadChunkSize(int value) {
             Preconditions.checkArgument(value > 0, "messageReadChunkSize needs to be strictly positive");
             this.messageReadChunkSize = Optional.of(value);
+            return this;
+        }
+
+        public Builder expungeChunkSize(Optional<Integer> value) {
+            value.ifPresent(this::expungeChunkSize);
             return this;
         }
 
@@ -70,9 +80,19 @@ public class CassandraConfiguration {
             return this;
         }
 
+        public Builder flagsUpdateChunkSize(Optional<Integer> value) {
+            value.ifPresent(this::flagsUpdateChunkSize);
+            return this;
+        }
+
         public Builder flagsUpdateChunkSize(int value) {
             Preconditions.checkArgument(value > 0, "flagsUpdateChunkSize needs to be strictly positive");
             this.flagsUpdateChunkSize = Optional.of(value);
+            return this;
+        }
+
+        public Builder flagsUpdateMessageIdMaxRetry(Optional<Integer> value) {
+            value.ifPresent(this::flagsUpdateMessageIdMaxRetry);
             return this;
         }
 
@@ -82,9 +102,19 @@ public class CassandraConfiguration {
             return this;
         }
 
+        public Builder flagsUpdateMessageMaxRetry(Optional<Integer> value) {
+            value.ifPresent(this::flagsUpdateMessageMaxRetry);
+            return this;
+        }
+
         public Builder flagsUpdateMessageMaxRetry(int value) {
             Preconditions.checkArgument(value > 0, "flagsUpdateMessageMaxRetry needs to be strictly positive");
             this.flagsUpdateMessageMaxRetry = Optional.of(value);
+            return this;
+        }
+
+        public Builder modSeqMaxRetry(Optional<Integer> value) {
+            value.ifPresent(this::modSeqMaxRetry);
             return this;
         }
 
@@ -94,9 +124,19 @@ public class CassandraConfiguration {
             return this;
         }
 
+        public Builder uidMaxRetry(Optional<Integer> value) {
+            value.ifPresent(this::uidMaxRetry);
+            return this;
+        }
+
         public Builder uidMaxRetry(int value) {
             Preconditions.checkArgument(value > 0, "uidMaxRetry needs to be strictly positive");
             this.uidMaxRetry = Optional.of(value);
+            return this;
+        }
+
+        public Builder aclMaxRetry(Optional<Integer> value) {
+            value.ifPresent(this::aclMaxRetry);
             return this;
         }
 
@@ -106,9 +146,19 @@ public class CassandraConfiguration {
             return this;
         }
 
+        public Builder fetchNextPageInAdvanceRow(Optional<Integer> value) {
+            value.ifPresent(this::fetchNextPageInAdvanceRow);
+            return this;
+        }
+
         public Builder fetchNextPageInAdvanceRow(int value) {
             Preconditions.checkArgument(value > 0, "fetchNextPageInAdvanceRow needs to be strictly positive");
             this.fetchNextPageInAdvanceRow = Optional.of(value);
+            return this;
+        }
+
+        public Builder blobPartSize(Optional<Integer> value) {
+            value.ifPresent(this::blobPartSize);
             return this;
         }
 
@@ -118,75 +168,25 @@ public class CassandraConfiguration {
             return this;
         }
 
+        public Builder attachmentV2MigrationReadTimeout(Optional<Integer> value) {
+            value.ifPresent(this::attachmentV2MigrationReadTimeout);
+            return this;
+        }
+
         public Builder attachmentV2MigrationReadTimeout(int value) {
             Preconditions.checkArgument(value > 0, "attachmentV2MigrationReadTimeout needs to be strictly positive");
             this.attachmentV2MigrationReadTimeout = Optional.of(value);
             return this;
         }
 
+        public Builder messageAttachmentIdsReadTimeout(Optional<Integer> value) {
+            value.ifPresent(this::messageAttachmentIdsReadTimeout);
+            return this;
+        }
+
         public Builder messageAttachmentIdsReadTimeout(int value) {
             Preconditions.checkArgument(value > 0, "messageAttachmentIdsReadTimeout needs to be strictly positive");
             this.messageAttachmentIdsReadTimeout = Optional.of(value);
-            return this;
-        }
-
-        public Builder messageReadChunkSize(Optional<Integer> value) {
-            value.ifPresent(this::messageReadChunkSize);
-            return this;
-        }
-
-        public Builder expungeChunkSize(Optional<Integer> value) {
-            value.ifPresent(this::expungeChunkSize);
-            return this;
-        }
-
-        public Builder flagsUpdateChunkSize(Optional<Integer> value) {
-            value.ifPresent(this::flagsUpdateChunkSize);
-            return this;
-        }
-
-        public Builder flagsUpdateMessageIdMaxRetry(Optional<Integer> value) {
-            value.ifPresent(this::flagsUpdateMessageIdMaxRetry);
-            return this;
-        }
-
-        public Builder flagsUpdateMessageMaxRetry(Optional<Integer> value) {
-            value.ifPresent(this::flagsUpdateMessageMaxRetry);
-            return this;
-        }
-
-        public Builder modSeqMaxRetry(Optional<Integer> value) {
-            value.ifPresent(this::modSeqMaxRetry);
-            return this;
-        }
-
-        public Builder uidMaxRetry(Optional<Integer> value) {
-            value.ifPresent(this::uidMaxRetry);
-            return this;
-        }
-
-        public Builder aclMaxRetry(Optional<Integer> value) {
-            value.ifPresent(this::aclMaxRetry);
-            return this;
-        }
-
-        public Builder fetchNextPageInAdvanceRow(Optional<Integer> value) {
-            value.ifPresent(this::fetchNextPageInAdvanceRow);
-            return this;
-        }
-
-        public Builder blobPartSize(Optional<Integer> value) {
-            value.ifPresent(this::blobPartSize);
-            return this;
-        }
-
-        public Builder attachmentV2MigrationReadTimeout(Optional<Integer> value) {
-            value.ifPresent(this::attachmentV2MigrationReadTimeout);
-            return this;
-        }
-
-        public Builder messageAttachmentIdsReadTimeout(Optional<Integer> value) {
-            value.ifPresent(this::messageAttachmentIdsReadTimeout);
             return this;
         }
 
