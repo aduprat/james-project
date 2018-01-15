@@ -99,17 +99,16 @@ public class ImapStepdefs {
         }
     }
 
+    @SuppressWarnings("resource")
     @Given("^the user has an open IMAP connection with mailbox \"([^\"]*)\" selected")
     public void openImapConnectionAndSelectMailbox(String mailbox) throws Throwable {
         String login = userStepdefs.getConnectedUser();
         String password = userStepdefs.getUserPassword(login);
 
-        try (IMAPMessageReader imapMessageReader = new IMAPMessageReader()) {
-            imapConnections.put(mailbox, imapMessageReader
-                .connect(LOCALHOST, IMAP_PORT)
-                .login(login, password)
-                .select(mailbox));
-        }
+        imapConnections.put(mailbox, new IMAPMessageReader()
+            .connect(LOCALHOST, IMAP_PORT)
+            .login(login, password)
+            .select(mailbox));
     }
 
     @Then("^the user set flags via IMAP to \"([^\"]*)\" for all messages in mailbox \"([^\"]*)\"$")
