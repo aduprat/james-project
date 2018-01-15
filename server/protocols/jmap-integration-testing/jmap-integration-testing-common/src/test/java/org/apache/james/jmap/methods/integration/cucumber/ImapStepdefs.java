@@ -27,6 +27,7 @@ import javax.inject.Inject;
 
 import org.apache.james.utils.IMAPMessageReader;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.Maps;
 
 import cucumber.api.java.en.Given;
@@ -49,6 +50,11 @@ public class ImapStepdefs {
         this.userStepdefs = userStepdefs;
         this.mainStepdefs = mainStepdefs;
         this.imapConnections = Maps.newHashMap();
+    }
+
+    public void closeConnections() {
+        imapConnections.values().stream()
+            .forEach(Throwing.consumer(IMAPMessageReader::close));
     }
 
     @Then("^the user has a IMAP message in mailbox \"([^\"]*)\"$")
