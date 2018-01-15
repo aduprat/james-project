@@ -39,6 +39,7 @@ import org.apache.james.mailbox.cassandra.mail.utils.DataChunker;
 import org.apache.james.mailbox.cassandra.table.BlobTable;
 import org.apache.james.mailbox.cassandra.table.BlobTable.BlobParts;
 import org.apache.james.objectstore.api.BlobId;
+import org.apache.james.objectstore.api.ObjectStore;
 import org.apache.james.util.FluentFutureStream;
 import org.apache.james.util.OptionalUtils;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Bytes;
 
-public class CassandraBlobsDAO {
+public class CassandraBlobsDAO implements ObjectStore {
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraBlobsDAO.class);
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final PreparedStatement insert;
@@ -106,6 +107,7 @@ public class CassandraBlobsDAO {
             .value(BlobParts.DATA, bindMarker(BlobParts.DATA)));
     }
 
+    @Override
     public CompletableFuture<BlobId> save(byte[] data) {
         Preconditions.checkNotNull(data);
 
@@ -145,6 +147,7 @@ public class CassandraBlobsDAO {
             .setInt(BlobTable.NUMBER_OF_CHUNK, numberOfChunk));
     }
 
+    @Override
     public CompletableFuture<byte[]> read(BlobId blobId) {
         return cassandraAsyncExecutor.executeSingleRow(
             select.bind()
