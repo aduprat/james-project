@@ -18,11 +18,13 @@
  ****************************************************************/
 package org.apache.james.blob.api;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.concurrent.CompletableFuture;
 
 public interface ObjectStore {
 
-    CompletableFuture<BlobId> save(byte[] data);
+    CompletableFuture<Void> save(BlobId blobId, InputStream inputStream);
 
-    CompletableFuture<byte[]> read(BlobId blobId);
+    CompletableFuture<Void> read(BlobId blobId, OutputStream outputStream);
 }

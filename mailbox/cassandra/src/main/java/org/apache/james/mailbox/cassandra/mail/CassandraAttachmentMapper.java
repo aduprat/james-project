@@ -19,6 +19,9 @@
 
 package org.apache.james.mailbox.cassandra.mail;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +31,8 @@ import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.james.blob.cassandra.CassandraBlobId;
 import org.apache.james.blob.cassandra.CassandraBlobsDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentDAOV2.DAOAttachment;
 import org.apache.james.mailbox.exception.AttachmentNotFoundException;
@@ -87,8 +92,9 @@ public class CassandraAttachmentMapper implements AttachmentMapper {
             return CompletableFuture.completedFuture(Optional.empty());
         }
         DAOAttachment daoAttachment = daoAttachmentOptional.get();
-        return blobsDAO.read(daoAttachment.getBlobId())
-            .thenApply(bytes -> Optional.of(daoAttachment.toAttachment(bytes)));
+        OutputStream outputStream = new ByteArrayOutputStream();
+        return blobsDAO.read(daoAttachment.getBlobId(), outputStream)
+            .thenApply(any -> Optional.of(daoAttachment.toAttachment(outputStream)));
     }
 
     @Override
@@ -126,8 +132,15 @@ public class CassandraAttachmentMapper implements AttachmentMapper {
     @Override
     public void storeAttachmentForOwner(Attachment attachment, Username owner) throws MailboxException {
         ownerDAO.addOwner(attachment.getAttachmentId(), owner)
-            .thenCompose(any -> blobsDAO.save(attachment.getBytes()))
-            .thenApply(blobId -> CassandraAttachmentDAOV2.from(attachment, blobId))
+            .thenCompose(any -> { 
+                byte[] bytes = attachment.getBytes();
+                return CompletableFuture.completedFuture(Pair.of(CassandraBlobId.forPayload(bytes), bytes));
+            })
+            .thenCompose(pair -> {
+                blobsDAO.save(pair.getLeft(), new ByteArrayInputStream(pair.getRight()));
+                return CompletableFuture.completedFuture(pair);
+            })
+            .thenApply(pair -> CassandraAttachmentDAOV2.from(attachment, pair.getLeft()))
             .thenCompose(attachmentDAOV2::storeAttachment)
             .join();
     }
@@ -152,8 +165,10 @@ public class CassandraAttachmentMapper implements AttachmentMapper {
     }
 
     public CompletableFuture<Void> storeAttachmentAsync(Attachment attachment, MessageId ownerMessageId) {
-        return blobsDAO.save(attachment.getBytes())
-            .thenApply(blobId -> CassandraAttachmentDAOV2.from(attachment, blobId))
+        byte[] bytes = attachment.getBytes();
+        CassandraBlobId blobId = CassandraBlobId.forPayload(bytes);
+        return blobsDAO.save(CassandraBlobId.forPayload(bytes), new ByteArrayInputStream(bytes))
+            .thenApply(any -> CassandraAttachmentDAOV2.from(attachment, blobId))
             .thenCompose(daoAttachment -> storeAttachmentWithIndex(daoAttachment, ownerMessageId));
     }
 

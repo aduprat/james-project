@@ -24,6 +24,9 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +35,7 @@ import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.cassandra.init.CassandraConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -47,11 +51,10 @@ import org.slf4j.LoggerFactory;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.github.steveash.guavate.Guavate;
+import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.primitives.Bytes;
+import com.google.common.base.Throwables;
 
 public class CassandraBlobsDAO implements ObjectStore {
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraBlobsDAO.class);
@@ -107,16 +110,23 @@ public class CassandraBlobsDAO implements ObjectStore {
     }
 
     @Override
-    public CompletableFuture<BlobId> save(byte[] data) {
-        Preconditions.checkNotNull(data);
+    public CompletableFuture<Void> save(BlobId blobId, InputStream inputStream) {
+        Preconditions.checkNotNull(blobId);
+        Preconditions.checkNotNull(inputStream);
 
-        CassandraBlobId blobId = CassandraBlobId.forPayload(data);
-        return saveBlobParts(data, blobId)
-            .thenCompose(numberOfChunk -> saveBlobPartsReferences(blobId, numberOfChunk))
-            .thenApply(any -> blobId);
+        return saveBlobParts(data(inputStream), blobId)
+            .thenCompose(numberOfChunk -> saveBlobPartsReferences(blobId, numberOfChunk));
     }
 
-    private CompletableFuture<Integer> saveBlobParts(byte[] data, CassandraBlobId blobId) {
+    private byte[] data(InputStream inputStream) {
+        try {
+            return IOUtils.toByteArray(inputStream);
+        } catch (IOException exception) {
+            throw Throwables.propagate(exception);
+        }
+    }
+
+    private CompletableFuture<Integer> saveBlobParts(byte[] data, BlobId blobId) {
         return FluentFutureStream.of(
             dataChunker.chunk(data, configuration.getBlobPartSize())
                 .map(pair -> writePart(pair.getRight(), blobId, pair.getKey())
@@ -132,7 +142,7 @@ public class CassandraBlobsDAO implements ObjectStore {
         return stream.reduce((first, second) -> second);
     }
 
-    private CompletableFuture<Void> writePart(ByteBuffer data, CassandraBlobId blobId, int position) {
+    private CompletableFuture<Void> writePart(ByteBuffer data, BlobId blobId, int position) {
         return cassandraAsyncExecutor.executeVoid(
             insertPart.bind()
                 .setString(BlobTable.ID, blobId.asString())
@@ -140,19 +150,22 @@ public class CassandraBlobsDAO implements ObjectStore {
                 .setBytes(BlobParts.DATA, data));
     }
 
-    private CompletableFuture<Void> saveBlobPartsReferences(CassandraBlobId blobId, int numberOfChunk) {
+    private CompletableFuture<Void> saveBlobPartsReferences(BlobId blobId, int numberOfChunk) {
         return cassandraAsyncExecutor.executeVoid(insert.bind()
             .setString(BlobTable.ID, blobId.asString())
             .setInt(BlobTable.NUMBER_OF_CHUNK, numberOfChunk));
     }
 
     @Override
-    public CompletableFuture<byte[]> read(BlobId blobId) {
+    public CompletableFuture<Void> read(BlobId blobId, OutputStream outputStream) {
         return cassandraAsyncExecutor.executeSingleRow(
             select.bind()
                 .setString(BlobTable.ID, blobId.asString()))
             .thenCompose(row -> toDataParts(row, blobId))
-            .thenApply(this::concatenateDataParts);
+            .thenApply(blobParts -> {
+                concatenateDataParts(blobParts, outputStream);
+                return null;
+            });
     }
 
     private CompletableFuture<Stream<BlobPart>> toDataParts(Optional<Row> blobRowOptional, BlobId blobId) {
@@ -168,16 +181,14 @@ public class CassandraBlobsDAO implements ObjectStore {
         });
     }
 
-    private byte[] concatenateDataParts(Stream<BlobPart> blobParts) {
-        ImmutableList<byte[]> parts = blobParts
+    private void concatenateDataParts(Stream<BlobPart> blobParts, OutputStream outputStream) {
+        blobParts
             .map(blobPart -> OptionalUtils.executeIfEmpty(
                 blobPart.row,
                 () -> LOGGER.warn("Missing blob part for blobId {} and position {}", blobPart.blobId, blobPart.position)))
             .flatMap(OptionalUtils::toStream)
             .map(this::rowToData)
-            .collect(Guavate.toImmutableList());
-
-        return Bytes.concat(parts.toArray(new byte[parts.size()][]));
+            .forEach(Throwing.consumer(outputStream::write));
     }
 
     private byte[] rowToData(Row row) {
