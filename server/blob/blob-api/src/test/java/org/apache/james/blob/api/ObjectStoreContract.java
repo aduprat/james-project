@@ -56,6 +56,19 @@ public interface ObjectStoreContract {
     }
 
     @Test
+    default void saveShouldReturnBlobIdWhenBigBlob() throws Exception {
+        String bigString = bigString();
+        BlobId blobId = testee().save(bigString.getBytes(StandardCharsets.UTF_8)).join();
+
+        assertThat(blobId).isEqualTo(from(bigString));
+    }
+
+    default String bigString() {
+        // 12 MB of text
+        return Strings.repeat("0123456789\r\n", 1024 * 1024);
+    }
+
+    @Test
     default void readShouldBeEmptyWhenNoExisting() throws IOException {
         byte[] bytes = testee().read(from("unknown")).join();
 
@@ -79,5 +92,15 @@ public interface ObjectStoreContract {
         byte[] bytes = testee().read(blobId).join();
 
         assertThat(new String(bytes, StandardCharsets.UTF_8)).isEqualTo(longString);
+    }
+
+    @Test
+    default void readShouldReturnBigSavedData() throws IOException {
+        String bigString = bigString();
+        BlobId blobId = testee().save(bigString.getBytes(StandardCharsets.UTF_8)).join();
+
+        byte[] bytes = testee().read(blobId).join();
+
+        assertThat(new String(bytes, StandardCharsets.UTF_8)).isEqualTo(bigString);
     }
 }
