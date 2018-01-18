@@ -21,7 +21,6 @@ package org.apache.james.modules.mailbox;
 
 import org.apache.james.blob.api.ObjectStore;
 import org.apache.james.blob.cassandra.CassandraBlobsDAO;
-import org.apache.james.blob.cassandra.CassandraObjectStore;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
@@ -30,8 +29,7 @@ public class CassandraObjectStoreModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(CassandraBlobsDAO.class).in(Scopes.SINGLETON);
-        bind(CassandraObjectStore.class).in(Scopes.SINGLETON);
 
-        bind(ObjectStore.class).to(CassandraObjectStore.class);
+        bind(ObjectStore.class).to(CassandraBlobsDAO.class);
     }
 }
