@@ -40,6 +40,8 @@
     <modules>
         <module>app</module>
 
+        <module>blob</module>
+
         <module>container/cli</module>
         <module>container/cli-integration</module>
         <module>container/core</module>
@@ -103,8 +105,6 @@
 
         <module>task</module>
         <module>testing</module>
-
-        <module>blob</module>
     </modules>
 
     <properties>
