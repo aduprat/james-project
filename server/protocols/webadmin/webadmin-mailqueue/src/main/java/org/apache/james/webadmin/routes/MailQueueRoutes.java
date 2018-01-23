@@ -121,18 +121,16 @@ public class MailQueueRoutes implements Routes {
 
     private MailQueueDTO getMailQueue(Request request, Response response) {
         String mailQueueName = request.params(MAIL_QUEUE_NAME);
-        Optional<ManageableMailQueue> queue = mailQueueFactory.getQueue(mailQueueName);
-        if (queue.isPresent()) {
-            return getMailQueue(queue.get());
-        }
-        throw ErrorResponder.builder()
-            .message(String.format("%s can not be found", mailQueueName))
-            .statusCode(HttpStatus.NOT_FOUND_404)
-            .type(ErrorResponder.ErrorType.NOT_FOUND)
-            .haltError();
+        return mailQueueFactory.getQueue(mailQueueName).map(this::toDTO)
+            .orElseThrow(
+                () -> ErrorResponder.builder()
+                    .message(String.format("%s can not be found", mailQueueName))
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .haltError());
     }
 
-    private MailQueueDTO getMailQueue(ManageableMailQueue queue) {
+    private MailQueueDTO toDTO(ManageableMailQueue queue) {
         try {
             return MailQueueDTO.from(queue);
         } catch (MailQueueException e) {
