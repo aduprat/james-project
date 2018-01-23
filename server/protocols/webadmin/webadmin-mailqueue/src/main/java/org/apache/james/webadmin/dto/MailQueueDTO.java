@@ -19,14 +19,62 @@
 
 package org.apache.james.webadmin.dto;
 
-public class MailQueueDTO {
-    private final String name;
+import org.apache.james.queue.api.MailQueue.MailQueueException;
+import org.apache.james.queue.api.ManageableMailQueue;
 
-    public MailQueueDTO(String name) {
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+
+public class MailQueueDTO {
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static MailQueueDTO from(ManageableMailQueue mailQueue) throws MailQueueException {
+        return builder()
+                .name(mailQueue.getName())
+                .size(mailQueue.getSize())
+                .build();
+    }
+
+    public static class Builder {
+
+        private String name;
+        private long size;
+
+        private Builder() {
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder size(long size) {
+            this.size = size;
+            return this;
+        }
+
+        public MailQueueDTO build() {
+            Preconditions.checkArgument(!Strings.isNullOrEmpty(name), "name is mandatory");
+            return new MailQueueDTO(name, size);
+        }
+    }
+
+    private final String name;
+    private final long size;
+
+    private MailQueueDTO(String name, long size) {
         this.name = name;
+        this.size = size;
     }
 
     public String getName() {
         return name;
+    }
+
+    public long getSize() {
+        return size;
     }
 }
