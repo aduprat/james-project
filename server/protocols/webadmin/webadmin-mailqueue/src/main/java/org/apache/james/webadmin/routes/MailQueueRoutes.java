@@ -105,7 +105,7 @@ public class MailQueueRoutes implements Routes {
         @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path")
     })
     @ApiOperation(
-        value = "Get one MailQueue"
+        value = "Get a MailQueue details"
     )
     @ApiResponses(value = {
         @ApiResponse(code = HttpStatus.OK_200, message = "OK", response = MailQueueDTO.class),
