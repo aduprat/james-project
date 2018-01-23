@@ -23,13 +23,16 @@ import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.apache.james.webadmin.WebAdminServer.NO_CONFIGURATION;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.apache.james.metrics.api.NoopMetricFactory;
+import org.apache.james.queue.api.Mails;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
+import org.apache.james.queue.memory.MemoryMailQueueFactory.MemoryMailQueue;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.utils.JsonTransformer;
@@ -77,6 +80,7 @@ public class MailQueueRoutesTest {
         mailQueueFactory = new MemoryMailQueueFactory(new RawMailQueueItemDecoratorFactory());
         webAdminServer = createServer(mailQueueFactory);
         RestAssured.requestSpecification = buildRequestSpecification(webAdminServer);
+        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
 
     @After
@@ -134,6 +138,27 @@ public class MailQueueRoutesTest {
             .getList(".");
 
         assertThat(actual).containsOnly(FIRST_QUEUE, SECOND_QUEUE, THIRD_QUEUE, FOURTH_QUEUE);
+    }
+
+    @Test
+    public void getMailQueueShouldReturnTheMailQueueDataWhenMailQueueExists() throws Exception {
+        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+        queue.enQueue(Mails.defaultMail().build());
+
+        RestAssured.when()
+            .get(FIRST_QUEUE)
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("name", equalTo(FIRST_QUEUE))
+            .body("size", equalTo(1));
+    }
+
+    @Test
+    public void getMailQueueShouldReturnNotFoundWhenMailQueueDoesntExist() {
+        RestAssured.when()
+            .get(FIRST_QUEUE)
+        .then()
+            .statusCode(HttpStatus.NOT_FOUND_404);
     }
 
 }
