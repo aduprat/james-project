@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Longs;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -67,6 +68,8 @@ public class MailQueueRoutes implements Routes {
     @VisibleForTesting static final String MESSAGES = "/messages";
     
     private static final String DELAYED_QUERY_PARAM = "delayed";
+    private static final String LIMIT_QUERY_PARAM = "limit";
+    @VisibleForTesting static final long DEFAULT_LIMIT_VALUE = 100;
     
     private static final Logger LOGGER = LoggerFactory.getLogger(MailQueueRoutes.class);
 
@@ -155,7 +158,8 @@ public class MailQueueRoutes implements Routes {
     @Path("/{mailQueueName}/messages")
     @ApiImplicitParams({
         @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path"),
-        @ApiImplicitParam(required = false, dataType = "boolean", name = DELAYED_QUERY_PARAM, paramType = "query")
+        @ApiImplicitParam(required = false, dataType = "boolean", name = DELAYED_QUERY_PARAM, paramType = "query"),
+        @ApiImplicitParam(required = false, dataType = "long", name = LIMIT_QUERY_PARAM, paramType = "query")
     })
     @ApiOperation(
         value = "List the messages of the MailQueue"
@@ -174,7 +178,7 @@ public class MailQueueRoutes implements Routes {
     private List<MailQueueItemDTO> listMessages(Request request) {
         String mailQueueName = request.params(MAIL_QUEUE_NAME);
         return mailQueueFactory.getQueue(mailQueueName)
-                .map(name -> listMessages(name, isDelayed(request.queryParams(DELAYED_QUERY_PARAM))))
+                .map(name -> listMessages(name, isDelayed(request.queryParams(DELAYED_QUERY_PARAM)), limit(request.queryParams(LIMIT_QUERY_PARAM))))
                 .orElseThrow(
                     () -> ErrorResponder.builder()
                         .message(String.format("%s can not be found", mailQueueName))
@@ -188,9 +192,16 @@ public class MailQueueRoutes implements Routes {
                 .map(Boolean::parseBoolean);
     }
 
-    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue, Optional<Boolean> isDelayed) {
+    @VisibleForTesting long limit(String limitAsString) {
+        return Optional.ofNullable(limitAsString)
+                .map(Longs::tryParse)
+                .orElse(DEFAULT_LIMIT_VALUE);
+    }
+
+    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue, Optional<Boolean> isDelayed, long limit) {
         try {
             return Iterators.toStream(queue.browse())
+                    .limit(limit)
                     .map(Throwing.function(MailQueueItemDTO::from))
                     .filter(item -> filter(item, isDelayed))
                     .collect(Guavate.toImmutableList());

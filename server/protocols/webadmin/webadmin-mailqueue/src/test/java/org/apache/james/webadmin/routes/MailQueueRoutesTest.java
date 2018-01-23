@@ -266,4 +266,22 @@ public class MailQueueRoutesTest {
             .contentType(ContentType.JSON)
             .body(".", hasSize(1));
     }
+
+    @Test
+    public void listMessagesShouldReturnOneMessageWhenMessagesAndAskForALimitOfOne() throws Exception {
+        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+        FakeMail mail = Mails.defaultMail().build();
+        queue.enQueue(mail);
+        queue.enQueue(mail);
+        queue.enQueue(mail);
+
+        RestAssured.given()
+            .param("limit", "1")
+        .when()
+            .get(FIRST_QUEUE + "/messages")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .contentType(ContentType.JSON)
+            .body(".", hasSize(1));
+    }
 }
