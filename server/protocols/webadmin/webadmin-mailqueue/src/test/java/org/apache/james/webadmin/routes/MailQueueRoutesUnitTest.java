@@ -62,4 +62,22 @@ public class MailQueueRoutesUnitTest {
         Optional<Boolean> delayed = testee.isDelayed("abc");
         assertThat(delayed).contains(false);
     }
+
+    @Test
+    public void limitShouldBeEqualsToDefaultValueWhenNull() {
+        long limit = testee.limit(null);
+        assertThat(limit).isEqualTo(MailQueueRoutes.DEFAULT_LIMIT_VALUE);
+    }
+
+    @Test
+    public void limitShouldBeToTheValueWhenOne() {
+        long limit = testee.limit("123");
+        assertThat(limit).isEqualTo(123);
+    }
+
+    @Test
+    public void limitShouldBeEqualsToDefaultValueWhenOtherValue() {
+        long limit = testee.limit("abc");
+        assertThat(limit).isEqualTo(MailQueueRoutes.DEFAULT_LIMIT_VALUE);
+    }
 }
