@@ -32,8 +32,10 @@ import javax.ws.rs.Produces;
 import org.apache.james.queue.api.MailQueue.MailQueueException;
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.queue.api.ManageableMailQueue;
+import org.apache.james.util.streams.Iterators;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.dto.MailQueueDTO;
+import org.apache.james.webadmin.dto.MailQueueItemDTO;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.ErrorResponder.ErrorType;
 import org.apache.james.webadmin.utils.JsonTransformer;
@@ -41,6 +43,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -62,6 +65,7 @@ public class MailQueueRoutes implements Routes {
 
     @VisibleForTesting static final String BASE_URL = "/mailQueues";
     @VisibleForTesting static final String MAIL_QUEUE_NAME = ":mailQueueName";
+    @VisibleForTesting static final String MESSAGES = "/messages";
     private static final Logger LOGGER = LoggerFactory.getLogger(MailQueueRoutes.class);
 
     private final MailQueueFactory<ManageableMailQueue> mailQueueFactory;
@@ -78,6 +82,8 @@ public class MailQueueRoutes implements Routes {
         defineListQueues(service);
 
         getMailQueue(service);
+        
+        listMessages(service);
     }
 
     @GET
@@ -136,6 +142,55 @@ public class MailQueueRoutes implements Routes {
     private MailQueueDTO getMailQueue(ManageableMailQueue queue) {
         try {
             return MailQueueDTO.from(queue);
+        } catch (MailQueueException e) {
+            LOGGER.info("Invalid request for getting the mail queue " + queue, e);
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorType.INVALID_ARGUMENT)
+                .message("Invalid request for getting the mail queue " + queue)
+                .cause(e)
+                .haltError();
+        }
+    }
+
+    @GET
+    @Path("/{mailQueueName}/messages")
+    @ApiImplicitParams({
+        @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path")
+    })
+    @ApiOperation(
+        value = "List the messages of the MailQueue"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(code = HttpStatus.OK_200, message = "OK", response = List.class),
+        @ApiResponse(code = HttpStatus.NOT_FOUND_404, message = "The MailQueue does not exist."),
+        @ApiResponse(code = HttpStatus.INTERNAL_SERVER_ERROR_500, message = "Internal server error - Something went bad on the server side.")
+    })
+    public void listMessages(Service service) {
+        service.get(BASE_URL + SEPARATOR + MAIL_QUEUE_NAME + MESSAGES, 
+                this::listMessages, 
+                jsonTransformer);
+    }
+
+    private List<MailQueueItemDTO> listMessages(Request request, Response response) {
+        String mailQueueName = request.params(MAIL_QUEUE_NAME);
+        Optional<ManageableMailQueue> queue = mailQueueFactory.getQueue(mailQueueName);
+        if (queue.isPresent()) {
+            return listMessages(queue.get());
+        }
+        LOGGER.info(String.format("%s can not be found", mailQueueName));
+        throw ErrorResponder.builder()
+            .message(String.format("%s can not be found", mailQueueName))
+            .statusCode(HttpStatus.NOT_FOUND_404)
+            .type(ErrorResponder.ErrorType.NOT_FOUND)
+            .haltError();
+    }
+
+    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue) {
+        try {
+            return Iterators.toStream(queue.browse())
+                    .map(Throwing.function(MailQueueItemDTO::from))
+                    .collect(Guavate.toImmutableList());
         } catch (MailQueueException e) {
             LOGGER.info("Invalid request for getting the mail queue " + queue, e);
             throw ErrorResponder.builder()
