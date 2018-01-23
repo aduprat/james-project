@@ -125,7 +125,6 @@ public class MailQueueRoutes implements Routes {
         if (queue.isPresent()) {
             return getMailQueue(queue.get());
         }
-        LOGGER.info(String.format("%s can not be found", mailQueueName));
         throw ErrorResponder.builder()
             .message(String.format("%s can not be found", mailQueueName))
             .statusCode(HttpStatus.NOT_FOUND_404)
@@ -137,7 +136,6 @@ public class MailQueueRoutes implements Routes {
         try {
             return MailQueueDTO.from(queue);
         } catch (MailQueueException e) {
-            LOGGER.info("Invalid request for getting the mail queue " + queue, e);
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorType.INVALID_ARGUMENT)
