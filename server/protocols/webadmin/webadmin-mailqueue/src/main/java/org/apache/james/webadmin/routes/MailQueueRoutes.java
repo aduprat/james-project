@@ -66,6 +66,9 @@ public class MailQueueRoutes implements Routes {
     @VisibleForTesting static final String BASE_URL = "/mailQueues";
     @VisibleForTesting static final String MAIL_QUEUE_NAME = ":mailQueueName";
     @VisibleForTesting static final String MESSAGES = "/messages";
+    
+    private static final String DELAYED_QUERY_PARAM = "delayed";
+    
     private static final Logger LOGGER = LoggerFactory.getLogger(MailQueueRoutes.class);
 
     private final MailQueueFactory<ManageableMailQueue> mailQueueFactory;
@@ -156,7 +159,8 @@ public class MailQueueRoutes implements Routes {
     @GET
     @Path("/{mailQueueName}/messages")
     @ApiImplicitParams({
-        @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path")
+        @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path"),
+        @ApiImplicitParam(required = false, dataType = "boolean", name = DELAYED_QUERY_PARAM, paramType = "query")
     })
     @ApiOperation(
         value = "List the messages of the MailQueue"
@@ -176,7 +180,7 @@ public class MailQueueRoutes implements Routes {
         String mailQueueName = request.params(MAIL_QUEUE_NAME);
         Optional<ManageableMailQueue> queue = mailQueueFactory.getQueue(mailQueueName);
         if (queue.isPresent()) {
-            return listMessages(queue.get());
+            return listMessages(queue.get(), isDelayed(request.queryParams(DELAYED_QUERY_PARAM)));
         }
         LOGGER.info(String.format("%s can not be found", mailQueueName));
         throw ErrorResponder.builder()
@@ -186,10 +190,16 @@ public class MailQueueRoutes implements Routes {
             .haltError();
     }
 
-    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue) {
+    @VisibleForTesting Optional<Boolean> isDelayed(String delayedAsString) {
+        return Optional.ofNullable(delayedAsString)
+                .map(Boolean::parseBoolean);
+    }
+
+    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue, Optional<Boolean> isDelayed) {
         try {
             return Iterators.toStream(queue.browse())
                     .map(Throwing.function(MailQueueItemDTO::from))
+                    .filter(item -> filter(item, isDelayed))
                     .collect(Guavate.toImmutableList());
         } catch (MailQueueException e) {
             LOGGER.info("Invalid request for getting the mail queue " + queue, e);
@@ -200,5 +210,10 @@ public class MailQueueRoutes implements Routes {
                 .cause(e)
                 .haltError();
         }
+    }
+
+    private boolean filter(MailQueueItemDTO item, Optional<Boolean> isDelayed) {
+        return isDelayed.map(delayed -> delayed == item.isDelayed())
+            .orElse(true);
     }
 }
