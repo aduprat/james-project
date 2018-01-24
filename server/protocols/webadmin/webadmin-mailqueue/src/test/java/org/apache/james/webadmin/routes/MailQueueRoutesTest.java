@@ -19,6 +19,7 @@
 
 package org.apache.james.webadmin.routes;
 
+import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
@@ -196,14 +197,14 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMailsShouldReturnMailDetailWhenSome() throws Exception {
+    public void listMailsShouldReturnMailDetailsWhenSome() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
 
         String firstMail = "[0]";
         List<String> expectedRecipients = mail.getRecipients().stream()
-                .map(MailAddress::asPrettyString)
+                .map(MailAddress::asString)
                 .collect(Guavate.toImmutableList());
 
         when()
@@ -213,9 +214,8 @@ public class MailQueueRoutesTest {
             .contentType(ContentType.JSON)
             .body(".", hasSize(1))
             .body(firstMail + ".name", equalTo(mail.getName()))
-            .body(firstMail + ".sender", equalTo(mail.getSender().asPrettyString()))
-            .body(firstMail + ".recipients", equalTo(expectedRecipients))
-            .body(firstMail + ".delayed", equalTo(false));
+            .body(firstMail + ".sender", equalTo(mail.getSender().asString()))
+            .body(firstMail + ".recipients", equalTo(expectedRecipients));
     }
 
     @Test
@@ -224,7 +224,7 @@ public class MailQueueRoutesTest {
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
 
-        RestAssured.given()
+        given()
             .param("delayed", "true")
         .when()
             .get(FIRST_QUEUE + "/mails")
@@ -240,7 +240,7 @@ public class MailQueueRoutesTest {
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
 
-        RestAssured.given()
+        given()
             .param("delayed", "false")
         .when()
             .get(FIRST_QUEUE + "/mails")
@@ -252,12 +252,12 @@ public class MailQueueRoutesTest {
 
     @Ignore("MemoryMailQueueFactory doesn't support delay")
     @Test
-    public void listMailsShouldReturnDelayedMailsAndAskFor() throws Exception {
+    public void listMailsShouldReturnDelayedMailsWhenAskFor() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail, 10, TimeUnit.MINUTES);
 
-        RestAssured.given()
+        given()
             .param("delayed", "true")
         .when()
             .get(FIRST_QUEUE + "/mails")
@@ -275,7 +275,7 @@ public class MailQueueRoutesTest {
         queue.enQueue(mail);
         queue.enQueue(mail);
 
-        RestAssured.given()
+        given()
             .param("limit", "1")
         .when()
             .get(FIRST_QUEUE + "/mails")
@@ -283,5 +283,41 @@ public class MailQueueRoutesTest {
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
             .body(".", hasSize(1));
+    }
+
+    @Test
+    public void listMailsShouldReturnBadRequestWhenLimitIsLessThanZero() throws Exception {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("limit", "-1")
+        .when()
+            .get(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void listMailsShouldReturnBadRequestWhenLimitEqualsToZero() throws Exception {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("limit", "0")
+        .when()
+            .get(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void listMailsShouldReturnBadRequestWhenLimitIsInvalid() throws Exception {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("limit", "abc")
+        .when()
+            .get(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
     }
 }

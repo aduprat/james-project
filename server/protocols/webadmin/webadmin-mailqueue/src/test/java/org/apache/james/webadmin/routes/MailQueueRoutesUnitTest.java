@@ -20,14 +20,18 @@
 package org.apache.james.webadmin.routes;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.queue.api.ManageableMailQueue;
+import org.apache.james.util.streams.Limit;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.junit.Before;
 import org.junit.Test;
+
+import spark.HaltException;
 
 public class MailQueueRoutesUnitTest {
 
@@ -65,19 +69,31 @@ public class MailQueueRoutesUnitTest {
 
     @Test
     public void limitShouldBeEqualsToDefaultValueWhenNull() {
-        long limit = testee.limit(null);
-        assertThat(limit).isEqualTo(MailQueueRoutes.DEFAULT_LIMIT_VALUE);
+        Limit limit = testee.limit(null);
+        assertThat(limit.getLimit()).contains(MailQueueRoutes.DEFAULT_LIMIT_VALUE);
     }
 
     @Test
-    public void limitShouldBeToTheValueWhenOne() {
-        long limit = testee.limit("123");
-        assertThat(limit).isEqualTo(123);
+    public void limitShouldBeEqualsToTheValueWhenOne() {
+        Limit limit = testee.limit("123");
+        assertThat(limit.getLimit()).contains(123);
     }
 
     @Test
-    public void limitShouldBeEqualsToDefaultValueWhenOtherValue() {
-        long limit = testee.limit("abc");
-        assertThat(limit).isEqualTo(MailQueueRoutes.DEFAULT_LIMIT_VALUE);
+    public void limitShouldThrowWhenOtherValue() {
+        assertThatThrownBy(() -> testee.limit("abc"))
+            .isInstanceOf(HaltException.class);
+    }
+
+    @Test
+    public void limitShouldThrowWhenEqualsToZero() {
+        assertThatThrownBy(() -> testee.limit("0"))
+            .isInstanceOf(HaltException.class);
+    }
+
+    @Test
+    public void limitShouldThrowWhenLessThanZero() {
+        assertThatThrownBy(() -> testee.limit("-1"))
+            .isInstanceOf(HaltException.class);
     }
 }
