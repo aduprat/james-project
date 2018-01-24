@@ -158,7 +158,13 @@ public class MailQueueRoutes implements Routes {
     @Path("/{mailQueueName}/mails")
     @ApiImplicitParams({
         @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path"),
-        @ApiImplicitParam(required = false, dataType = "boolean", name = DELAYED_QUERY_PARAM, paramType = "query"),
+        @ApiImplicitParam(
+                required = false, 
+                dataType = "boolean", 
+                name = DELAYED_QUERY_PARAM, 
+                paramType = "query",
+                example = "?delayed=true",
+                value = "Whether the mails are delayed in the mail queue or not (already sent)."),
         @ApiImplicitParam(required = false, dataType = "long", name = LIMIT_QUERY_PARAM, paramType = "query")
     })
     @ApiOperation(
