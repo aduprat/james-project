@@ -437,4 +437,23 @@ public class MailQueueRoutesTest {
 
         assertThat(taskManager.list()).hasSize(3);
     }
+
+    @Test
+    public void deleteMailsShouldDeleteMailsWhenTaskIsDone() throws Exception {
+        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+        String sender = "sender@james.org";
+        FakeMail mail = Mails.defaultMail()
+                .sender(sender)
+                .build();
+        queue.enQueue(mail);
+
+        given()
+            .param("sender", sender)
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(queue.browse()).isEmpty();
+    }
 }

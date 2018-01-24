@@ -317,7 +317,7 @@ public class MailQueueRoutes implements Routes {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorType.INVALID_ARGUMENT)
-                .message("'sender' should be a MailAddress")
+                .message("'sender' should be a mail address (i.e. sender@james.org)")
                 .cause(e)
                 .haltError();
         }
@@ -335,7 +335,7 @@ public class MailQueueRoutes implements Routes {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorType.INVALID_ARGUMENT)
-                .message("'recipient' should be a MailAddress")
+                .message("'recipient' should be a mail address (i.e. recipient@james.org)")
                 .cause(e)
                 .haltError();
         }
