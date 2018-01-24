@@ -19,6 +19,7 @@
 
 package org.apache.james.webadmin.routes;
 
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.config.EncoderConfig.encoderConfig;
 import static com.jayway.restassured.config.RestAssuredConfig.newConfig;
 import static org.apache.james.webadmin.WebAdminServer.NO_CONFIGURATION;
@@ -90,7 +91,7 @@ public class MailQueueRoutesTest {
 
     @Test
     public void listAllMailQueuesShouldReturnEmptyWhenNone() {
-        List<String> actual = RestAssured.when()
+        List<String> actual = when()
             .get()
         .then()
             .statusCode(HttpStatus.OK_200)
@@ -107,7 +108,7 @@ public class MailQueueRoutesTest {
     public void listAllMailQueuesShouldReturnSingleElementListWhenOnlyOneMailQueue() {
         mailQueueFactory.createQueue(FIRST_QUEUE);
 
-        List<String> actual = RestAssured.when()
+        List<String> actual = when()
             .get()
         .then()
             .statusCode(HttpStatus.OK_200)
@@ -127,7 +128,7 @@ public class MailQueueRoutesTest {
         mailQueueFactory.createQueue(THIRD_QUEUE);
         mailQueueFactory.createQueue(FOURTH_QUEUE);
 
-        List<String> actual = RestAssured.when()
+        List<String> actual = when()
             .get()
         .then()
             .statusCode(HttpStatus.OK_200)
@@ -145,7 +146,7 @@ public class MailQueueRoutesTest {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         queue.enQueue(Mails.defaultMail().build());
 
-        RestAssured.when()
+        when()
             .get(FIRST_QUEUE)
         .then()
             .statusCode(HttpStatus.OK_200)
@@ -155,7 +156,7 @@ public class MailQueueRoutesTest {
 
     @Test
     public void getMailQueueShouldReturnNotFoundWhenMailQueueDoesntExist() {
-        RestAssured.when()
+        when()
             .get(FIRST_QUEUE)
         .then()
             .statusCode(HttpStatus.NOT_FOUND_404);
