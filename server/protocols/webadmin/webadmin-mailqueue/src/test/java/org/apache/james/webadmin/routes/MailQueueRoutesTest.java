@@ -39,6 +39,7 @@ import org.apache.james.queue.api.Mails;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory.MemoryMailQueue;
+import org.apache.james.task.MemoryTaskManager;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.utils.JsonTransformer;
@@ -63,12 +64,13 @@ public class MailQueueRoutesTest {
     static final String FOURTH_QUEUE = "fourth one";
     WebAdminServer webAdminServer;
     MemoryMailQueueFactory mailQueueFactory;
+    MemoryTaskManager taskManager;
 
 
     WebAdminServer createServer(MemoryMailQueueFactory mailQueueFactory) throws Exception {
         WebAdminServer server = WebAdminUtils.createWebAdminServer(
             new NoopMetricFactory(),
-            new MailQueueRoutes(mailQueueFactory, new JsonTransformer()));
+            new MailQueueRoutes(mailQueueFactory, new JsonTransformer(), taskManager));
         server.configure(NO_CONFIGURATION);
         server.await();
         return server;
@@ -87,6 +89,7 @@ public class MailQueueRoutesTest {
     @Before
     public void setUp() throws Exception {
         mailQueueFactory = new MemoryMailQueueFactory(new RawMailQueueItemDecoratorFactory());
+        taskManager = new MemoryTaskManager();
         webAdminServer = createServer(mailQueueFactory);
         RestAssured.requestSpecification = buildRequestSpecification(webAdminServer);
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
@@ -319,5 +322,119 @@ public class MailQueueRoutesTest {
             .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnNotFoundWhenMailQueueDoesntExist() {
+        when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NOT_FOUND_404);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnBadRequestWhenSenderIsInvalid() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("sender", "123")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnBadRequestWhenRecipientIsInvalid() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("recipient", "123")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnNoContentWhenQueryParametersAreValid() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("sender", "sender@james.org")
+            .param("name", "mailName")
+            .param("recipient", "recipient@james.org")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnBadRequestWhenNoQueryParameters() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void deleteMailsShouldScheduleATaskWhenSenderIsGiven() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("sender", "sender@james.org")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(taskManager.list()).hasSize(1);
+    }
+
+    @Test
+    public void deleteMailsShouldScheduleATaskWhenNameIsGiven() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("name", "mailName")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(taskManager.list()).hasSize(1);
+    }
+
+    @Test
+    public void deleteMailsShouldScheduleATaskWhenRecipientIsGiven() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("recipient", "recipient@james.org")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(taskManager.list()).hasSize(1);
+    }
+
+    @Test
+    public void deleteMailsShouldScheduleThreeTasksWhenAllParametersAreGiven() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
+            .param("sender", "sender@james.org")
+            .param("name", "mailName")
+            .param("recipient", "recipient@james.org")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(taskManager.list()).hasSize(3);
     }
 }
