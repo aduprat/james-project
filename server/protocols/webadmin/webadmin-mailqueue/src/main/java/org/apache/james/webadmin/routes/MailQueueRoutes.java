@@ -65,7 +65,7 @@ public class MailQueueRoutes implements Routes {
 
     @VisibleForTesting static final String BASE_URL = "/mailQueues";
     @VisibleForTesting static final String MAIL_QUEUE_NAME = ":mailQueueName";
-    @VisibleForTesting static final String MESSAGES = "/messages";
+    @VisibleForTesting static final String MAILS = "/mails";
     
     private static final String DELAYED_QUERY_PARAM = "delayed";
     private static final String LIMIT_QUERY_PARAM = "limit";
@@ -88,7 +88,7 @@ public class MailQueueRoutes implements Routes {
 
         getMailQueue(service);
         
-        listMessages(service);
+        listMails(service);
     }
 
     @GET
@@ -155,30 +155,30 @@ public class MailQueueRoutes implements Routes {
     }
 
     @GET
-    @Path("/{mailQueueName}/messages")
+    @Path("/{mailQueueName}/mails")
     @ApiImplicitParams({
         @ApiImplicitParam(required = true, dataType = "string", name = "mailQueueName", paramType = "path"),
         @ApiImplicitParam(required = false, dataType = "boolean", name = DELAYED_QUERY_PARAM, paramType = "query"),
         @ApiImplicitParam(required = false, dataType = "long", name = LIMIT_QUERY_PARAM, paramType = "query")
     })
     @ApiOperation(
-        value = "List the messages of the MailQueue"
+        value = "List the mails of the MailQueue"
     )
     @ApiResponses(value = {
         @ApiResponse(code = HttpStatus.OK_200, message = "OK", response = List.class),
         @ApiResponse(code = HttpStatus.NOT_FOUND_404, message = "The MailQueue does not exist."),
         @ApiResponse(code = HttpStatus.INTERNAL_SERVER_ERROR_500, message = "Internal server error - Something went bad on the server side.")
     })
-    public void listMessages(Service service) {
-        service.get(BASE_URL + SEPARATOR + MAIL_QUEUE_NAME + MESSAGES, 
-                (request, response) -> listMessages(request), 
+    public void listMails(Service service) {
+        service.get(BASE_URL + SEPARATOR + MAIL_QUEUE_NAME + MAILS, 
+                (request, response) -> listMails(request), 
                 jsonTransformer);
     }
 
-    private List<MailQueueItemDTO> listMessages(Request request) {
+    private List<MailQueueItemDTO> listMails(Request request) {
         String mailQueueName = request.params(MAIL_QUEUE_NAME);
         return mailQueueFactory.getQueue(mailQueueName)
-                .map(name -> listMessages(name, isDelayed(request.queryParams(DELAYED_QUERY_PARAM)), limit(request.queryParams(LIMIT_QUERY_PARAM))))
+                .map(name -> listMails(name, isDelayed(request.queryParams(DELAYED_QUERY_PARAM)), limit(request.queryParams(LIMIT_QUERY_PARAM))))
                 .orElseThrow(
                     () -> ErrorResponder.builder()
                         .message(String.format("%s can not be found", mailQueueName))
@@ -198,7 +198,7 @@ public class MailQueueRoutes implements Routes {
                 .orElse(DEFAULT_LIMIT_VALUE);
     }
 
-    private List<MailQueueItemDTO> listMessages(ManageableMailQueue queue, Optional<Boolean> isDelayed, long limit) {
+    private List<MailQueueItemDTO> listMails(ManageableMailQueue queue, Optional<Boolean> isDelayed, long limit) {
         try {
             return Iterators.toStream(queue.browse())
                     .limit(limit)
@@ -217,7 +217,7 @@ public class MailQueueRoutes implements Routes {
     }
 
     private boolean filter(MailQueueItemDTO item, Optional<Boolean> isDelayed) {
-        return isDelayed.map(delayed -> delayed == item.isDelayed())
+        return isDelayed.map(delayed -> delayed && item.getNextDelivery().isPresent())
             .orElse(true);
     }
 }

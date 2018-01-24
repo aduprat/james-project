@@ -170,11 +170,11 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMessagesShouldReturnEmptyListWhenNoMessages() {
+    public void listMailsShouldReturnEmptyListWhenNoMails() {
         mailQueueFactory.createQueue(FIRST_QUEUE);
 
         when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -182,13 +182,13 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMessagesShouldReturnMessagesWhenSome() throws Exception {
+    public void listMailsShouldReturnMailsWhenSome() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         queue.enQueue(Mails.defaultMail().build());
         queue.enQueue(Mails.defaultMail().build());
 
         when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -196,30 +196,30 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMessagesShouldReturnMessageDetailWhenSome() throws Exception {
+    public void listMailsShouldReturnMailDetailWhenSome() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
 
-        String firstMessage = "[0]";
+        String firstMail = "[0]";
         List<String> expectedRecipients = mail.getRecipients().stream()
                 .map(MailAddress::asPrettyString)
                 .collect(Guavate.toImmutableList());
 
         when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
             .body(".", hasSize(1))
-            .body(firstMessage + ".name", equalTo(mail.getName()))
-            .body(firstMessage + ".sender", equalTo(mail.getSender().asPrettyString()))
-            .body(firstMessage + ".recipients", equalTo(expectedRecipients))
-            .body(firstMessage + ".delayed", equalTo(false));
+            .body(firstMail + ".name", equalTo(mail.getName()))
+            .body(firstMail + ".sender", equalTo(mail.getSender().asPrettyString()))
+            .body(firstMail + ".recipients", equalTo(expectedRecipients))
+            .body(firstMail + ".delayed", equalTo(false));
     }
 
     @Test
-    public void listMessagesShouldReturnEmptyWhenNoDelayedMessagesAndAskFor() throws Exception {
+    public void listMailsShouldReturnEmptyWhenNoDelayedMailsAndAskFor() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
@@ -227,7 +227,7 @@ public class MailQueueRoutesTest {
         RestAssured.given()
             .param("delayed", "true")
         .when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -235,7 +235,7 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMessagesShouldReturnCurrentMessagesWhenMessagesAndAskForNotDelayed() throws Exception {
+    public void listMailsShouldReturnCurrentMailsWhenMailsAndAskForNotDelayed() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
@@ -243,7 +243,7 @@ public class MailQueueRoutesTest {
         RestAssured.given()
             .param("delayed", "false")
         .when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -252,7 +252,7 @@ public class MailQueueRoutesTest {
 
     @Ignore("MemoryMailQueueFactory doesn't support delay")
     @Test
-    public void listMessagesShouldReturnDelayedMessagesAndAskFor() throws Exception {
+    public void listMailsShouldReturnDelayedMailsAndAskFor() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail, 10, TimeUnit.MINUTES);
@@ -260,7 +260,7 @@ public class MailQueueRoutesTest {
         RestAssured.given()
             .param("delayed", "true")
         .when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -268,7 +268,7 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void listMessagesShouldReturnOneMessageWhenMessagesAndAskForALimitOfOne() throws Exception {
+    public void listMailsShouldReturnOneMailWhenMailsAndAskForALimitOfOne() throws Exception {
         MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
         FakeMail mail = Mails.defaultMail().build();
         queue.enQueue(mail);
@@ -278,7 +278,7 @@ public class MailQueueRoutesTest {
         RestAssured.given()
             .param("limit", "1")
         .when()
-            .get(FIRST_QUEUE + "/messages")
+            .get(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
