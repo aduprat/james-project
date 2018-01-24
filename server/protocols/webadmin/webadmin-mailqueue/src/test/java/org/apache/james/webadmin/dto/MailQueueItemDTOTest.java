@@ -20,6 +20,7 @@ package org.apache.james.webadmin.dto;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.james.core.MailAddress;
@@ -55,12 +56,12 @@ public class MailQueueItemDTOTest {
         MailQueueItemView mailQueueItemView = new MailQueueItemView(mail, 4);
         MailQueueItemDTO mailQueueItemDTO = MailQueueItemDTO.from(mailQueueItemView);
         List<String> expectedRecipients = mail.getRecipients().stream()
-                .map(MailAddress::asPrettyString)
+                .map(MailAddress::asString)
                 .collect(Guavate.toImmutableList());
 
         softly.assertThat(mailQueueItemDTO.getName()).isEqualTo(mail.getName());
-        softly.assertThat(mailQueueItemDTO.getSender()).isEqualTo(mail.getSender().asPrettyString());
+        softly.assertThat(mailQueueItemDTO.getSender()).isEqualTo(mail.getSender().asString());
         softly.assertThat(mailQueueItemDTO.getRecipients()).isEqualTo(expectedRecipients);
-        softly.assertThat(mailQueueItemDTO.isDelayed()).isTrue();
+        softly.assertThat(mailQueueItemDTO.getNextDelivery()).contains(new Date(4));
     }
 }

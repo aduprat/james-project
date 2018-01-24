@@ -20,7 +20,9 @@
 package org.apache.james.webadmin.dto;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.queue.api.MailQueue.MailQueueException;
@@ -32,6 +34,8 @@ import com.google.common.base.Strings;
 
 public class MailQueueItemDTO {
 
+    private static final long NO_NEXT_DELIVERY = -1;
+
     public static Builder builder() {
         return new Builder();
     }
@@ -39,14 +43,18 @@ public class MailQueueItemDTO {
     public static MailQueueItemDTO from(ManageableMailQueue.MailQueueItemView mailQueueItemView) throws MailQueueException {
         return builder()
                 .name(mailQueueItemView.getMail().getName())
-                .sender(mailQueueItemView.getMail().getSender().asPrettyString())
+                .sender(mailQueueItemView.getMail().getSender())
                 .recipients(mailQueueItemView.getMail().getRecipients())
-                .delayed(isDelayed(mailQueueItemView))
+                .nextDelivery(nextDelivery(mailQueueItemView))
                 .build();
     }
 
-    private static boolean isDelayed(ManageableMailQueue.MailQueueItemView mailQueueItemView) {
-        return mailQueueItemView.getNextDelivery() != -1;
+    private static Optional<Date> nextDelivery(ManageableMailQueue.MailQueueItemView mailQueueItemView) {
+        long nextDelivery = mailQueueItemView.getNextDelivery();
+        if (nextDelivery == NO_NEXT_DELIVERY) {
+            return Optional.empty();
+        }
+        return Optional.of(new Date(nextDelivery));
     }
 
     public static class Builder {
@@ -54,7 +62,7 @@ public class MailQueueItemDTO {
         private String name;
         private String sender;
         private List<String> recipients;
-        private boolean delayed;
+        private Optional<Date> nextDelivery;
 
         private Builder() {
         }
@@ -64,39 +72,39 @@ public class MailQueueItemDTO {
             return this;
         }
 
-        public Builder sender(String snder) {
-            this.sender = snder;
+        public Builder sender(MailAddress sender) {
+            this.sender = sender.asString();
             return this;
         }
 
         public Builder recipients(Collection<MailAddress> recipients) {
             this.recipients = recipients.stream()
-                    .map(MailAddress::asPrettyString)
+                    .map(MailAddress::asString)
                     .collect(Guavate.toImmutableList());
             return this;
         }
 
-        public Builder delayed(boolean delayed) {
-            this.delayed = delayed;
+        public Builder nextDelivery(Optional<Date> nextDelivery) {
+            this.nextDelivery = nextDelivery;
             return this;
         }
 
         public MailQueueItemDTO build() {
             Preconditions.checkArgument(!Strings.isNullOrEmpty(name), "name is mandatory");
-            return new MailQueueItemDTO(name, sender, recipients, delayed);
+            return new MailQueueItemDTO(name, sender, recipients, nextDelivery);
         }
     }
 
     private final String name;
     private final String sender;
     private final List<String> recipients;
-    private final boolean delayed;
+    private final Optional<Date> nextDelivery;
 
-    public MailQueueItemDTO(String name, String sender, List<String> recipients, boolean delayed) {
+    public MailQueueItemDTO(String name, String sender, List<String> recipients, Optional<Date> nextDelivery) {
         this.name = name;
         this.sender = sender;
         this.recipients = recipients;
-        this.delayed = delayed;
+        this.nextDelivery = nextDelivery;
     }
 
     public String getName() {
@@ -111,7 +119,7 @@ public class MailQueueItemDTO {
         return recipients;
     }
 
-    public boolean isDelayed() {
-        return delayed;
+    public Optional<Date> getNextDelivery() {
+        return nextDelivery;
     }
 }
