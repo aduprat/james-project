@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.james.core.MailAddress;
 import org.apache.james.metrics.api.NoopMetricFactory;
 import org.apache.james.queue.api.Mails;
+import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory.MemoryMailQueue;
@@ -476,5 +477,30 @@ public class MailQueueRoutesTest {
             .delete(FIRST_QUEUE + "/mails")
         .then()
             .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    public void deleteMailsShouldDeleteMailsWhenTheyAreMatching() throws Exception {
+        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+        String recipient = "recipient@james.org";
+        queue.enQueue(Mails.defaultMail()
+                .recipient(recipient)
+                .build());
+        queue.enQueue(Mails.defaultMail().build());
+        queue.enQueue(Mails.defaultMail().build());
+
+        given()
+            .param("recipient", recipient)
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        MailAddress deletedRecipientMailAddress = new MailAddress(recipient);
+        assertThat(queue.browse())
+            .hasSize(2)
+            .allSatisfy((ManageableMailQueue.MailQueueItemView item) -> {
+                assertThat(item.getMail().getRecipients()).doesNotContain(deletedRecipientMailAddress);
+            });
     }
 }
