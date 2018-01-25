@@ -465,4 +465,16 @@ public class MailQueueRoutesTest {
         .then()
             .statusCode(HttpStatus.BAD_REQUEST_400);
     }
+
+    @Test
+    public void deleteMailsShouldReturnBadRequestWhenTwoParametersAreGiven() throws Exception {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+        given()
+            .param("sender", "sender@james.org")
+            .param("name", "mailName")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
 }
