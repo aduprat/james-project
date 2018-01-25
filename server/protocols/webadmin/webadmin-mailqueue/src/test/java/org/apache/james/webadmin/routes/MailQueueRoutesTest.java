@@ -354,12 +354,34 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void deleteMailsShouldReturnNoContentWhenQueryParametersAreValid() {
+    public void deleteMailsShouldReturnNoContentWhenSenderIsValid() {
         mailQueueFactory.createQueue(FIRST_QUEUE);
 
         given()
             .param("sender", "sender@james.org")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnNoContentWhenNameIsValid() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
             .param("name", "mailName")
+        .when()
+            .delete(FIRST_QUEUE + "/mails")
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+    }
+
+    @Test
+    public void deleteMailsShouldReturnNoContentWhenRecipientIsValid() {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
+
+        given()
             .param("recipient", "recipient@james.org")
         .when()
             .delete(FIRST_QUEUE + "/mails")
@@ -432,38 +454,8 @@ public class MailQueueRoutesTest {
     }
 
     @Test
-    public void deleteMailsShouldDeleteMailsWhenAllParametersAreGiven() throws Exception {
-        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
-        String sender = "sender@james.org";
-        queue.enQueue(Mails.defaultMail()
-                .sender(sender)
-                .build());
-        String name = "mailName";
-        queue.enQueue(Mails.defaultMail()
-                .name(name)
-                .build());
-        String recipient = "recipient@james.org";
-        queue.enQueue(Mails.defaultMail()
-                .recipient(recipient)
-                .build());
-
-        given()
-            .param("sender", sender)
-            .param("name", name)
-            .param("recipient", recipient)
-        .when()
-            .delete(FIRST_QUEUE + "/mails")
-        .then()
-            .statusCode(HttpStatus.NO_CONTENT_204);
-
-        assertThat(queue.browse()).isEmpty();
-    }
-
-    @Test
-    public void deleteMailsShouldNotDeleteMailsWhenNoParameterMatches() throws Exception {
-        MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
-        queue.enQueue(Mails.defaultMail().build());
-        
+    public void deleteMailsShouldReturnBadRequestWhenAllParametersAreGiven() throws Exception {
+        mailQueueFactory.createQueue(FIRST_QUEUE);
         given()
             .param("sender", "sender@james.org")
             .param("name", "mailName")
@@ -471,8 +463,6 @@ public class MailQueueRoutesTest {
         .when()
             .delete(FIRST_QUEUE + "/mails")
         .then()
-            .statusCode(HttpStatus.NO_CONTENT_204);
-
-        assertThat(queue.browse()).hasSize(1);
+            .statusCode(HttpStatus.BAD_REQUEST_400);
     }
 }

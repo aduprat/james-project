@@ -49,6 +49,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Booleans;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -340,11 +341,11 @@ public class MailQueueRoutes implements Routes {
     }
 
     private Object deleteMails(ManageableMailQueue queue, Optional<MailAddress> maybeSender, Optional<String> maybeName, Optional<MailAddress> maybeRecipient) {
-        if (!maybeSender.isPresent() && !maybeName.isPresent() && !maybeRecipient.isPresent()) {
+        if (Booleans.countTrue(maybeSender.isPresent(), maybeName.isPresent(), maybeRecipient.isPresent()) != 1) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorType.INVALID_ARGUMENT)
-                .message("At least one of 'sender', 'name' or 'recipient' query parameter should be given.")
+                .message("You should provide one and only one of the query parameters 'sender', 'name' or 'recipient'.")
                 .haltError();
         }
         
