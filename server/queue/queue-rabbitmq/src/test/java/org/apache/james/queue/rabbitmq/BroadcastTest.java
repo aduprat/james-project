@@ -40,7 +40,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 
-@ExtendWith(DockerRabbitMQExtention.class)
+@ExtendWith(DockerRabbitMQExtension.class)
 public class BroadcastTest {
 
     private static final String EXCHANGE_NAME = "exchangeName";
