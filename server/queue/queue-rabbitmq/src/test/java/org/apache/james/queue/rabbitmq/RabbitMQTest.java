@@ -32,7 +32,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
-@ExtendWith(DockerRabbitMQExtention.class)
+@ExtendWith(DockerRabbitMQExtension.class)
 public class RabbitMQTest {
 
     private static final long ONE_MINUTE = TimeUnit.MINUTES.toMillis(1);
