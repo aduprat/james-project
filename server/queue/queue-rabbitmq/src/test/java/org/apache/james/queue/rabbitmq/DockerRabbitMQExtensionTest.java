@@ -27,7 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
-@ExtendWith(DockerRabbitMQExtention.class)
+@ExtendWith(DockerRabbitMQExtension.class)
 public class DockerRabbitMQExtensionTest {
 
     private ConnectionFactory connectionFactory;

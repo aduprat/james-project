@@ -25,7 +25,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-public class DockerRabbitMQExtention implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+public class DockerRabbitMQExtension implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
 
     private DockerRabbitMQ rabbitMQ;
 
