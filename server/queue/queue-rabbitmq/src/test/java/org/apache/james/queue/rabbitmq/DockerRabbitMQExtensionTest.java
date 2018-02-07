@@ -43,7 +43,7 @@ public class DockerRabbitMQExtensionTest {
 
     @Test
     public void containerShouldBeUp() throws Exception {
-        try (Connection connection = connectionFactory.newConnection();) {
+        try (Connection connection = connectionFactory.newConnection()) {
             assertThat(connection.isOpen()).isTrue();
         }
     }
