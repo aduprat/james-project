@@ -19,31 +19,36 @@
 
 package org.apache.james.queue.rabbitmq;
 
-import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DIRECT;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.AUTO_DELETE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DURABLE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCHANGE_NAME;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCLUSIVE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.NO_PROPERTIES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.ROUTING_KEY;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.WORK_QUEUE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.awaitAtMostOneMinute;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
 @ExtendWith(DockerRabbitMQExtension.class)
-public class BroadcastTest {
+public class WorkQueueTest {
 
     private ConnectionFactory connectionFactory1;
     private ConnectionFactory connectionFactory2;
@@ -58,13 +63,8 @@ public class BroadcastTest {
         connectionFactory4 = rabbitMQ.connectionFactory();
     }
 
-    // In the following case, each consumer will receive the messages produced by the
-    // producer
-
-    // To do so, each consumer will bind it's queue to the producer exchange.
     @Test
-    public void rabbitMQShouldSupportTheBroadcastCase() throws Exception {
-        ImmutableList<Integer> expectedResult = IntStream.range(0, 10).boxed().collect(Guavate.toImmutableList());
+    public void rabbitMQShouldSupportTheWorkQueueCase() throws Exception {
         try (Connection connection1 = connectionFactory1.newConnection();
              Channel publisherChannel = connection1.createChannel();
              Connection connection2 = connectionFactory2.newConnection();
@@ -74,36 +74,30 @@ public class BroadcastTest {
              Connection connection4 = connectionFactory4.newConnection();
              Channel subscriberChannel4 = connection4.createChannel()) {
 
-            // Declare the a single exchange and three queues attached to it.
-            publisherChannel.exchangeDeclare(EXCHANGE_NAME, DIRECT, DURABLE);
+            ImmutableList<Integer> expectedResult = IntStream.range(0, 100).boxed().collect(Guavate.toImmutableList());
 
-            String queue2 = subscriberChannel2.queueDeclare().getQueue();
-            subscriberChannel2.queueBind(queue2, EXCHANGE_NAME, ROUTING_KEY);
-            String queue3 = subscriberChannel3.queueDeclare().getQueue();
-            subscriberChannel3.queueBind(queue3, EXCHANGE_NAME, ROUTING_KEY);
-            String queue4 = subscriberChannel4.queueDeclare().getQueue();
-            subscriberChannel4.queueBind(queue4, EXCHANGE_NAME, ROUTING_KEY);
-
-            InMemoryConsumer consumer2 = new InMemoryConsumer(subscriberChannel2);
-            InMemoryConsumer consumer3 = new InMemoryConsumer(subscriberChannel3);
-            InMemoryConsumer consumer4 = new InMemoryConsumer(subscriberChannel4);
-            subscriberChannel2.basicConsume(queue2, consumer2);
-            subscriberChannel3.basicConsume(queue3, consumer3);
-            subscriberChannel4.basicConsume(queue4, consumer4);
-
-            // the publisher will produce 10 messages
+            // Declare the exchange and a single queue attached to it.
+            publisherChannel.exchangeDeclare(EXCHANGE_NAME, "direct", DURABLE);
+            publisherChannel.queueDeclare(WORK_QUEUE, DURABLE, !EXCLUSIVE, AUTO_DELETE, ImmutableMap.of());
+            publisherChannel.queueBind(WORK_QUEUE, EXCHANGE_NAME, ROUTING_KEY);
+            // Publisher will produce 100 messages
             expectedResult.stream()
                 .map(String::valueOf)
                 .map(s -> s.getBytes(StandardCharsets.UTF_8))
                 .forEach(Throwing.consumer(
                     bytes -> publisherChannel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, NO_PROPERTIES, bytes)));
 
+            InMemoryConsumer consumer2 = new InMemoryConsumer(subscriberChannel2);
+            InMemoryConsumer consumer3 = new InMemoryConsumer(subscriberChannel3);
+            InMemoryConsumer consumer4 = new InMemoryConsumer(subscriberChannel4);
+            subscriberChannel2.basicConsume(WORK_QUEUE, consumer2);
+            subscriberChannel3.basicConsume(WORK_QUEUE, consumer3);
+            subscriberChannel4.basicConsume(WORK_QUEUE, consumer4);
+
             awaitAtMostOneMinute.until(() -> allMessageReceived(expectedResult, consumer2, consumer3, consumer4));
 
-            // Check every subscriber have receive all the messages.
-            assertThat(consumer2.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
-            assertThat(consumer3.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
-            assertThat(consumer4.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
+            assertThat(Iterables.concat(consumer2.getConsumedMessages(), consumer3.getConsumedMessages(), consumer4.getConsumedMessages()))
+                .containsOnlyElementsOf(expectedResult);
         }
     }
 
@@ -113,6 +107,6 @@ public class BroadcastTest {
             Iterables.concat(consumer2.getConsumedMessages(),
                 consumer3.getConsumedMessages(),
                 consumer4.getConsumedMessages()))
-            == expectedResult.size() * 3;
+            == expectedResult.size();
     }
 }
