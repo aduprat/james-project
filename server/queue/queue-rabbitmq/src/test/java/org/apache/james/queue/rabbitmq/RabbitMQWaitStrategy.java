@@ -48,9 +48,9 @@ public class RabbitMQWaitStrategy implements WaitStrategy {
         Unreliables.retryUntilTrue(Ints.checkedCast(timeout.getSeconds()), TimeUnit.SECONDS, () -> {
                 try {
                     return container
-                        .execInContainer("rabbitmqctl", "cluster_status")
-                        .getStdout()
-                        .contains("running_nodes");
+                            .execInContainer("rabbitmqctl", "node_health_check")
+                            .getStdout()
+                            .contains("Health check passed");
                 } catch (IOException | InterruptedException e) {
                     return false;
                 }
