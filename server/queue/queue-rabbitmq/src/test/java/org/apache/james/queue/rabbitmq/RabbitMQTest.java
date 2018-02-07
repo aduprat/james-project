@@ -25,6 +25,7 @@ import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCHANGE_NAME;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.NO_PROPERTIES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.ROUTING_KEY;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.awaitAtMostOneMinute;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +41,32 @@ import com.rabbitmq.client.ConnectionFactory;
 public class RabbitMQTest {
 
     private static final byte[] PAYLOAD = "Hello, world!".getBytes(StandardCharsets.UTF_8);
+
+    @Test
+    public void demonstrateDurability(DockerRabbitMQ rabbitMQ) throws Exception {
+        try (Connection connection = rabbitMQ.connectionFactory().newConnection();
+             Channel channel = connection.createChannel()) {
+
+            String queueName = createQueue(channel);
+
+            publishAMessage(channel);
+
+            rabbitMQ.restart();
+
+            awaitAtMostOneMinute.until(() -> containerIsRestarted(rabbitMQ));
+
+            assertThat(channel.basicGet(queueName, !AUTO_ACK)).isNotNull();
+        }
+    }
+
+    private Boolean containerIsRestarted(DockerRabbitMQ rabbitMQ) {
+        try {
+            rabbitMQ.connectionFactory().newConnection();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @Test
     public void publishedEventWithoutSubscriberShouldNotBeLost(DockerRabbitMQ rabbitMQ) throws Exception {
