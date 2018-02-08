@@ -20,6 +20,8 @@ package org.apache.james.queue.rabbitmq;
 
 import org.testcontainers.containers.GenericContainer;
 
+import com.rabbitmq.client.ConnectionFactory;
+
 public class DockerRabbitMQ {
 
     private static final int DEFAULT_RABBITMQ_PORT = 5672;
@@ -34,7 +36,7 @@ public class DockerRabbitMQ {
         container = new GenericContainer<>("rabbitmq:3.7.3")
                 .withCreateContainerCmdModifier(cmd -> cmd.withHostName(DEFAULT_RABBITMQ_HOSTNAME))
                 .withExposedPorts(DEFAULT_RABBITMQ_PORT)
-                .waitingFor(RabbitMQWaitStrategy.withDefaultTimeout());
+                .waitingFor(RabbitMQWaitStrategy.withDefaultTimeout(this));
     }
 
     public String getHostIp() {
@@ -51,6 +53,15 @@ public class DockerRabbitMQ {
 
     public String getPassword() {
         return DEFAULT_RABBITMQ_PASSWORD;
+    }
+
+    public ConnectionFactory connectionFactory() {
+        ConnectionFactory connectionFactory = new ConnectionFactory();
+        connectionFactory.setHost(getHostIp());
+        connectionFactory.setPort(getPort());
+        connectionFactory.setUsername(getUsername());
+        connectionFactory.setPassword(getPassword());
+        return connectionFactory;
     }
 
     public void start() {

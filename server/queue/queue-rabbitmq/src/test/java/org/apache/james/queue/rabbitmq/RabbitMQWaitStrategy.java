@@ -19,7 +19,6 @@
 
 package org.apache.james.queue.rabbitmq;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -28,31 +27,29 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 
 import com.google.common.primitives.Ints;
+import com.rabbitmq.client.Connection;
 
 public class RabbitMQWaitStrategy implements WaitStrategy {
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(1);
 
-    public static RabbitMQWaitStrategy withDefaultTimeout() {
-        return new RabbitMQWaitStrategy(DEFAULT_TIMEOUT);
+    public static RabbitMQWaitStrategy withDefaultTimeout(DockerRabbitMQ rabbitMQ) {
+        return new RabbitMQWaitStrategy(rabbitMQ, DEFAULT_TIMEOUT);
     }
 
+    private final DockerRabbitMQ rabbitMQ;
     private final Duration timeout;
 
-    public RabbitMQWaitStrategy(Duration timeout) {
+    public RabbitMQWaitStrategy(DockerRabbitMQ rabbitMQ, Duration timeout) {
+        this.rabbitMQ = rabbitMQ;
         this.timeout = timeout;
     }
 
     @Override
     public void waitUntilReady(@SuppressWarnings("rawtypes") GenericContainer container) {
         Unreliables.retryUntilTrue(Ints.checkedCast(timeout.getSeconds()), TimeUnit.SECONDS, () -> {
-                try {
-                    return container
-                            .execInContainer("rabbitmqctl", "node_health_check")
-                            .getStdout()
-                            .contains("Health check passed");
-                } catch (IOException | InterruptedException e) {
-                    return false;
+                try (Connection connection = rabbitMQ.connectionFactory().newConnection()) {
+                    return connection.isOpen();
                 }
             }
         );
@@ -60,6 +57,6 @@ public class RabbitMQWaitStrategy implements WaitStrategy {
 
     @Override
     public WaitStrategy withStartupTimeout(Duration startupTimeout) {
-        return new RabbitMQWaitStrategy(startupTimeout);
+        return new RabbitMQWaitStrategy(rabbitMQ, startupTimeout);
     }
 }
