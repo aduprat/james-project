@@ -50,7 +50,7 @@ public class RabbitMQTest {
     @Test
     public void publishedEventWithoutSubscriberShouldNotBeLost() throws Exception {
         try (Connection connection = connectionFactory.newConnection();
-                Channel channel = connection.createChannel();) {
+                Channel channel = connection.createChannel()) {
             String exchangeName = "exchangeName";
             String routingKey = "routingKey";
             String queueName = createQueue(channel, exchangeName, routingKey);
