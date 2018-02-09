@@ -18,36 +18,26 @@
  ****************************************************************/
 package org.apache.james.queue.rabbitmq;
 
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public class DockerRabbitMQExtension implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+import org.apache.james.queue.rabbitmq.DockerClusterRabbitMQExtention.DockerRabbitMQCluster;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-    private DockerRabbitMQ rabbitMQ;
+@ExtendWith(DockerClusterRabbitMQExtention.class)
+public class RabbitMQClusterTest {
 
-    @Override
-    public void beforeAll(ExtensionContext context) {
-        rabbitMQ = DockerRabbitMQ.withoutCookie();
-        rabbitMQ.start();
-    }
+    @Test
+    public void rabbitMQManagerShouldReturnThreeNodesWhenAskingForStatus(DockerRabbitMQCluster cluster) throws Exception {
+        String stdout = cluster.getRabbitMQ1().container()
+            .execInContainer("rabbitmqctl", "cluster_status")
+            .getStdout();
 
-    @Override
-    public void afterAll(ExtensionContext context) {
-        rabbitMQ.stop();
-    }
-
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return (parameterContext.getParameter().getType() == DockerRabbitMQ.class);
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return rabbitMQ;
+        assertThat(stdout)
+            .contains(
+                DockerClusterRabbitMQExtention.RABBIT_1,
+                DockerClusterRabbitMQExtention.RABBIT_2,
+                DockerClusterRabbitMQExtention.RABBIT_3);
     }
 
 }
