@@ -23,15 +23,15 @@ import static org.apache.james.queue.rabbitmq.RabbitMQFixture.AUTO_DELETE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DURABLE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCHANGE_NAME;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCLUSIVE;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.MESSAGES;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.MESSAGES_AS_BYTES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.NO_PROPERTIES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.ROUTING_KEY;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.WORK_QUEUE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.awaitAtMostOneMinute;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +39,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.github.fge.lambdas.Throwing;
-import com.github.steveash.guavate.Guavate;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -74,17 +71,12 @@ public class WorkQueueTest {
              Connection connection4 = connectionFactory4.newConnection();
              Channel subscriberChannel4 = connection4.createChannel()) {
 
-            ImmutableList<Integer> expectedResult = IntStream.range(0, 100).boxed().collect(Guavate.toImmutableList());
-
             // Declare the exchange and a single queue attached to it.
             publisherChannel.exchangeDeclare(EXCHANGE_NAME, "direct", DURABLE);
             publisherChannel.queueDeclare(WORK_QUEUE, DURABLE, !EXCLUSIVE, AUTO_DELETE, ImmutableMap.of());
             publisherChannel.queueBind(WORK_QUEUE, EXCHANGE_NAME, ROUTING_KEY);
             // Publisher will produce 100 messages
-            expectedResult.stream()
-                .map(String::valueOf)
-                .map(s -> s.getBytes(StandardCharsets.UTF_8))
-                .forEach(Throwing.consumer(
+            MESSAGES_AS_BYTES.forEach(Throwing.consumer(
                     bytes -> publisherChannel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, NO_PROPERTIES, bytes)));
 
             InMemoryConsumer consumer2 = new InMemoryConsumer(subscriberChannel2);
@@ -94,14 +86,14 @@ public class WorkQueueTest {
             subscriberChannel3.basicConsume(WORK_QUEUE, consumer3);
             subscriberChannel4.basicConsume(WORK_QUEUE, consumer4);
 
-            awaitAtMostOneMinute.until(() -> allMessageReceived(expectedResult, consumer2, consumer3, consumer4));
+            awaitAtMostOneMinute.until(() -> allMessageReceived(MESSAGES, consumer2, consumer3, consumer4));
 
             assertThat(Iterables.concat(consumer2.getConsumedMessages(), consumer3.getConsumedMessages(), consumer4.getConsumedMessages()))
-                .containsOnlyElementsOf(expectedResult);
+                .containsOnlyElementsOf(MESSAGES);
         }
     }
 
-    private boolean allMessageReceived(ImmutableList<Integer> expectedResult, InMemoryConsumer consumer2,
+    private boolean allMessageReceived(List<Integer> expectedResult, InMemoryConsumer consumer2,
                                        InMemoryConsumer consumer3, InMemoryConsumer consumer4) {
         return Iterables.size(
             Iterables.concat(consumer2.getConsumedMessages(),

@@ -22,21 +22,20 @@ package org.apache.james.queue.rabbitmq;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DIRECT;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DURABLE;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCHANGE_NAME;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.MESSAGES;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.MESSAGES_AS_BYTES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.NO_PROPERTIES;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.ROUTING_KEY;
 import static org.apache.james.queue.rabbitmq.RabbitMQFixture.awaitAtMostOneMinute;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.charset.StandardCharsets;
-import java.util.stream.IntStream;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import com.github.fge.lambdas.Throwing;
-import com.github.steveash.guavate.Guavate;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -64,7 +63,6 @@ public class BroadcastTest {
     // To do so, each consumer will bind it's queue to the producer exchange.
     @Test
     public void rabbitMQShouldSupportTheBroadcastCase() throws Exception {
-        ImmutableList<Integer> expectedResult = IntStream.range(0, 10).boxed().collect(Guavate.toImmutableList());
         try (Connection connection1 = connectionFactory1.newConnection();
              Channel publisherChannel = connection1.createChannel();
              Connection connection2 = connectionFactory2.newConnection();
@@ -92,22 +90,19 @@ public class BroadcastTest {
             subscriberChannel4.basicConsume(queue4, consumer4);
 
             // the publisher will produce 10 messages
-            expectedResult.stream()
-                .map(String::valueOf)
-                .map(s -> s.getBytes(StandardCharsets.UTF_8))
-                .forEach(Throwing.consumer(
+            MESSAGES_AS_BYTES.forEach(Throwing.consumer(
                     bytes -> publisherChannel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, NO_PROPERTIES, bytes)));
 
-            awaitAtMostOneMinute.until(() -> allMessageReceived(expectedResult, consumer2, consumer3, consumer4));
+            awaitAtMostOneMinute.until(() -> allMessageReceived(MESSAGES, consumer2, consumer3, consumer4));
 
             // Check every subscriber have receive all the messages.
-            assertThat(consumer2.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
-            assertThat(consumer3.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
-            assertThat(consumer4.getConsumedMessages()).containsOnlyElementsOf(expectedResult);
+            assertThat(consumer2.getConsumedMessages()).containsOnlyElementsOf(MESSAGES);
+            assertThat(consumer3.getConsumedMessages()).containsOnlyElementsOf(MESSAGES);
+            assertThat(consumer4.getConsumedMessages()).containsOnlyElementsOf(MESSAGES);
         }
     }
 
-    private boolean allMessageReceived(ImmutableList<Integer> expectedResult, InMemoryConsumer consumer2,
+    private boolean allMessageReceived(List<Integer> expectedResult, InMemoryConsumer consumer2,
                                        InMemoryConsumer consumer3, InMemoryConsumer consumer4) {
         return Iterables.size(
             Iterables.concat(consumer2.getConsumedMessages(),

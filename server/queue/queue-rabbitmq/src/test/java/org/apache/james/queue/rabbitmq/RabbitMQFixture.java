@@ -22,6 +22,11 @@ package org.apache.james.queue.rabbitmq;
 import static com.jayway.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
 import static com.jayway.awaitility.Duration.ONE_MINUTE;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.IntStream;
+
+import com.github.steveash.guavate.Guavate;
 import com.jayway.awaitility.Awaitility;
 import com.jayway.awaitility.Duration;
 import com.jayway.awaitility.core.ConditionFactory;
@@ -37,6 +42,13 @@ public class RabbitMQFixture {
     public static final boolean EXCLUSIVE = true;
     public static final boolean AUTO_DELETE = true;
     public static final String WORK_QUEUE = "workQueue";
+    public static final List<Integer> MESSAGES = IntStream.range(0, 10)
+        .boxed()
+        .collect(Guavate.toImmutableList());
+    public static final List<byte[]> MESSAGES_AS_BYTES = MESSAGES.stream()
+        .map(String::valueOf)
+        .map(s -> s.getBytes(StandardCharsets.UTF_8))
+        .collect(Guavate.toImmutableList());
 
     public static Duration slowPacedPollInterval = FIVE_HUNDRED_MILLISECONDS;
     public static ConditionFactory calmlyAwait = Awaitility.with()

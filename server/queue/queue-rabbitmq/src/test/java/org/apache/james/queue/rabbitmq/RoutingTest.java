@@ -61,11 +61,11 @@ public class RoutingTest {
     public void rabbitMQShouldSupportRouting() throws Exception {
         try (Connection connection1 = connectionFactory1.newConnection();
              Channel channel1 = connection1.createChannel();
-            Connection connection2 = connectionFactory2.newConnection();
+             Connection connection2 = connectionFactory2.newConnection();
              Channel channel2 = connection2.createChannel();
-            Connection connection3 = connectionFactory3.newConnection();
+             Connection connection3 = connectionFactory3.newConnection();
              Channel channel3 = connection3.createChannel();
-            Connection connection4 = connectionFactory4.newConnection();
+             Connection connection4 = connectionFactory4.newConnection();
              Channel channel4 = connection4.createChannel()) {
 
             // Declare the exchange and a single queue attached to it.
