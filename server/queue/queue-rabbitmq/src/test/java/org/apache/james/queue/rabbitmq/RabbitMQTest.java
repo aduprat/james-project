@@ -18,16 +18,20 @@
  ****************************************************************/
 package org.apache.james.queue.rabbitmq;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.AUTO_ACK;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DIRECT;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.DURABLE;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.EXCHANGE_NAME;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.NO_PROPERTIES;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.ROUTING_KEY;
+import static org.apache.james.queue.rabbitmq.RabbitMQFixture.awaitAtMostOneMinute;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -35,45 +39,37 @@ import com.rabbitmq.client.ConnectionFactory;
 @ExtendWith(DockerRabbitMQExtension.class)
 public class RabbitMQTest {
 
-    private static final long ONE_MINUTE = TimeUnit.MINUTES.toMillis(1);
-    private ConnectionFactory connectionFactory;
-
-    @BeforeEach
-    public void setup(DockerRabbitMQ rabbitMQ) {
-        connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost(rabbitMQ.getHostIp());
-        connectionFactory.setPort(rabbitMQ.getPort());
-        connectionFactory.setUsername(rabbitMQ.getUsername());
-        connectionFactory.setPassword(rabbitMQ.getPassword());
-    }
+    private static final byte[] PAYLOAD = "Hello, world!".getBytes(StandardCharsets.UTF_8);
 
     @Test
-    public void publishedEventWithoutSubscriberShouldNotBeLost() throws Exception {
+    public void publishedEventWithoutSubscriberShouldNotBeLost(DockerRabbitMQ rabbitMQ) throws Exception {
+        ConnectionFactory connectionFactory = rabbitMQ.connectionFactory();
         try (Connection connection = connectionFactory.newConnection();
                 Channel channel = connection.createChannel()) {
-            String exchangeName = "exchangeName";
-            String routingKey = "routingKey";
-            String queueName = createQueue(channel, exchangeName, routingKey);
+            String queueName = createQueue(channel);
 
-            publishAMessage(channel, exchangeName, routingKey);
+            publishAMessage(channel);
 
-            Thread.sleep(ONE_MINUTE);
-            boolean autoAck = false;
-            assertThat(channel.basicGet(queueName, autoAck)).isNotNull();
+            awaitAtMostOneMinute.until(() -> messageReceived(channel, queueName));
         }
     }
 
-    private String createQueue(Channel channel, String exchangeName, String routingKey) throws IOException {
-        boolean durable = true;
-        channel.exchangeDeclare(exchangeName, "direct", durable);
+    private String createQueue(Channel channel) throws IOException {
+        channel.exchangeDeclare(EXCHANGE_NAME, DIRECT, DURABLE);
         String queueName = channel.queueDeclare().getQueue();
-        channel.queueBind(queueName, exchangeName, routingKey);
+        channel.queueBind(queueName, EXCHANGE_NAME, ROUTING_KEY);
         return queueName;
     }
 
-    private void publishAMessage(Channel channel, String exchangeName, String routingKey) throws IOException {
-        byte[] messageBodyBytes = "Hello, world!".getBytes();
-        BasicProperties properties = null;
-        channel.basicPublish(exchangeName, routingKey, properties, messageBodyBytes);
+    private void publishAMessage(Channel channel) throws IOException {
+        channel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, NO_PROPERTIES, PAYLOAD);
+    }
+
+    private Boolean messageReceived(Channel channel, String queueName) {
+        try {
+            return channel.basicGet(queueName, !AUTO_ACK) != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
