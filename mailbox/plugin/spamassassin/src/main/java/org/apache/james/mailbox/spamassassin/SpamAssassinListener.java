@@ -22,7 +22,7 @@ import java.io.InputStream;
 
 import javax.inject.Inject;
 
-import org.apache.james.mailbox.DefaultMailboxes;
+import org.apache.james.mailbox.Role;
 import org.apache.james.mailbox.store.event.EventFactory;
 import org.apache.james.mailbox.store.event.SpamEventListener;
 import org.apache.james.mailbox.store.mail.model.Message;
@@ -68,9 +68,8 @@ public class SpamAssassinListener implements SpamEventListener {
 
     @VisibleForTesting
     boolean isEventOnSpamMailbox(Event event) {
-        if (event.getMailboxPath().getName().equalsIgnoreCase(DefaultMailboxes.SPAM)) {
-            return true;
-        }
-        return false;
+        return Role.from(event.getMailboxPath().getName())
+            .filter(role -> role.equals(Role.SPAM))
+            .isPresent();
     }
 }

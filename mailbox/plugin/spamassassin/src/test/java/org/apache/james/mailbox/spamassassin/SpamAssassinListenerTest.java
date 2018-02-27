@@ -78,7 +78,7 @@ public class SpamAssassinListenerTest {
     }
 
     @Test
-    public void isEventOnSpamMailboxShouldReturnTrueWhenMailboxIsSpamOtherCase() {
+    public void isEventOnSpamMailboxShouldReturnFalseWhenMailboxIsSpamOtherCase() {
         MailboxSession mailboxSession = null;
         int uidValidity = 1;
         Mailbox mailbox = new SimpleMailbox(MailboxPath.forUser("user", "SPAM"), uidValidity);
@@ -86,7 +86,7 @@ public class SpamAssassinListenerTest {
         Map<MessageUid, MailboxMessage> availableMessages = ImmutableMap.of();
         Added added = new EventFactory().added(mailboxSession, uids, mailbox, availableMessages);
 
-        assertThat(listener.isEventOnSpamMailbox(added)).isTrue();
+        assertThat(listener.isEventOnSpamMailbox(added)).isFalse();
     }
 
     @Test
