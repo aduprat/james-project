@@ -21,14 +21,17 @@ package org.apache.james.util.scanner;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -103,11 +106,25 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
                     .filter(Files::isRegularFile)
                     .map(Path::toFile)
                     .map(Throwing.function(FileInputStream::new))
-                    .forEach(Throwing.consumer(inputStream -> 
+                    .map(readAsPair())
+                    .map(closeStream())
+                    .map(Pair::getRight)
+                    .forEach(Throwing.consumer(message -> 
                             spamAssassinContainer.execInContainer("sa-learn", 
                                     trainingKind.saLearnExtensionName(), 
-                                    IOUtils.toString(inputStream, StandardCharsets.UTF_8))));
+                                    message)));
             }
+        }
+
+        private Function<InputStream, Pair<InputStream, String>> readAsPair() {
+            return Throwing.function(inputStream -> Pair.of(inputStream, IOUtils.toString(inputStream, StandardCharsets.UTF_8)));
+        }
+
+        private Function<Pair<InputStream, String>, Pair<InputStream, String>> closeStream() {
+            return Throwing.function(pair -> { 
+                pair.getLeft().close();
+                return pair;
+            });
         }
 
         private static enum TrainingKind {
