@@ -23,12 +23,16 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.regex.Pattern;
+import java.util.List;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
+
+import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
 
 /**
  * Sends the message through daemonized SpamAssassin (spamd), visit <a
@@ -41,6 +45,10 @@ public class SpamAssassinInvoker {
 
     /** The mail attribute under which the flag get stored */
     public static final String FLAG_MAIL_ATTRIBUTE_NAME = "org.apache.james.spamassassin.flag";
+
+    private static final int SPAM_INDEX = 1;
+    private static final int HITS_INDEX = 3;
+    private static final int REQUIRED_HITS_INDEX = 5;
 
     private final String spamdHost;
 
@@ -71,21 +79,22 @@ public class SpamAssassinInvoker {
     public SpamAssassinResult scanMail(MimeMessage message) throws MessagingException {
         try (Socket socket = new Socket(spamdHost, spamdPort);
                 OutputStream out = socket.getOutputStream();
+                PrintWriter writer = new PrintWriter(out);
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            out.write("CHECK SPAMC/1.2\r\n\r\n".getBytes());
+            writer.write("CHECK SPAMC/1.2\r\n\r\n");
+            writer.flush();
 
             // pass the message to spamd
             message.writeTo(out);
             out.flush();
             socket.shutdownOutput();
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (isSpam(line)) {
-                    return processSpam(line);
-                }
-            }
-            return SpamAssassinResult.empty();
+
+            return in.lines()
+                .filter(this::isSpam)
+                .map(this::processSpam)
+                .findFirst()
+                .orElse(SpamAssassinResult.empty());
         } catch (UnknownHostException e1) {
             throw new MessagingException("Error communicating with spamd. Unknown host: " + spamdHost);
         } catch (IOException | MessagingException e1) {
@@ -94,10 +103,10 @@ public class SpamAssassinInvoker {
     }
 
     private SpamAssassinResult processSpam(String line) {
-        String[] split = Pattern.compile(" ").split(line);
-        boolean spam = spam(split[1]);
-        String hits = split[3];
-        String required = split[5];
+        List<String> elements = Lists.newArrayList(Splitter.on(' ').split(line));
+        boolean spam = spam(elements.get(SPAM_INDEX));
+        String hits = elements.get(HITS_INDEX);
+        String required = elements.get(REQUIRED_HITS_INDEX);
         SpamAssassinResult.Builder builder = SpamAssassinResult.builder()
             .hits(hits)
             .requiredHits(required);
@@ -105,12 +114,11 @@ public class SpamAssassinInvoker {
         if (spam) {
             builder.putHeader(FLAG_MAIL_ATTRIBUTE_NAME, "YES");
             builder.putHeader(STATUS_MAIL_ATTRIBUTE_NAME, "Yes, hits=" + hits + " required=" + required);
-            return builder.build();
         } else {
             builder.putHeader(FLAG_MAIL_ATTRIBUTE_NAME, "NO");
             builder.putHeader(STATUS_MAIL_ATTRIBUTE_NAME, "No, hits=" + hits + " required=" + required);
-            return builder.build();
         }
+        return builder.build();
     }
 
     private boolean spam(String string) {

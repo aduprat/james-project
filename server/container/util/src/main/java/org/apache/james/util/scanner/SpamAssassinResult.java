@@ -25,8 +25,13 @@ import com.google.common.collect.ImmutableMap;
 
 public class SpamAssassinResult {
 
+    private static final String NO_RESULT = "?";
+
     public static SpamAssassinResult empty() {
-        return new Builder().build();
+        return new Builder()
+                .hits(NO_RESULT)
+                .requiredHits(NO_RESULT)
+                .build();
     }
 
     public static Builder builder() {
