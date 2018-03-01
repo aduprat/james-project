@@ -33,6 +33,8 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
@@ -43,6 +45,7 @@ import com.google.common.collect.Lists;
  */
 public class SpamAssassinInvoker {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpamAssassinInvoker.class);
     /** The mail attribute under which the status get stored */
     public static final String STATUS_MAIL_ATTRIBUTE_NAME = "org.apache.james.spamassassin.status";
 
@@ -120,9 +123,11 @@ public class SpamAssassinInvoker {
         if (spam) {
             builder.putHeader(FLAG_MAIL_ATTRIBUTE_NAME, "YES");
             builder.putHeader(STATUS_MAIL_ATTRIBUTE_NAME, "Yes, hits=" + hits + " required=" + required);
+            LOGGER.error("Is spam, hits: " + hits + " required: " + required);
         } else {
             builder.putHeader(FLAG_MAIL_ATTRIBUTE_NAME, "NO");
             builder.putHeader(STATUS_MAIL_ATTRIBUTE_NAME, "No, hits=" + hits + " required=" + required);
+            LOGGER.error("Is not spam, hits: " + hits + " required: " + required);
         }
         return builder.build();
     }
@@ -162,14 +167,16 @@ public class SpamAssassinInvoker {
             writer.write(CRLF);
             writer.flush();
 
-            IOUtils.copy(message, out);
+            out.write(IOUtils.toByteArray(message));
             out.flush();
             socket.shutdownOutput();
 
-            return in.lines()
+            boolean present = in.lines()
                 .filter(this::hasBeenSet)
                 .findAny()
                 .isPresent();
+            LOGGER.error("Is learned: " + present);
+            return present;
         } catch (UnknownHostException e) {
             throw new MessagingException("Error communicating with spamd. Unknown host: " + spamdHost);
         } catch (IOException e) {

@@ -16,33 +16,12 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-package org.apache.james.mailbox.spamassassin;
+package org.apache.james.jmap.memory;
 
-import java.io.InputStream;
-import java.util.List;
+import org.apache.james.jmap.methods.integration.SpamAssassinContract;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import javax.inject.Inject;
+@ExtendWith(MemoryJmapExtension.class)
+public class MemorySpamAssassinContract implements SpamAssassinContract {
 
-import org.apache.james.util.Host;
-import org.apache.james.util.scanner.SpamAssassinInvoker;
-
-import com.github.fge.lambdas.Throwing;
-
-public class SpamAssassin {
-
-    private final SpamAssassinConfiguration spamAssassinConfiguration;
-
-    @Inject
-    public SpamAssassin(SpamAssassinConfiguration spamAssassinConfiguration) {
-        this.spamAssassinConfiguration = spamAssassinConfiguration;
-    }
-
-    public void learnSpam(List<InputStream> messages) {
-        if (spamAssassinConfiguration.isEnable()) {
-            Host host = spamAssassinConfiguration.getHost().get();
-            SpamAssassinInvoker invoker = new SpamAssassinInvoker(host.getHostName(), host.getPort());
-            messages
-                .forEach(Throwing.consumer(message -> invoker.learnAsSpam(message)));
-        }
-    }
 }

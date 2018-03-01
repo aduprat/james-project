@@ -72,7 +72,11 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
         return spamAssassin;
     }
-    
+
+    public SpamAssassin getSpamAssassin() {
+        return spamAssassin;
+    }
+
     public static class SpamAssassin {
         
         private static final int SPAMASSASSIN_PORT = 783;
