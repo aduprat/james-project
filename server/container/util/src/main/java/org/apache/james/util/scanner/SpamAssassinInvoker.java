@@ -100,6 +100,7 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             return in.lines()
+                .peek(System.out::println)
                 .filter(this::isSpam)
                 .map(this::processSpam)
                 .findFirst()
@@ -158,20 +159,26 @@ public class SpamAssassinInvoker {
                 PrintWriter writer = new PrintWriter(out);
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
+            byte[] byteArray = IOUtils.toByteArray(message);
             writer.write("TELL SPAMC/1.2");
+            writer.write(CRLF);
+            writer.write("Content-length: " + byteArray.length);
             writer.write(CRLF);
             writer.write("Message-class: spam");
             writer.write(CRLF);
             writer.write("Set: local, remote");
             writer.write(CRLF);
+            writer.write("User: debian-spamd");
+            writer.write(CRLF);
             writer.write(CRLF);
             writer.flush();
 
-            out.write(IOUtils.toByteArray(message));
+            out.write(byteArray);
             out.flush();
             socket.shutdownOutput();
 
             boolean present = in.lines()
+                .peek(System.out::println)
                 .filter(this::hasBeenSet)
                 .findAny()
                 .isPresent();
@@ -185,6 +192,6 @@ public class SpamAssassinInvoker {
     }
 
     private boolean hasBeenSet(String line) {
-        return line.startsWith("DidSet");
+        return line.startsWith("DidSet: local");
     }
 }

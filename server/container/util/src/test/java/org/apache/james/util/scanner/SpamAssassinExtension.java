@@ -38,6 +38,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 
 import com.github.fge.lambdas.Throwing;
@@ -113,10 +114,11 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
                     .map(readAsPair())
                     .map(closeStream())
                     .map(Pair::getRight)
-                    .forEach(Throwing.consumer(message -> 
+                    .forEach(Throwing.consumer(message -> {
                             spamAssassinContainer.execInContainer("sa-learn", 
                                     trainingKind.saLearnExtensionName(), 
-                                    message)));
+                                    message);
+                    }));
             }
         }
 
@@ -143,6 +145,20 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
             public String saLearnExtensionName() {
                 return saLearnExtensionName;
             }
+        }
+
+        public void sync() throws UnsupportedOperationException, IOException, InterruptedException {
+            ExecResult result = spamAssassinContainer.execInContainer("sa-learn", "--sync");
+            System.out.println("sync");
+            System.out.println(result.getStdout());
+            System.out.println(result.getStderr());
+        }
+
+        public void dump() throws UnsupportedOperationException, IOException, InterruptedException {
+            ExecResult result = spamAssassinContainer.execInContainer("sa-learn", "--dump", "magic");
+            System.out.println("dump");
+            System.out.println(result.getStdout());
+            System.out.println(result.getStderr());
         }
     }
 

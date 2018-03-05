@@ -22,6 +22,7 @@ import org.apache.activemq.store.PersistenceAdapter;
 import org.apache.activemq.store.memory.MemoryPersistenceAdapter;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.jmap.methods.integration.JamesWithSpamAssassin;
 import org.apache.james.jmap.methods.integration.SpamAssassinModule;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
@@ -46,23 +47,25 @@ public class MemoryJmapExtension implements BeforeAllCallback, AfterAllCallback,
 
     private final TemporaryFolder temporaryFolder;
     private final SpamAssassinExtension spamAssassinExtension;
-    private final GuiceJamesServer jmapServer;
+    private final JamesWithSpamAssassin james;
 
     public MemoryJmapExtension() {
         this.temporaryFolder = new TemporaryFolder();
         this.spamAssassinExtension = new SpamAssassinExtension();
-        this.jmapServer = jmapServer();
+        this.james = james();
     }
 
-    private GuiceJamesServer jmapServer() {
-        return new GuiceJamesServer()
-            .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(new TestFilesystemModule(temporaryFolder),
-                new TestJMAPServerModule(LIMIT_TO_20_MESSAGES))
-            .overrideWith(binder -> binder.bind(PersistenceAdapter.class).to(MemoryPersistenceAdapter.class))
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(binder -> binder.bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class))
-            .overrideWith(new SpamAssassinModule(spamAssassinExtension));
+    private JamesWithSpamAssassin james() {
+        return new JamesWithSpamAssassin(
+            new GuiceJamesServer()
+                .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
+                .overrideWith(new TestFilesystemModule(temporaryFolder),
+                    new TestJMAPServerModule(LIMIT_TO_20_MESSAGES))
+                .overrideWith(binder -> binder.bind(PersistenceAdapter.class).to(MemoryPersistenceAdapter.class))
+                .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
+                .overrideWith(binder -> binder.bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class))
+                .overrideWith(new SpamAssassinModule(spamAssassinExtension)),
+            spamAssassinExtension);
     }
 
     @Override
@@ -87,11 +90,11 @@ public class MemoryJmapExtension implements BeforeAllCallback, AfterAllCallback,
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType() == GuiceJamesServer.class;
+        return parameterContext.getParameter().getType() == JamesWithSpamAssassin.class;
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return jmapServer;
+        return james;
     }
 }
