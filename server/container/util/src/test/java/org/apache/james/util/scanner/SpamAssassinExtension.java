@@ -19,26 +19,20 @@
 
 package org.apache.james.util.scanner;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.function.Function;
+import java.util.Locale;
 import java.util.stream.Stream;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 
 import com.github.fge.lambdas.Throwing;
@@ -100,37 +94,26 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
             return bindingPort;
         }
 
-        public void train() throws IOException, URISyntaxException {
-            train(Paths.get(ClassLoader.getSystemResource("spamassassin_db/spam").toURI()), TrainingKind.SPAM);
-            train(Paths.get(ClassLoader.getSystemResource("spamassassin_db/ham").toURI()), TrainingKind.HAM);
+        public void train(String user) throws IOException, URISyntaxException {
+            train(user, Paths.get(ClassLoader.getSystemResource("spamassassin_db/spam").toURI()), TrainingKind.SPAM);
+            train(user, Paths.get(ClassLoader.getSystemResource("spamassassin_db/ham").toURI()), TrainingKind.HAM);
         }
 
-        private void train(Path folder, TrainingKind trainingKind) throws URISyntaxException, IOException {
+        private void train(String user, Path folder, TrainingKind trainingKind) throws URISyntaxException, IOException {
+            spamAssassinContainer.getDockerClient().copyArchiveToContainerCmd(spamAssassinContainer.getContainerId())
+                .withHostResource(folder.toAbsolutePath().toString())
+                .withRemotePath("/root")
+                .exec();
             try (Stream<Path> paths = Files.walk(folder)) {
                 paths
                     .filter(Files::isRegularFile)
                     .map(Path::toFile)
-                    .map(Throwing.function(FileInputStream::new))
-                    .map(readAsPair())
-                    .map(closeStream())
-                    .map(Pair::getRight)
-                    .forEach(Throwing.consumer(message -> {
+                    .forEach(Throwing.consumer(file -> {
                             spamAssassinContainer.execInContainer("sa-learn", 
-                                    trainingKind.saLearnExtensionName(), 
-                                    message);
+                                    trainingKind.saLearnExtensionName(), "-u", user,
+                                    "/root/" + trainingKind.name().toLowerCase(Locale.US) + "/" +  file.getName());
                     }));
             }
-        }
-
-        private Function<InputStream, Pair<InputStream, String>> readAsPair() {
-            return Throwing.function(inputStream -> Pair.of(inputStream, IOUtils.toString(inputStream, StandardCharsets.UTF_8)));
-        }
-
-        private Function<Pair<InputStream, String>, Pair<InputStream, String>> closeStream() {
-            return Throwing.function(pair -> { 
-                pair.getLeft().close();
-                return pair;
-            });
         }
 
         private static enum TrainingKind {
@@ -147,18 +130,12 @@ public class SpamAssassinExtension implements BeforeAllCallback, AfterAllCallbac
             }
         }
 
-        public void sync() throws UnsupportedOperationException, IOException, InterruptedException {
-            ExecResult result = spamAssassinContainer.execInContainer("sa-learn", "--sync");
-            System.out.println("sync");
-            System.out.println(result.getStdout());
-            System.out.println(result.getStderr());
+        public void sync(String user) throws UnsupportedOperationException, IOException, InterruptedException {
+            spamAssassinContainer.execInContainer("sa-learn", "--sync", "-u", user);
         }
 
-        public void dump() throws UnsupportedOperationException, IOException, InterruptedException {
-            ExecResult result = spamAssassinContainer.execInContainer("sa-learn", "--dump", "magic");
-            System.out.println("dump");
-            System.out.println(result.getStdout());
-            System.out.println(result.getStderr());
+        public void dump(String user) throws UnsupportedOperationException, IOException, InterruptedException {
+            spamAssassinContainer.execInContainer("sa-learn", "--dump", "magic", "-u", user);
         }
     }
 

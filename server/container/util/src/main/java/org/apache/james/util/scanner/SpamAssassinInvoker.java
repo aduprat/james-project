@@ -91,6 +91,8 @@ public class SpamAssassinInvoker {
 
             writer.write("CHECK SPAMC/1.2");
             writer.write(CRLF);
+            writer.write("User: alice@angels.org");
+            writer.write(CRLF);
             writer.write(CRLF);
             writer.flush();
 
@@ -100,7 +102,6 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             return in.lines()
-                .peek(System.out::println)
                 .filter(this::isSpam)
                 .map(this::processSpam)
                 .findFirst()
@@ -164,11 +165,11 @@ public class SpamAssassinInvoker {
             writer.write(CRLF);
             writer.write("Content-length: " + byteArray.length);
             writer.write(CRLF);
+            writer.write("User: alice@angels.org");
+            writer.write(CRLF);
             writer.write("Message-class: spam");
             writer.write(CRLF);
             writer.write("Set: local, remote");
-            writer.write(CRLF);
-            writer.write("User: debian-spamd");
             writer.write(CRLF);
             writer.write(CRLF);
             writer.flush();
@@ -178,10 +179,7 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             boolean present = in.lines()
-                .peek(System.out::println)
-                .filter(this::hasBeenSet)
-                .findAny()
-                .isPresent();
+                .anyMatch(this::hasBeenSet);
             LOGGER.error("Is learned: " + present);
             return present;
         } catch (UnknownHostException e) {

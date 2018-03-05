@@ -34,4 +34,6 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
+    <logger name="aduprat/spamassassin:latest" level="DEBUG" />
+
 </configuration>

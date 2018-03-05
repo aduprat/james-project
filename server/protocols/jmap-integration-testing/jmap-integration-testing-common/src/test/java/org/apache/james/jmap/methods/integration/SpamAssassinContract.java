@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.james.GuiceJamesServer;
@@ -72,7 +71,6 @@ public interface SpamAssassinContract {
                 .setConfig(newConfig().encoderConfig(encoderConfig().defaultContentCharset(StandardCharsets.UTF_8)))
                 .setPort(james.getJmapServer().getProbe(JmapGuiceProbe.class).getJmapPort())
                 .build();
-//        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
         RestAssured.defaultParser = Parser.JSON;
 
         james.getJmapServer().getProbe(DataProbeImpl.class).addDomain(BOBS_DOMAIN);
@@ -105,26 +103,18 @@ public interface SpamAssassinContract {
         Duration slowPacedPollInterval = Duration.FIVE_HUNDRED_MILLISECONDS;
         ConditionFactory calmlyAwait = Awaitility.with().pollInterval(slowPacedPollInterval).and().with().pollDelay(slowPacedPollInterval).await();
 
-        james.getSpamAssassinExtension().getSpamAssassin().sync();
-        james.getSpamAssassinExtension().getSpamAssassin().dump();
-        // Bob is sending ten times the same message to Alice
-//        MimeMessage calendarMessage = MimeMessageUtil.mimeMessageFromStream(ClassLoader.getSystemResourceAsStream("spamassassin_db/spam/spam_fromBobToAlice.eml"));
-        System.out.println("Bob is sending");
+        james.getSpamAssassinExtension().getSpamAssassin().train(ALICE);
+        // Bob is sending a message to Alice
         AccessToken bobAccessToken = accessTokenFor(james.getJmapServer(), BOB, BOB_PASSWORD);
-        int numberOfMessages = 1;
-        IntStream.range(0, numberOfMessages)
-            .forEach(index -> {
-                given()
-                    .header("Authorization", bobAccessToken.serialize())
-                    .body(setMessageCreate(bobAccessToken))
-                .when()
-                    .post("/jmap");
-            });
+        given()
+            .header("Authorization", bobAccessToken.serialize())
+            .body(setMessageCreate(bobAccessToken))
+        .when()
+            .post("/jmap");
         AccessToken aliceAccessToken = accessTokenFor(james.getJmapServer(), ALICE, ALICE_PASSWORD);
-        calmlyAwait.atMost(60, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getInboxId(aliceAccessToken), numberOfMessages));
+        calmlyAwait.atMost(30, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getInboxId(aliceAccessToken), 1));
 
-        // Alice is moving these messages to Spam -> learning in SpamAssassin
-        System.out.println("Alive is moving to Spam");
+        // Alice is moving this message to Spam -> learning in SpamAssassin
         List<String> messageIds = with()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"" + getInboxId(aliceAccessToken) + "\"]}}, \"#0\"]]")
@@ -133,7 +123,7 @@ public interface SpamAssassinContract {
         .then()
             .statusCode(200)
             .body(NAME, equalTo("messageList"))
-            .body(ARGUMENTS + ".messageIds", hasSize(numberOfMessages))
+            .body(ARGUMENTS + ".messageIds", hasSize(1))
             .extract()
             .path(ARGUMENTS + ".messageIds");
 
@@ -149,32 +139,17 @@ public interface SpamAssassinContract {
                     .body(NAME, equalTo("messagesSet"))
                     .body(ARGUMENTS + ".updated", hasSize(1));
             });
-        calmlyAwait.atMost(30, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getSpamId(aliceAccessToken), numberOfMessages));
-        Thread.sleep(4000);
-
-        james.getSpamAssassinExtension().getSpamAssassin().sync();
-        james.getSpamAssassinExtension().getSpamAssassin().dump();
+        calmlyAwait.atMost(30, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getSpamId(aliceAccessToken), 1));
 
         // Bob is sending again the same message to Alice
-        System.out.println("Bob is sending");
         given()
             .header("Authorization", bobAccessToken.serialize())
             .body(setMessageCreate(bobAccessToken))
         .when()
             .post("/jmap");
 
-        // This message is delivered in Alice Spam mailbox (she now must have 11 messages in her Spam mailbox)
-        System.out.println("Alice is checking");
-        calmlyAwait.atMost(10, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getSpamId(aliceAccessToken), numberOfMessages + 1));
-//        with()
-//            .header("Authorization", aliceAccessToken.serialize())
-//            .body("[[\"getMessageList\", {\"filter\":{\"inMailboxes\":[\"" + getSpamId(aliceAccessToken) + "\"]}}, \"#0\"]]")
-//        .when()
-//            .post("/jmap")
-//        .then()
-//            .statusCode(200)
-//            .body(NAME, equalTo("messageList"))
-//            .body(ARGUMENTS + ".messageIds", hasSize(11));
+        // This message is delivered in Alice Spam mailbox (she now must have 2 messages in her Spam mailbox)
+        calmlyAwait.atMost(10, TimeUnit.SECONDS).until(() -> areMessagesFoundInMailbox(aliceAccessToken, getSpamId(aliceAccessToken), 2));
     }
 
     default boolean areMessagesFoundInMailbox(AccessToken accessToken, String mailboxId, int expectedNumberOfMessages) {
