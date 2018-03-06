@@ -55,6 +55,7 @@ import org.apache.james.mailbox.model.MessageAttachment;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageId.Factory;
 import org.apache.james.mailbox.model.MessageMetaData;
+import org.apache.james.mailbox.model.MessageMoves;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult.FetchGroup;
 import org.apache.james.mailbox.model.MessageResultIterator;
@@ -763,6 +764,9 @@ public class StoreMessageManager implements org.apache.james.mailbox.MessageMana
         }
         dispatcher.added(session, moveUids, to.getMailboxEntity(), messagesMap.build());
         dispatcher.expunged(session, collectMetadata(moveResult.getOriginalMessages()), getMailboxEntity());
+        dispatcher.moved(session, 
+                new MessageMoves(ImmutableList.of(getMailboxEntity().getMailboxId()), ImmutableList.of(to.getMailboxEntity().getMailboxId())), 
+                messagesMap.build());
         return moveUids;
     }
 
