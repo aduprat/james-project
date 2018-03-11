@@ -107,6 +107,7 @@ public class SpamAssassinExtension implements BeforeEachCallback, AfterEachCallb
         }
 
         private void train(String user, Path folder, TrainingKind trainingKind) throws IOException {
+            System.out.println("train user " + user + " trainingKind " + trainingKind);
             spamAssassinContainer.getDockerClient().copyArchiveToContainerCmd(spamAssassinContainer.getContainerId())
                 .withHostResource(folder.toAbsolutePath().toString())
                 .withRemotePath("/root")
@@ -115,9 +116,12 @@ public class SpamAssassinExtension implements BeforeEachCallback, AfterEachCallb
                 paths
                     .filter(Files::isRegularFile)
                     .map(Path::toFile)
-                    .forEach(Throwing.consumer(file -> spamAssassinContainer.execInContainer("sa-learn",
-                        trainingKind.saLearnExtensionName(), "-u", user,
-                        "/root/" + trainingKind.name().toLowerCase(Locale.US) + "/" +  file.getName())));
+                    .forEach(Throwing.consumer(file -> {
+                        System.out.println(file.getName());
+                        spamAssassinContainer.execInContainer("sa-learn",
+                            trainingKind.saLearnExtensionName(), "-u", user,
+                            "/root/" + trainingKind.name().toLowerCase(Locale.US) + "/" +  file.getName());
+                    }));
             }
         }
 

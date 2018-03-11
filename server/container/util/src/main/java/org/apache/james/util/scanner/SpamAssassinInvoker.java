@@ -88,6 +88,7 @@ public class SpamAssassinInvoker {
     }
 
     public SpamAssassinResult scanMailWithAdditionalHeaders(MimeMessage message, String... additionalHeaders) throws MessagingException {
+        System.out.println("scanMail");
         try (Socket socket = new Socket(spamdHost, spamdPort);
              OutputStream out = socket.getOutputStream();
              PrintWriter writer = new PrintWriter(out);
@@ -111,6 +112,7 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             return in.lines()
+                    .peek(System.out::println)
                 .filter(this::isSpam)
                 .map(this::processSpam)
                 .findFirst()
@@ -161,6 +163,7 @@ public class SpamAssassinInvoker {
      *             if an error occured during learning.
      */
     public boolean learnAsSpam(InputStream message, String user) throws MessagingException {
+        System.out.println("learnAsSpam");
         try (Socket socket = new Socket(spamdHost, spamdPort);
                 OutputStream out = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(out);
@@ -185,6 +188,7 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             return in.lines()
+                    .peek(System.out::println)
                 .anyMatch(this::hasBeenSet);
         } catch (UnknownHostException e) {
             throw new MessagingException("Error communicating with spamd. Unknown host: " + spamdHost);
@@ -202,6 +206,7 @@ public class SpamAssassinInvoker {
      *             if an error occured during learning.
      */
     public boolean learnAsHam(InputStream message, String user) throws MessagingException {
+        System.out.println("learnAsHam");
         try (Socket socket = new Socket(spamdHost, spamdPort);
                 OutputStream out = socket.getOutputStream();
                 PrintWriter writer = new PrintWriter(out);
@@ -226,6 +231,7 @@ public class SpamAssassinInvoker {
             socket.shutdownOutput();
 
             return in.lines()
+                    .peek(System.out::println)
                 .anyMatch(this::hasBeenSet);
         } catch (UnknownHostException e) {
             throw new MessagingException("Error communicating with spamd. Unknown host: " + spamdHost);
