@@ -20,6 +20,7 @@ package org.apache.james.util;
 
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class OptionalUtils {
@@ -44,6 +45,15 @@ public class OptionalUtils {
     @SafeVarargs
     public static <T> Optional<T> or(Optional<T>... optionals) {
         return Arrays.stream(optionals)
+            .filter(Optional::isPresent)
+            .findFirst()
+            .orElse(Optional.empty());
+    }
+
+    @SafeVarargs
+    public static <T> Optional<T> orSuppliers(Supplier<Optional<T>>... optionals) {
+        return Arrays.stream(optionals)
+            .map(Supplier::get)
             .filter(Optional::isPresent)
             .findFirst()
             .orElse(Optional.empty());
