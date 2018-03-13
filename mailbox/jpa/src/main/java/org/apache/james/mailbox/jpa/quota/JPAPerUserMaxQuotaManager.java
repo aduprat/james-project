@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.jpa.quota;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -58,32 +59,32 @@ public class JPAPerUserMaxQuotaManager implements MaxQuotaManager {
 
     @Override
     public void setDomainMaxMessage(String domain, QuotaCount count) {
-        dao.setDomainMaxMessage(domain, Optional.of(count));
+        dao.setDomainMaxMessage(domain.toLowerCase(Locale.US), Optional.of(count));
     }
 
     @Override
     public void setDomainMaxStorage(String domain, QuotaSize size) {
-        dao.setDomainMaxStorage(domain, Optional.of(size));
+        dao.setDomainMaxStorage(domain.toLowerCase(Locale.US), Optional.of(size));
     }
 
     @Override
     public void removeDomainMaxMessage(String domain) {
-        dao.setDomainMaxMessage(domain, Optional.empty());
+        dao.setDomainMaxMessage(domain.toLowerCase(Locale.US), Optional.empty());
     }
 
     @Override
     public void removeDomainMaxStorage(String domain) {
-        dao.setDomainMaxStorage(domain, Optional.empty());
+        dao.setDomainMaxStorage(domain.toLowerCase(Locale.US), Optional.empty());
     }
 
     @Override
     public Optional<QuotaCount> getDomainMaxMessage(String domain) {
-        return dao.getDomainMaxMessage(domain);
+        return dao.getDomainMaxMessage(domain.toLowerCase(Locale.US));
     }
 
     @Override
     public Optional<QuotaSize> getDomainMaxStorage(String domain) {
-        return dao.getDomainMaxStorage(domain);
+        return dao.getDomainMaxStorage(domain.toLowerCase(Locale.US));
     }
 
     @Override

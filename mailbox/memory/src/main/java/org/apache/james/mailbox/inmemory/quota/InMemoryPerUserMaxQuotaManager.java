@@ -18,6 +18,7 @@
  ****************************************************************/
 package org.apache.james.mailbox.inmemory.quota;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,22 +54,22 @@ public class InMemoryPerUserMaxQuotaManager implements MaxQuotaManager {
 
     @Override
     public void setDomainMaxMessage(String domain, QuotaCount count) {
-        domainMaxMessage.put(domain, count);
+        domainMaxMessage.put(domain.toLowerCase(Locale.US), count);
     }
 
     @Override
     public void setDomainMaxStorage(String domain, QuotaSize size) {
-        domainMaxStorage.put(domain, size);
+        domainMaxStorage.put(domain.toLowerCase(Locale.US), size);
     }
 
     @Override
     public void removeDomainMaxMessage(String domain) {
-        domainMaxMessage.remove(domain);
+        domainMaxMessage.remove(domain.toLowerCase(Locale.US));
     }
 
     @Override
     public void removeDomainMaxStorage(String domain) {
-        domainMaxStorage.remove(domain);
+        domainMaxStorage.remove(domain.toLowerCase(Locale.US));
     }
 
     @Override
@@ -116,12 +117,12 @@ public class InMemoryPerUserMaxQuotaManager implements MaxQuotaManager {
 
     @Override
     public Optional<QuotaCount> getDomainMaxMessage(String domain) {
-        return Optional.ofNullable(domainMaxMessage.get(domain));
+        return Optional.ofNullable(domainMaxMessage.get(domain.toLowerCase(Locale.US)));
     }
 
     @Override
     public Optional<QuotaSize> getDomainMaxStorage(String domain) {
-        return Optional.ofNullable(domainMaxStorage.get(domain));
+        return Optional.ofNullable(domainMaxStorage.get(domain.toLowerCase(Locale.US)));
     }
 
     @Override

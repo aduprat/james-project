@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.cassandra.quota;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -65,32 +66,32 @@ public class CassandraPerUserMaxQuotaManager implements MaxQuotaManager {
 
     @Override
     public void setDomainMaxMessage(String domain, QuotaCount count) {
-        perDomainQuota.setMaxMessage(domain, count);
+        perDomainQuota.setMaxMessage(domain.toLowerCase(Locale.US), count);
     }
 
     @Override
     public void setDomainMaxStorage(String domain, QuotaSize size) {
-        perDomainQuota.setMaxStorage(domain, size);
+        perDomainQuota.setMaxStorage(domain.toLowerCase(Locale.US), size);
     }
 
     @Override
     public void removeDomainMaxMessage(String domain) {
-        perDomainQuota.removeMaxMessage(domain);
+        perDomainQuota.removeMaxMessage(domain.toLowerCase(Locale.US));
     }
 
     @Override
     public void removeDomainMaxStorage(String domain) {
-        perDomainQuota.removeMaxStorage(domain);
+        perDomainQuota.removeMaxStorage(domain.toLowerCase(Locale.US));
     }
 
     @Override
     public Optional<QuotaCount> getDomainMaxMessage(String domain) {
-        return perDomainQuota.getMaxMessage(domain);
+        return perDomainQuota.getMaxMessage(domain.toLowerCase(Locale.US));
     }
 
     @Override
     public Optional<QuotaSize> getDomainMaxStorage(String domain) {
-        return perDomainQuota.getMaxStorage(domain);
+        return perDomainQuota.getMaxStorage(domain.toLowerCase(Locale.US));
     }
 
     @Override
