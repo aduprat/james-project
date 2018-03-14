@@ -242,9 +242,9 @@ The answer is the details of the quota of that user.
 
 ```
 {
-  "global": {"count":252,"size":242}
-  "domain": {"count":152,"size":142}
-  "user": {"count":52,"size":42}
+  "global": {"count":252,"size":242},
+  "domain": {"count":152,"size":142},
+  "user": {"count":52,"size":42},
   "computed": {"count":52,"size":42}
 }
 ```
