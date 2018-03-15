@@ -254,7 +254,7 @@ The answer is the details of the quota of that user.
  - The `user` entry represent the quota limit allowed for this specific user.
  - The `computed` entry represent the quota limit applied for this user, resolved from the upper values.
 
-Note that `quota` objectcan contain a fixed value, an empty value (null) or an unlimited value (-1):
+Note that `quota` object can contain a fixed value, an empty value (null) or an unlimited value (-1):
 
 ```
 {"count":52,"size":42}
