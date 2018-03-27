@@ -640,7 +640,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldReturnErrorInvalidArgumentsWhenRequestIsInvalid() throws Exception {
+    public void getMessageListShouldReturnErrorInvalidArgumentsWhenRequestIsInvalid() {
         given()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"filter\": true}, \"#0\"]]")
@@ -653,7 +653,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldReturnErrorInvalidArgumentsWhenHeaderIsInvalid() throws Exception {
+    public void getMessageListShouldReturnErrorInvalidArgumentsWhenHeaderIsInvalid() {
         given()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"filter\":{\"header\":[\"132\", \"456\", \"789\"]}}, \"#0\"]]")
@@ -712,7 +712,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFailWhenHeaderIsValid() throws Exception {
+    public void getMessageListShouldNotFailWhenHeaderIsValid() {
         given()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"filter\":{\"header\":[\"132\", \"456\"]}}, \"#0\"]]")
@@ -962,7 +962,7 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"text\":\"bad\"}}, \"#0\"]]"))
+            .body("[[\"getMessageList\", {\"filter\":{\"text\":\"bad\"}}, \"#0\"]]")
         .when()
             .post("/jmap")
         .then()
@@ -979,7 +979,7 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"text\":\"html\"}}, \"#0\"]]"))
+            .body("[[\"getMessageList\", {\"filter\":{\"text\":\"html\"}}, \"#0\"]]")
         .when()
             .post("/jmap")
         .then()
@@ -996,10 +996,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"subject\":\"Image\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"subject\":\"Image\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", contains(message.getMessageId().serialize()));
     }
@@ -1013,10 +1013,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"from\":\"from@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"from\":\"from@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", contains(message.getMessageId().serialize()));
     }
@@ -1030,10 +1030,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"from\":\"to@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"from\":\"to@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", empty());
     }
@@ -1047,10 +1047,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"to\":\"to@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"to\":\"to@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", contains(message.getMessageId().serialize()));
     }
@@ -1064,10 +1064,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"to\":\"from@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"to\":\"from@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", empty());
     }
@@ -1081,10 +1081,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"cc\":\"cc@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"cc\":\"cc@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", contains(message.getMessageId().serialize()));
     }
@@ -1098,10 +1098,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"cc\":\"bcc@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"cc\":\"bcc@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", empty());
     }
@@ -1115,10 +1115,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"bcc\":\"bcc@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"bcc\":\"bcc@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", contains(message.getMessageId().serialize()));
     }
@@ -1132,10 +1132,10 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"bcc\":\"to@james.org\"}}, \"#0\"]]"))
-            .when()
+            .body("[[\"getMessageList\", {\"filter\":{\"bcc\":\"to@james.org\"}}, \"#0\"]]")
+        .when()
             .post("/jmap")
-            .then()
+        .then()
             .statusCode(200)
             .body(ARGUMENTS + ".messageIds", empty());
     }
@@ -1162,7 +1162,7 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"attachments\":\"no apple inside\"}}, \"#0\"]]"))
+            .body("[[\"getMessageList\", {\"filter\":{\"attachments\":\"no apple inside\"}}, \"#0\"]]")
         .when()
             .post("/jmap")
         .then()
@@ -1192,7 +1192,7 @@ public abstract class GetMessageListMethodTest {
 
         given()
             .header("Authorization", aliceAccessToken.serialize())
-            .body(String.format("[[\"getMessageList\", {\"filter\":{\"attachments\":\"beautiful banana\"}}, \"#0\"]]"))
+            .body("[[\"getMessageList\", {\"filter\":{\"attachments\":\"beautiful banana\"}}, \"#0\"]]")
         .when()
             .post("/jmap")
         .then()
@@ -1748,8 +1748,7 @@ public abstract class GetMessageListMethodTest {
             .body("[1][0]", equalTo("messages"))
             .body("[0][1].messageIds", hasSize(1))
             .body("[1][1].list[0].htmlBody", equalTo("Hello <b>someone</b>, and thank you for joining example.com!"))
-            .body("[1][1].list[0].textBody", equalTo("Hello someone, and thank you for joining example.com!"))
-        ;
+            .body("[1][1].list[0].textBody", equalTo("Hello someone, and thank you for joining example.com!"));
     }
 
     @Test
@@ -2030,7 +2029,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldAcceptLessThan2Pow53NumberForPosition() throws Exception {
+    public void getMessageListShouldAcceptLessThan2Pow53NumberForPosition() {
         given()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"position\":" + Number.MAX_VALUE + "}, \"#0\"]]")
@@ -2042,7 +2041,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldErrorWhenPositionOver2Pow53() throws Exception {
+    public void getMessageListShouldErrorWhenPositionOver2Pow53() {
         given()
             .header("Authorization", aliceAccessToken.serialize())
             .body("[[\"getMessageList\", {\"position\":" + Number.MAX_VALUE + 1 + "}, \"#0\"]]")
