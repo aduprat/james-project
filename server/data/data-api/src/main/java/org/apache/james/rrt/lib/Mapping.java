@@ -36,6 +36,9 @@ public interface Mapping {
         if (input.startsWith(Type.Error.asPrefix())) {
             return Type.Error;
         }
+        if (input.startsWith(Type.Forward.asPrefix())) {
+            return Type.Forward;
+        }
         return Type.Address;
     }
 
@@ -45,6 +48,7 @@ public interface Mapping {
         Regex("regex:"), 
         Domain("domain:"), 
         Error("error:"), 
+        Forward("forward:"),
         Address(""); 
 
         private final String asPrefix;
@@ -65,7 +69,8 @@ public interface Mapping {
         public static boolean hasPrefix(String mapping) {
             return mapping.startsWith(Regex.asPrefix())
                 || mapping.startsWith(Domain.asPrefix())
-                || mapping.startsWith(Error.asPrefix());
+                || mapping.startsWith(Error.asPrefix())
+                || mapping.startsWith(Forward.asPrefix());
         }
     }
 

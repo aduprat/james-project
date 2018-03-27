@@ -57,6 +57,11 @@ public class MappingImplTest {
         assertThat(MappingImpl.error(null));
     }
     
+    @Test(expected = NullPointerException.class)
+    public void forwardFactoryMethodShouldThrowOnNull() {
+        assertThat(MappingImpl.forward(null));
+    }
+    
     @Test
     public void hasDomainshouldReturnTrueWhenMappingContainAtMark() {
         assertThat(MappingImpl.address("a@b").hasDomain()).isTrue();
@@ -116,6 +121,11 @@ public class MappingImplTest {
     public void getTypeShouldReturnDomainWhenDomainPrefix() {
         assertThat(MappingImpl.domain(Domain.of("abc")).getType()).isEqualTo(Mapping.Type.Domain);
     }
+
+    @Test
+    public void getTypeShouldReturnForwardWhenDomainPrefix() {
+        assertThat(MappingImpl.forward("abc").getType()).isEqualTo(Mapping.Type.Forward);
+    }
     
     @Test(expected = IllegalStateException.class)
     public void getErrorMessageShouldThrowWhenMappingIsNotAnError() {
@@ -151,5 +161,10 @@ public class MappingImplTest {
     @Test
     public void getAddressShouldThrowForDomain() {
         assertThatThrownBy(() -> MappingImpl.domain(Domain.of("value")).getAddress()).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    public void getAddressShouldThrowForForward() {
+        assertThatThrownBy(() -> MappingImpl.forward("value").getAddress()).isInstanceOf(IllegalStateException.class);
     }
 }
