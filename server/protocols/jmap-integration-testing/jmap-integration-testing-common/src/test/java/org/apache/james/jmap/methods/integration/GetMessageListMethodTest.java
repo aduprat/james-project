@@ -798,7 +798,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenInMailboxesFilterMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenInMailboxesFilterMatches() throws Exception {
         MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -816,7 +816,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenMultipleInMailboxesFilterMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenMultipleInMailboxesFilterMatches() throws Exception {
         MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -836,7 +836,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenNotInMailboxesFilterMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenNotInMailboxesFilterMatches() throws Exception {
         MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -855,7 +855,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenNotInMailboxesFilterMatchesTwice() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenNotInMailboxesFilterMatchesTwice() throws Exception {
         MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -877,7 +877,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenIdenticalNotInMailboxesAndInmailboxesFilterMatch() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenIdenticalNotInMailboxesAndInmailboxesFilterMatch() throws Exception {
         MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -895,7 +895,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenNotInMailboxesFilterDoesNotMatch() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenNotInMailboxesFilterDoesNotMatch() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -915,7 +915,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenEmptyNotInMailboxesFilter() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenEmptyNotInMailboxesFilter() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -935,7 +935,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenInMailboxesFilterDoesntMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenInMailboxesFilterDoesntMatches() throws Exception {
         MailboxId emptyMailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "emptyMailbox");
 
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
@@ -954,7 +954,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenTextFilterDoesntMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenTextFilterDoesntMatches() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
@@ -971,7 +971,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenTextFilterMatchesBody() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenTextFilterMatchesBody() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
                 ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags());
@@ -988,7 +988,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenSubjectFilterMatchesSubject() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenSubjectFilterMatchesSubject() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags());
@@ -1005,7 +1005,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenFromFilterMatchesFrom() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenFromFilterMatchesFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1022,7 +1022,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenFromFilterDoesntMatchFrom() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenFromFilterDoesntMatchFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1039,7 +1039,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenToFilterMatchesFrom() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenToFilterMatchesFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1056,7 +1056,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenToFilterDoesntMatchFrom() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenToFilterDoesntMatchFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1073,7 +1073,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenCcFilterMatchesFrom() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenCcFilterMatchesFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1090,7 +1090,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenCcFilterDoesntMatchFrom() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenCcFilterDoesntMatchFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1107,7 +1107,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenBccFilterMatchesFrom() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenBccFilterMatchesFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         ComposedMessageId message = mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1124,7 +1124,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenBccFilterDoesntMatchFrom() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenBccFilterDoesntMatchFrom() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         mailboxProbe.appendMessage(alice, MailboxPath.forUser(alice, "mailbox"),
             ClassLoader.getSystemResourceAsStream("eml/mailWithRecipients.eml"), new Date(), false, new Flags());
@@ -1141,7 +1141,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldFilterMessagesWhenAttachmentFilterDoesntMatches() throws Exception {
+    public void getMessageListShouldExcludeMessagesWhenAttachmentFilterDoesntMatches() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         byte[] attachmentContent = ClassLoaderUtils.getSystemResourceAsByteArray("eml/attachment.pdf");
         BodyPart attachment = BodyPartBuilder.create()
@@ -1171,7 +1171,7 @@ public abstract class GetMessageListMethodTest {
     }
 
     @Test
-    public void getMessageListShouldNotFilterMessagesWhenAttachmentFilterMatches() throws Exception {
+    public void getMessageListShouldIncludeMessagesWhenAttachmentFilterMatches() throws Exception {
         mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, alice, "mailbox");
         byte[] attachmentContent = ClassLoaderUtils.getSystemResourceAsByteArray("eml/attachment.pdf");
         BodyPart attachment = BodyPartBuilder.create()
