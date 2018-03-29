@@ -187,4 +187,32 @@ public interface RecipientRewriteTableManagementMBean {
      *            If an error occurred
      */
     Map<String, Mappings> getAllMappings() throws Exception;
+
+    /***
+     * Add forward mapping
+     * 
+     * @param user
+     *            the username. Null if no username should be used
+     * @param domain
+     *            the domain. Null if no domain should be used
+     * @param address
+     *            the address.
+     * @throws Exception
+     *            If an error occurred
+     */
+    void addForwardMapping(String user, String domain, String address) throws Exception;
+
+    /**
+     * Remove forward mapping
+     * 
+     * @param user
+     *            the username. Null if no username should be used
+     * @param domain
+     *            the domain. Null if no domain should be used
+     * @param address
+     *            the address.
+     * @throws Exception
+     *            If an error occurred
+     */
+    void removeForwardMapping(String user, String domain, String address) throws Exception;
 }
