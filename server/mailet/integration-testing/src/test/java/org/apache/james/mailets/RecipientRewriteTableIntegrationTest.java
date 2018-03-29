@@ -44,6 +44,7 @@ public class RecipientRewriteTableIntegrationTest {
     private static final String ANY_AT_JAMES = "any@" + DEFAULT_DOMAIN;
     private static final String OTHER_AT_JAMES = "other@" + DEFAULT_DOMAIN;
     private static final String ANY_AT_ANOTHER_DOMAIN = "any@" + JAMES_ANOTHER_DOMAIN;
+    private static final String GROUP = "group@" + DEFAULT_DOMAIN;
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -160,4 +161,38 @@ public class RecipientRewriteTableIntegrationTest {
             .awaitNoMessage(awaitAtMostOneMinute);
     }
 
+    @Test
+    public void rrtServiceShouldDeliverEmailToForwardRecipients() throws Exception {
+        dataProbe.addForwardMapping("touser", DEFAULT_DOMAIN, ANY_AT_JAMES);
+        dataProbe.addForwardMapping("touser", DEFAULT_DOMAIN, OTHER_AT_JAMES);
+
+        messageSender.connect(LOCALHOST_IP, SMTP_PORT)
+            .sendMessage(FROM, RECIPIENT)
+            .awaitSent(awaitAtMostOneMinute);
+
+        imapMessageReader.connect(LOCALHOST_IP, IMAP_PORT)
+            .login(ANY_AT_JAMES, PASSWORD)
+            .select(IMAPMessageReader.INBOX)
+            .awaitMessage(awaitAtMostOneMinute);
+        imapMessageReader.connect(LOCALHOST_IP, IMAP_PORT)
+            .login(OTHER_AT_JAMES, PASSWORD)
+            .select(IMAPMessageReader.INBOX)
+            .awaitMessage(awaitAtMostOneMinute);
+    }
+
+    @Test
+    public void rrtServiceShouldFollowForwardWhenSendingToAGroup() throws Exception {
+        dataProbe.addAddressMapping("group", DEFAULT_DOMAIN, ANY_AT_JAMES);
+
+        dataProbe.addForwardMapping("any", DEFAULT_DOMAIN, OTHER_AT_JAMES);
+
+        messageSender.connect(LOCALHOST_IP, SMTP_PORT)
+            .sendMessage(FROM, GROUP)
+            .awaitSent(awaitAtMostOneMinute);
+
+        imapMessageReader.connect(LOCALHOST_IP, IMAP_PORT)
+            .login(OTHER_AT_JAMES, PASSWORD)
+            .select(IMAPMessageReader.INBOX)
+            .awaitMessage(awaitAtMostOneMinute);
+    }
 }
