@@ -122,6 +122,12 @@ public class MappingsImpl implements Mappings, Serializable {
                 if (mapping2.getType() == Type.Domain) {
                     return 1;
                 }
+                if (mapping1.getType() == Type.Forward) {
+                    return -1;
+                }
+                if (mapping2.getType() == Type.Forward) {
+                    return 1;
+                }
                 return mapping1.asString().compareTo(mapping2.asString());
             };
             return new MappingsImpl(mappings.build().stream()
