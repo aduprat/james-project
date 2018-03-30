@@ -50,10 +50,10 @@ public interface Mapping {
         return Type.Address;
     }
 
-    Optional<MailAddress> getAddress(ValidationMode validationMode);
+    Optional<MailAddress> asMailAddress(ValidationMode validationMode);
 
-    default Optional<MailAddress> getAddress() {
-        return getAddress(ValidationMode.Strict);
+    default Optional<MailAddress> asMailAddress() {
+        return asMailAddress(ValidationMode.Strict);
     }
 
     enum Type {

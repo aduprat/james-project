@@ -229,7 +229,7 @@ public class GroupsRoutes implements Routes {
 
         return mappings.select(Mapping.Type.Address)
                 .asStream()
-                .map(Mapping::getAddress)
+                .map(Mapping::asMailAddress)
                 .flatMap(OptionalUtils::toStream)
                 .map(MailAddress::asString)
                 .collect(Guavate.toImmutableSortedSet());

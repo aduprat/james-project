@@ -103,11 +103,11 @@ public class MappingImpl implements Mapping, Serializable {
     }
 
     @Override
-    public Optional<MailAddress> getAddress(ValidationMode validationMode) {
+    public Optional<MailAddress> asMailAddress(ValidationMode validationMode) {
         if (validationMode == ValidationMode.Strict) {
             Preconditions.checkState(getType() == Type.Address || getType() == Type.Forward);
         }
-        if (type != Type.Address && type!= Type.Forward) {
+        if (type != Type.Address && type != Type.Forward) {
             return Optional.empty();
         }
         try {
