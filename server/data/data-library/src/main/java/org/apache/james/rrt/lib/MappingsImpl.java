@@ -34,7 +34,6 @@ import org.apache.james.rrt.lib.Mapping.Type;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Joiner;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -233,7 +232,9 @@ public class MappingsImpl implements Mappings, Serializable {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(getClass()).add("mappings", mappings).toString();
+        return "MappingsImpl{" +
+            "mappings=" + mappings +
+            '}';
     }
 
     private MappingsImpl sort() {
