@@ -211,7 +211,6 @@ public abstract class AbstractRecipientRewriteTableTest {
 
     @Test
     public void testAliasDomainMapping() throws ErrorMappingException, RecipientRewriteTableException {
-
         String domain = "realdomain";
         Domain aliasDomain = Domain.of("aliasdomain");
         String user = "user";
@@ -257,7 +256,6 @@ public abstract class AbstractRecipientRewriteTableTest {
 
     @Test
     public void addForwardMappingShouldStore() throws ErrorMappingException, RecipientRewriteTableException {
-
         String user = "test";
         Domain domain = Domain.LOCALHOST;
         String address = "test@localhost2";
@@ -271,7 +269,6 @@ public abstract class AbstractRecipientRewriteTableTest {
 
     @Test
     public void removeForwardMappingShouldDelete() throws ErrorMappingException, RecipientRewriteTableException {
-
         String user = "test";
         Domain domain = Domain.LOCALHOST;
         String address = "test@localhost2";
