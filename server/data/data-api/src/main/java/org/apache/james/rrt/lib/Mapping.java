@@ -20,11 +20,19 @@
 
 package org.apache.james.rrt.lib;
 
+import java.util.Optional;
+
 import org.apache.james.core.Domain;
+import org.apache.james.core.MailAddress;
 
 import com.google.common.base.Preconditions;
 
 public interface Mapping {
+
+    enum ValidationMode {
+        Strict,
+        Lenient
+    }
 
     static Type detectType(String input) {
         if (input.startsWith(Type.Regex.asPrefix())) {
@@ -42,7 +50,11 @@ public interface Mapping {
         return Type.Address;
     }
 
-    String getAddress();
+    Optional<MailAddress> getAddress(ValidationMode validationMode);
+
+    default Optional<MailAddress> getAddress() {
+        return getAddress(ValidationMode.Strict);
+    }
 
     enum Type {
         Regex("regex:"), 

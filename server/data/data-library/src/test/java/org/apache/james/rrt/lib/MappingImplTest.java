@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.james.core.Domain;
+import org.apache.james.core.MailAddress;
 import org.junit.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
@@ -144,8 +145,15 @@ public class MappingImplTest {
     }
 
     @Test
-    public void getAddressShouldReturnMappingValueForAddress() {
-        assertThat(MappingImpl.address("value").getAddress()).isEqualTo("value");
+    public void getAddressShouldReturnMappingValueForAddress() throws Exception {
+        assertThat(MappingImpl.address("value@domain").getAddress())
+            .contains(new MailAddress("value@domain"));
+    }
+
+    @Test
+    public void getAddressShouldReturnEmptyOnInvalidAddress() throws Exception {
+        assertThat(MappingImpl.address("value").getAddress())
+            .isEmpty();
     }
 
     @Test
@@ -164,7 +172,8 @@ public class MappingImplTest {
     }
 
     @Test
-    public void getAddressShouldThrowForForward() {
-        assertThatThrownBy(() -> MappingImpl.forward("value").getAddress()).isInstanceOf(IllegalStateException.class);
+    public void getAddressShouldReturnMappingValueForForward() throws Exception {
+        assertThat(MappingImpl.forward("value@domain").getAddress())
+            .contains(new MailAddress("value@domain"));
     }
 }

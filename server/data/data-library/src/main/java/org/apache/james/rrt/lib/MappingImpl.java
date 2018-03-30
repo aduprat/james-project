@@ -21,8 +21,12 @@
 package org.apache.james.rrt.lib;
 
 import java.io.Serializable;
+import java.util.Optional;
+
+import javax.mail.internet.AddressException;
 
 import org.apache.james.core.Domain;
+import org.apache.james.core.MailAddress;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -99,9 +103,18 @@ public class MappingImpl implements Mapping, Serializable {
     }
 
     @Override
-    public String getAddress() {
-        Preconditions.checkState(getType() == Type.Address);
-        return mapping;
+    public Optional<MailAddress> getAddress(ValidationMode validationMode) {
+        if (validationMode == ValidationMode.Strict) {
+            Preconditions.checkState(getType() == Type.Address || getType() == Type.Forward);
+        }
+        if (type != Type.Address && type!= Type.Forward) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(new MailAddress(mapping));
+        } catch (AddressException e) {
+            return Optional.empty();
+        }
     }
 
     @Override
