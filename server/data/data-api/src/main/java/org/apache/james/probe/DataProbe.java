@@ -58,7 +58,7 @@ public interface DataProbe {
 
     void addDomainAliasMapping(String aliasDomain, String deliveryDomain) throws Exception;
 
-    void addForwardMapping(String user, String domain, String address) throws Exception;
+    void addForwardMapping(String toUser, String toDomain, String fromAddress) throws Exception;
 
-    void removeForwardMapping(String user, String domain, String address) throws Exception;
+    void removeForwardMapping(String toUser, String toDomain, String fromAddress) throws Exception;
 }

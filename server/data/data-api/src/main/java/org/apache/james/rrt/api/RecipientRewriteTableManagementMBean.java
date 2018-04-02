@@ -190,29 +190,27 @@ public interface RecipientRewriteTableManagementMBean {
 
     /***
      * Add forward mapping
-     * 
-     * @param user
-     *            the username. Null if no username should be used
-     * @param domain
-     *            the domain. Null if no domain should be used
-     * @param address
+     *
+     * @param toUser
+     *            the username part of the mail address destination defined for this forward.
+     * @param toDomain
+     *            the domain part of the mail address destination defined for this forward.
+     * @param fromAddress The base address of the forward. Mails for this address will be sent to the added forward destination.
      *            the address.
-     * @throws Exception
-     *            If an error occurred
+     * @throws Exception If an error occurred
      */
     void addForwardMapping(String user, String domain, String address) throws Exception;
 
     /**
      * Remove forward mapping
      * 
-     * @param user
-     *            the username. Null if no username should be used
-     * @param domain
-     *            the domain. Null if no domain should be used
-     * @param address
+     * @param toUser
+     *            the username part of the mail address destination defined for this forward.
+     * @param toDomain
+     *            the domain part of the mail address destination defined for this forward.
+     * @param fromAddress The base address of the forward. Mails for this address will no more sent to the removed forward destination.
      *            the address.
-     * @throws Exception
-     *            If an error occurred
+     * @throws Exception If an error occurred
      */
-    void removeForwardMapping(String user, String domain, String address) throws Exception;
+    void removeForwardMapping(String toUser, String toDomain, String fromAddress) throws Exception;
 }
