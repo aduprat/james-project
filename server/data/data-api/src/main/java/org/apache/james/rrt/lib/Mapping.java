@@ -22,6 +22,8 @@ package org.apache.james.rrt.lib;
 
 import java.util.Optional;
 
+import javax.mail.internet.AddressException;
+
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 
@@ -29,9 +31,33 @@ import com.google.common.base.Preconditions;
 
 public interface Mapping {
 
-    enum ValidationMode {
-        Strict,
-        Lenient
+    interface ValidationMode {
+        ValidationMode STRICT = new StrictMode();
+        ValidationMode LENIENT = new LenientMode();
+
+        Optional<MailAddress> asMailAddress(Mapping mapping);
+    }
+
+    class LenientMode implements ValidationMode {
+        @Override
+        public Optional<MailAddress> asMailAddress(Mapping mapping) {
+            if (mapping.getType() != Type.Address && mapping.getType() != Type.Forward) {
+                return Optional.empty();
+            }
+            try {
+                return Optional.of(new MailAddress(mapping.getType().withoutPrefix(mapping.asString())));
+            } catch (AddressException e) {
+                return Optional.empty();
+            }
+        }
+    }
+
+    class StrictMode extends LenientMode {
+        @Override
+        public Optional<MailAddress> asMailAddress(Mapping mapping) {
+            Preconditions.checkState(mapping.getType() == Type.Address || mapping.getType() == Type.Forward);
+            return super.asMailAddress(mapping);
+        }
     }
 
     static Type detectType(String input) {
@@ -53,7 +79,7 @@ public interface Mapping {
     Optional<MailAddress> asMailAddress(ValidationMode validationMode);
 
     default Optional<MailAddress> asMailAddress() {
-        return asMailAddress(ValidationMode.Strict);
+        return asMailAddress(ValidationMode.STRICT);
     }
 
     enum Type {

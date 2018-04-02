@@ -154,7 +154,7 @@ public class RecipientRewriteTableProcessor {
     @VisibleForTesting
     List<MailAddress> handleMappings(Mappings mappings, MailAddress sender, MailAddress recipient, MimeMessage message) throws MessagingException {
         ImmutableList<MailAddress> mailAddresses = sanitizedMappings(mappings)
-            .map(mapping -> mapping.asMailAddress(Mapping.ValidationMode.Lenient))
+            .map(mapping -> mapping.asMailAddress(Mapping.ValidationMode.LENIENT))
             .flatMap(OptionalUtils::toStream)
             .collect(Guavate.toImmutableList());
 

@@ -104,17 +104,7 @@ public class MappingImpl implements Mapping, Serializable {
 
     @Override
     public Optional<MailAddress> asMailAddress(ValidationMode validationMode) {
-        if (validationMode == ValidationMode.Strict) {
-            Preconditions.checkState(getType() == Type.Address || getType() == Type.Forward);
-        }
-        if (type != Type.Address && type != Type.Forward) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(new MailAddress(mapping));
-        } catch (AddressException e) {
-            return Optional.empty();
-        }
+        return validationMode.asMailAddress(this);
     }
 
     @Override
