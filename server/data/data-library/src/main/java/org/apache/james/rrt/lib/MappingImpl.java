@@ -23,8 +23,6 @@ package org.apache.james.rrt.lib;
 import java.io.Serializable;
 import java.util.Optional;
 
-import javax.mail.internet.AddressException;
-
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 
