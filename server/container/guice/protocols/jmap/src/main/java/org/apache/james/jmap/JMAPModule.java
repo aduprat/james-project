@@ -97,8 +97,6 @@ public class JMAPModule extends AbstractModule {
         
         bind(SystemMailboxesProvider.class).to(SystemMailboxesProviderImpl.class);
         bind(MailQueueItemDecoratorFactory.class).to(PostDequeueDecoratorFactory.class).in(Scopes.SINGLETON);
-
-        Multibinder.newSetBinder(binder(), MailboxListener.class).addBinding().to(PropagateLookupRightListener.class);
     }
 
     @Provides

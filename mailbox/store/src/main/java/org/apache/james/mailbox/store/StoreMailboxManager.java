@@ -65,7 +65,6 @@ import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.mailbox.store.event.DelegatingMailboxListener;
-import org.apache.james.mailbox.store.event.MailboxAnnotationListener;
 import org.apache.james.mailbox.store.event.MailboxEventDispatcher;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
@@ -75,7 +74,6 @@ import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
 import org.apache.james.mailbox.store.quota.NoQuotaManager;
 import org.apache.james.mailbox.store.quota.QuotaUpdater;
-import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.mailbox.store.transaction.Mapper;
@@ -209,31 +207,31 @@ public class StoreMailboxManager implements MailboxManager {
         if (idGenerator == null) {
             idGenerator = new RandomMailboxSessionIdGenerator();
         }
-        MailboxSession session = createSystemSession("storeMailboxManager");
+//        MailboxSession session = createSystemSession("storeMailboxManager");
         if (index == null) {
             index = new SimpleMessageSearchIndex(mailboxSessionMapperFactory, mailboxSessionMapperFactory, new DefaultTextExtractor());
         }
-        if (index instanceof ListeningMessageSearchIndex) {
-            this.addGlobalListener((MailboxListener) index, session);
-        }
+//        if (index instanceof ListeningMessageSearchIndex) {
+//            this.addGlobalListener((MailboxListener) index, session);
+//        }
         if (quotaManager == null) {
             quotaManager = new NoQuotaManager();
         }
         if (quotaRootResolver == null) {
             quotaRootResolver = new DefaultUserQuotaRootResolver(mailboxSessionMapperFactory);
         }
-        if (quotaUpdater != null && quotaUpdater instanceof MailboxListener) {
-            this.addGlobalListener((MailboxListener) quotaUpdater, session);
-        }
+//        if (quotaUpdater != null && quotaUpdater instanceof MailboxListener) {
+//            this.addGlobalListener((MailboxListener) quotaUpdater, session);
+//        }
         if (copyBatcher == null) {
             copyBatcher = new MessageBatcher(MessageBatcher.NO_BATCH_SIZE);
         }
         if (moveBatcher == null) {
             moveBatcher = new MessageBatcher(MessageBatcher.NO_BATCH_SIZE);
         }
-        if (hasCapability(MailboxCapabilities.Annotation)) {
-            this.addGlobalListener(new MailboxAnnotationListener(mailboxSessionMapperFactory), session);
-        }
+//        if (hasCapability(MailboxCapabilities.Annotation)) {
+//            this.addGlobalListener(new MailboxAnnotationListener(mailboxSessionMapperFactory), session);
+//        }
     }
 
     @Override
@@ -760,11 +758,11 @@ public class StoreMailboxManager implements MailboxManager {
             .map(Mailbox::generateAssociatedPath)
             .collect(Guavate.toImmutableList());
     }
-
-    @Override
-    public void addGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException {
-        delegatingListener.addGlobalListener(listener, session);
-    }
+//
+//    @Override
+//    public void addGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException {
+//        delegatingListener.addGlobalListener(listener, session);
+//    }
 
     @Override
     public void removeListener(MailboxPath mailboxPath, MailboxListener listener, MailboxSession session) throws MailboxException {

@@ -65,7 +65,7 @@ public interface MailboxListenerSupport {
      * @param session
      * @throws MailboxException
      */
-    void addGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException;
+//    void addGlobalListener(MailboxListener listener, MailboxSession session) throws MailboxException;
     
     
     /**

@@ -28,7 +28,6 @@ import org.apache.james.jmap.api.vacation.AccountId;
 import org.apache.james.jmap.api.vacation.Vacation;
 import org.apache.james.jmap.api.vacation.VacationPatch;
 import org.apache.james.jmap.api.vacation.VacationRepository;
-import org.apache.james.mailbox.MailboxListener;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -54,10 +53,10 @@ public class JmapGuiceProbe implements GuiceProbe {
     public int getJmapPort() {
         return jmapServer.getPort();
     }
-
-    public void addMailboxListener(MailboxListener listener) throws MailboxException {
-        mailboxManager.addGlobalListener(listener, mailboxManager.createSystemSession("jmap"));
-    }
+//
+//    public void addMailboxListener(MailboxListener listener) throws MailboxException {
+//        mailboxManager.addGlobalListener(listener, mailboxManager.createSystemSession("jmap"));
+//    }
 
     public void modifyVacation(AccountId accountId, VacationPatch vacationPatch) {
         vacationRepository.modifyVacation(accountId, vacationPatch).join();

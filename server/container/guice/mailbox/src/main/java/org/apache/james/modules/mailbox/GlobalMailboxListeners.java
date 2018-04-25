@@ -62,7 +62,8 @@ public class GlobalMailboxListeners implements Configurable {
         Preconditions.checkState(!Strings.isNullOrEmpty(listenerClass), "class name is mandatory");
         try {
             LOGGER.info("Loading mailbox listener {}", listenerClass);
-            registry.addGlobalListener(injector.getInstance(loadMailboxListener(listenerClass)));
+            MailboxListener listener = injector.getInstance(loadMailboxListener(listenerClass));
+            registry.addGlobalListener(listener);
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | MailboxException e) {
             LOGGER.error("Error while loading global listener {}", listenerClass, e);
             Throwables.propagate(e);
