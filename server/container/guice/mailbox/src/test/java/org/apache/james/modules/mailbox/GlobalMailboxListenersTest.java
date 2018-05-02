@@ -20,8 +20,6 @@ package org.apache.james.modules.mailbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -32,19 +30,17 @@ import org.apache.james.mailbox.store.event.MailboxListenerRegistry;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.inject.Injector;
+import com.google.inject.Guice;
 
 public class GlobalMailboxListenersTest {
 
-    private Injector injector;
     private MailboxListenerRegistry registry;
     private GlobalMailboxListeners testee;
 
     @Before
     public void setup() {
-        injector = mock(Injector.class);
         registry = new MailboxListenerRegistry();
-        testee = new GlobalMailboxListeners(injector, registry);
+        testee = new GlobalMailboxListeners(Guice.createInjector(), registry);
     }
 
     @Test
@@ -96,9 +92,6 @@ public class GlobalMailboxListenersTest {
         DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
         configuration.addProperty("class", "org.apache.james.modules.mailbox.NoopMailboxListener");
 
-        when(injector.getInstance(NoopMailboxListener.class))
-            .thenReturn(new NoopMailboxListener());
-
         testee.configureListener(configuration);
 
         assertThat(registry.getGlobalListeners()).hasSize(1);
@@ -117,9 +110,6 @@ public class GlobalMailboxListenersTest {
                     "</listener>" +
                 "</listeners>";
         configuration.load(new ByteArrayInputStream(listeners.getBytes(StandardCharsets.UTF_8)));
-
-        when(injector.getInstance(NoopMailboxListener.class))
-            .thenReturn(new NoopMailboxListener());
 
         testee.configure(configuration);
 
