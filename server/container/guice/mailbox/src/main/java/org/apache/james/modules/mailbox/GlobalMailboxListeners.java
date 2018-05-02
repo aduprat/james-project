@@ -19,6 +19,7 @@
 package org.apache.james.modules.mailbox;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.james.lifecycle.api.Configurable;
@@ -43,12 +44,15 @@ public class GlobalMailboxListeners implements Configurable {
     private final Injector injector;
     private final MailboxListenerRegistry registry;
     private final ExtendedClassLoader classLoader;
+    private final Set<MailboxListener> guiceDefinedListeners;
 
     @Inject
-    public GlobalMailboxListeners(Injector injector, MailboxListenerRegistry registry, ExtendedClassLoader classLoader) {
+    public GlobalMailboxListeners(Injector injector, MailboxListenerRegistry registry,
+                                  ExtendedClassLoader classLoader, Set<MailboxListener> guiceDefinedListeners) {
         this.injector = injector;
         this.registry = registry;
         this.classLoader = classLoader;
+        this.guiceDefinedListeners = guiceDefinedListeners;
     }
 
     @Override
@@ -57,6 +61,7 @@ public class GlobalMailboxListeners implements Configurable {
 
         List<HierarchicalConfiguration> listenersConfiguration = configuration.configurationsAt("listener");
 
+        guiceDefinedListeners.forEach(this::register);
         listenersConfiguration.forEach(this::configureListener);
     }
 
@@ -67,9 +72,18 @@ public class GlobalMailboxListeners implements Configurable {
             LOGGER.info("Loading user registered mailbox listener {}", listenerClass);
             Class<MailboxListener> clazz = classLoader.locateClass(listenerClass);
             MailboxListener listener = injector.getInstance(clazz);
+            register(listener);
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("Error while loading user registered global listener {}", listenerClass, e);
+            Throwables.propagate(e);
+        }
+    }
+
+    private void register(MailboxListener listener) {
+        try {
             registry.addGlobalListener(listener);
-        } catch (ClassNotFoundException | MailboxException e) {
-            LOGGER.error("Error while loading global listener {}", listenerClass, e);
+        } catch (MailboxException e) {
+            LOGGER.error("Error while registering global listener {}", listener, e);
             Throwables.propagate(e);
         }
     }

@@ -36,6 +36,7 @@ import org.apache.james.utils.ExtendedClassLoader;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.Guice;
 
 public class GlobalMailboxListenersTest {
@@ -51,7 +52,7 @@ public class GlobalMailboxListenersTest {
 
         registry = new MailboxListenerRegistry();
         testee = new GlobalMailboxListeners(Guice.createInjector(), registry,
-            new ExtendedClassLoader(fileSystem));
+            new ExtendedClassLoader(fileSystem), ImmutableSet.of());
     }
 
     @Test
