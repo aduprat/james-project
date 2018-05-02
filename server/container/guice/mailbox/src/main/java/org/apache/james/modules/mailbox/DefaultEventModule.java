@@ -57,17 +57,17 @@ public class DefaultEventModule extends AbstractModule {
         bind(ListeningCurrentQuotaUpdater.class).in(Scopes.SINGLETON);
         bind(MailboxAnnotationListener.class).in(Scopes.SINGLETON);
 
-        bind(GlobalMailboxListeners.class).in(Scopes.SINGLETON);
+        bind(MailboxListenersLoader.class).in(Scopes.SINGLETON);
         Multibinder.newSetBinder(binder(), MailboxListener.class);
     }
 
     @Singleton
     public static class ListenerRegistrationPerformer implements ConfigurationPerformer {
         private final ConfigurationProvider configurationProvider;
-        private final GlobalMailboxListeners listeners;
+        private final MailboxListenersLoader listeners;
 
         @Inject
-        public ListenerRegistrationPerformer(ConfigurationProvider configurationProvider, GlobalMailboxListeners listeners) {
+        public ListenerRegistrationPerformer(ConfigurationProvider configurationProvider, MailboxListenersLoader listeners) {
             this.configurationProvider = configurationProvider;
             this.listeners = listeners;
         }

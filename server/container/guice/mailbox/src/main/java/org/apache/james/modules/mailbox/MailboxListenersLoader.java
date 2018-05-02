@@ -33,13 +33,12 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-import com.google.common.base.Throwables;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-public class GlobalMailboxListeners implements Configurable {
+public class MailboxListenersLoader implements Configurable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalMailboxListeners.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MailboxListenersLoader.class);
 
     private final Injector injector;
     private final MailboxListenerRegistry registry;
@@ -47,7 +46,7 @@ public class GlobalMailboxListeners implements Configurable {
     private final Set<MailboxListener> guiceDefinedListeners;
 
     @Inject
-    public GlobalMailboxListeners(Injector injector, MailboxListenerRegistry registry,
+    public MailboxListenersLoader(Injector injector, MailboxListenerRegistry registry,
                                   ExtendedClassLoader classLoader, Set<MailboxListener> guiceDefinedListeners) {
         this.injector = injector;
         this.registry = registry;
@@ -75,7 +74,7 @@ public class GlobalMailboxListeners implements Configurable {
             register(listener);
         } catch (ClassNotFoundException e) {
             LOGGER.error("Error while loading user registered global listener {}", listenerClass, e);
-            Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -84,7 +83,7 @@ public class GlobalMailboxListeners implements Configurable {
             registry.addGlobalListener(listener);
         } catch (MailboxException e) {
             LOGGER.error("Error while registering global listener {}", listener, e);
-            Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 }

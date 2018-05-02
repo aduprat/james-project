@@ -39,10 +39,10 @@ import org.junit.Test;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Guice;
 
-public class GlobalMailboxListenersTest {
+public class MailboxListenersLoaderTest {
 
     private MailboxListenerRegistry registry;
-    private GlobalMailboxListeners testee;
+    private MailboxListenersLoader testee;
 
     @Before
     public void setup() throws Exception {
@@ -51,7 +51,7 @@ public class GlobalMailboxListenersTest {
             .thenThrow(new FileNotFoundException());
 
         registry = new MailboxListenerRegistry();
-        testee = new GlobalMailboxListeners(Guice.createInjector(), registry,
+        testee = new MailboxListenersLoader(Guice.createInjector(), registry,
             new ExtendedClassLoader(fileSystem), ImmutableSet.of());
     }
 
