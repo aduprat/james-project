@@ -27,12 +27,12 @@ public class NoopMailboxListener implements MailboxListener {
 
     @Override
     public ListenerType getType() {
-        return null;
+        return ListenerType.ONCE;
     }
 
     @Override
     public ExecutionMode getExecutionMode() {
-        return null;
+        return ExecutionMode.SYNCHRONOUS;
     }
 
     @Override
