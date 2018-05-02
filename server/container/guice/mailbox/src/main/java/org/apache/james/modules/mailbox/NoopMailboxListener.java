@@ -20,8 +20,6 @@ package org.apache.james.modules.mailbox;
 
 import org.apache.james.mailbox.Event;
 import org.apache.james.mailbox.MailboxListener;
-import org.apache.james.mailbox.MailboxListener.ExecutionMode;
-import org.apache.james.mailbox.MailboxListener.ListenerType;
 
 public class NoopMailboxListener implements MailboxListener {
 
