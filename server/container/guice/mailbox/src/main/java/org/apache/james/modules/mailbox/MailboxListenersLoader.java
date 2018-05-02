@@ -18,7 +18,6 @@
  ****************************************************************/
 package org.apache.james.modules.mailbox;
 
-import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.configuration.HierarchicalConfiguration;
@@ -31,8 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
@@ -58,15 +55,15 @@ public class MailboxListenersLoader implements Configurable {
     public void configure(HierarchicalConfiguration configuration) {
         LOGGER.info("Loading user registered mailbox listeners");
 
-        List<HierarchicalConfiguration> listenersConfiguration = configuration.configurationsAt("listener");
+        ListenersConfiguration listenersConfiguration = ListenersConfiguration.from(configuration);
 
         guiceDefinedListeners.forEach(this::register);
-        listenersConfiguration.forEach(this::configureListener);
+        listenersConfiguration.getListenersConfiguration()
+            .forEach(this::configureListener);
     }
 
-    @VisibleForTesting void configureListener(HierarchicalConfiguration configuration) {
-        String listenerClass = configuration.getString("class");
-        Preconditions.checkState(!Strings.isNullOrEmpty(listenerClass), "class name is mandatory");
+    @VisibleForTesting void configureListener(ListenerConfiguration configuration) {
+        String listenerClass = configuration.getClazz();
         try {
             LOGGER.info("Loading user registered mailbox listener {}", listenerClass);
             Class<MailboxListener> clazz = classLoader.locateClass(listenerClass);

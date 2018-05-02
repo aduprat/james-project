@@ -56,26 +56,8 @@ public class MailboxListenersLoaderTest {
     }
 
     @Test
-    public void configureListenerShouldThrowWhenClassIsNotInTheConfiguration() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-
-        assertThatThrownBy(() -> testee.configureListener(configuration))
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    public void configureListenerShouldThrowWhenClassIsEmpty() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        configuration.addProperty("class", "");
-
-        assertThatThrownBy(() -> testee.configureListener(configuration))
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
     public void configureListenerShouldThrowWhenClassCantBeLoaded() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        configuration.addProperty("class", "MyUnknownClass");
+        ListenerConfiguration configuration = new ListenerConfiguration("MyUnknownClass");
 
         assertThatThrownBy(() -> testee.configureListener(configuration))
             .isInstanceOf(RuntimeException.class);
@@ -83,8 +65,7 @@ public class MailboxListenersLoaderTest {
 
     @Test
     public void configureListenerShouldThrowWhenClassCantBeCastToMailboxListener() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        configuration.addProperty("class", "java.lang.String");
+        ListenerConfiguration configuration = new ListenerConfiguration("java.lang.String");
 
         assertThatThrownBy(() -> testee.configureListener(configuration))
             .isInstanceOf(RuntimeException.class);
@@ -92,8 +73,7 @@ public class MailboxListenersLoaderTest {
 
     @Test
     public void configureListenerShouldThrowWhenNotFullClassName() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        configuration.addProperty("class", "NoopMailboxListener");
+        ListenerConfiguration configuration = new ListenerConfiguration("NoopMailboxListener");
 
         assertThatThrownBy(() -> testee.configureListener(configuration))
             .isInstanceOf(RuntimeException.class);
@@ -101,8 +81,7 @@ public class MailboxListenersLoaderTest {
 
     @Test
     public void configureListenerShouldAddMailboxListenerWhenConfigurationIsGood() {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        configuration.addProperty("class", "org.apache.james.modules.mailbox.NoopMailboxListener");
+        ListenerConfiguration configuration = new ListenerConfiguration("org.apache.james.modules.mailbox.NoopMailboxListener");
 
         testee.configureListener(configuration);
 
