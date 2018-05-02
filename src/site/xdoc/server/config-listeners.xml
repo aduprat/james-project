@@ -29,7 +29,7 @@
 
             <p>
               Note: This feature requires Guice wiring. This is not implemented using Spring wiring.<br/>
-              Additionally wiring not providing a mailbox support, like <code>jpa-smtp</code>, do not have support for
+              Additionally, wiring not providing a mailbox support, like <code>jpa-smtp</code>, do not have support for
               mailbox listeners configuration.
             </p>
 
