@@ -99,20 +99,23 @@ public class GlobalMailboxListenersTest {
 
     @Test
     public void configureShouldAddMailboxListenersWhenConfigurationIsGood() throws ConfigurationException {
-        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
-        String listeners = 
-                "<listeners>" +
+        DefaultConfigurationBuilder configuration = toConfigutation("<listeners>" +
                     "<listener>" +
                         "<class>org.apache.james.modules.mailbox.NoopMailboxListener</class>" +
                     "</listener>" +
                     "<listener>" +
                         "<class>org.apache.james.modules.mailbox.NoopMailboxListener</class>" +
                     "</listener>" +
-                "</listeners>";
-        configuration.load(new ByteArrayInputStream(listeners.getBytes(StandardCharsets.UTF_8)));
+                "</listeners>");
 
         testee.configure(configuration);
 
         assertThat(registry.getGlobalListeners()).hasSize(2);
+    }
+
+    private DefaultConfigurationBuilder toConfigutation(String configurationString) throws ConfigurationException {
+        DefaultConfigurationBuilder configuration = new DefaultConfigurationBuilder();
+        configuration.load(new ByteArrayInputStream(configurationString.getBytes(StandardCharsets.UTF_8)));
+        return configuration;
     }
 }
