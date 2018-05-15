@@ -47,6 +47,7 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.google.common.base.Strings;
 
 public class CassandraMailboxPathV2DAO implements CassandraMailboxPathDAO {
 
@@ -105,7 +106,7 @@ public class CassandraMailboxPathV2DAO implements CassandraMailboxPathDAO {
         return cassandraAsyncExecutor.executeSingleRow(
             select.bind()
                 .setString(NAMESPACE, mailboxPath.getNamespace())
-                .setString(USER, mailboxPath.getUser())
+                .setString(USER, user(mailboxPath))
                 .setString(MAILBOX_NAME, mailboxPath.getName()))
             .thenApply(rowOptional ->
                 rowOptional.map(this::fromRowToCassandraIdAndPath))
@@ -169,7 +170,7 @@ public class CassandraMailboxPathV2DAO implements CassandraMailboxPathDAO {
     public CompletableFuture<Boolean> save(MailboxPath mailboxPath, CassandraId mailboxId) {
         return cassandraAsyncExecutor.executeReturnApplied(insert.bind()
             .setString(NAMESPACE, mailboxPath.getNamespace())
-            .setString(USER, mailboxPath.getUser())
+            .setString(USER, user(mailboxPath))
             .setString(MAILBOX_NAME, mailboxPath.getName())
             .setUUID(MAILBOX_ID, mailboxId.asUuid()));
     }
@@ -178,8 +179,15 @@ public class CassandraMailboxPathV2DAO implements CassandraMailboxPathDAO {
     public CompletableFuture<Void> delete(MailboxPath mailboxPath) {
         return cassandraAsyncExecutor.executeVoid(delete.bind()
             .setString(NAMESPACE, mailboxPath.getNamespace())
-            .setString(USER, mailboxPath.getUser())
+            .setString(USER, user(mailboxPath))
             .setString(MAILBOX_NAME, mailboxPath.getName()));
     }
 
+    private String user(MailboxPath mailboxPath) {
+        String user = mailboxPath.getUser();
+        if (Strings.isNullOrEmpty(user)) {
+            return "";
+        }
+        return user;
+    }
 }
