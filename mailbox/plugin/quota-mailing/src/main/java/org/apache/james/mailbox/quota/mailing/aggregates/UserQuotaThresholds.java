@@ -107,7 +107,7 @@ public class UserQuotaThresholds {
             command.getCountQuota(),
             command.getSizeQuota(),
             command.getInstant());
-        events.forEach(this::apply);
+        this.events.addAll(events);
         return events;
     }
 
@@ -154,10 +154,6 @@ public class UserQuotaThresholds {
         }
 
         return ImmutableList.of();
-    }
-
-    private void apply(QuotaThresholdChangedEvent event) {
-        events.add(event);
     }
 
 }
