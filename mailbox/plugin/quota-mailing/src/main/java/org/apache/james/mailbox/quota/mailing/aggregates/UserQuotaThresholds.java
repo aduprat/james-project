@@ -35,6 +35,7 @@ import org.apache.james.mailbox.quota.mailing.QuotaMailingListenerConfiguration;
 import org.apache.james.mailbox.quota.mailing.commands.DetectThresholdCrossing;
 import org.apache.james.mailbox.quota.mailing.events.QuotaThresholdChangedEvent;
 import org.apache.james.mailbox.quota.model.HistoryEvolution;
+import org.apache.james.mailbox.quota.model.QuotaThreshold;
 import org.apache.james.mailbox.quota.model.QuotaThresholdChange;
 import org.apache.james.mailbox.quota.model.QuotaThresholdHistory;
 import org.apache.james.mailbox.quota.model.QuotaThresholds;
@@ -96,6 +97,20 @@ public class UserQuotaThresholds {
         this.events = history.getEvents().stream()
             .map(QuotaThresholdChangedEvent.class::cast)
             .collect(Collectors.toList());
+    }
+
+    public Id getId() {
+        return aggregateId;
+    }
+
+    public boolean hasReached(QuotaThreshold quotaThreshold) {
+        Instant now = Instant.now();
+        HistoryEvolution countHistoryEvolution = computeCountHistory().compareWithCurrentThreshold(new QuotaThresholdChange(quotaThreshold, now), QuotaMailingListenerConfiguration.DEFAULT_GRACE_PERIOD);
+        if (!countHistoryEvolution.currentThresholdNotRecentlyReached()) {
+            return true;
+        }
+        return !computeSizeHistory().compareWithCurrentThreshold(new QuotaThresholdChange(quotaThreshold, now), QuotaMailingListenerConfiguration.DEFAULT_GRACE_PERIOD)
+                .currentThresholdNotRecentlyReached();
     }
 
     public List<QuotaThresholdChangedEvent> detectThresholdCrossing(QuotaMailingListenerConfiguration configuration,
