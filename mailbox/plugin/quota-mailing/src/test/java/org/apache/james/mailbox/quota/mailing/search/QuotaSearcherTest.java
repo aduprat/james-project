@@ -93,9 +93,6 @@ public interface QuotaSearcherTest {
             _3_ON_4_COUNT_QUOTA,
             UserQuotaThresholds.Id.from(USER5));
 
-    QuotaSearcher quotaSearcher();
-    EventStore eventStore();
-
     @BeforeAll
     default void setup(EventStore eventStore) {
         eventStore.append(_1_ON_3_SIZE_EVENT);
@@ -106,64 +103,64 @@ public interface QuotaSearcherTest {
     }
 
     @Test
-    default void searchShouldReturnFilteredUsersWhenLessThanQuery() {
+    default void searchShouldReturnFilteredUsersWhenLessThanQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new LessThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new LessThanQuery(new QuotaThreshold(2/3)), limit, offset);
 
         assertThat(moreThan).contains(USER, USER2);
     }
 
     @Test
-    default void searchShouldReturnFilteredUsersWhenMoreThanQuery() {
+    default void searchShouldReturnFilteredUsersWhenMoreThanQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER4, USER5);
     }
 
     @Test
-    default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReached() {
+    default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReached(QuotaSearcher quotaSearcher) {
         int limit = 2;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER4);
     }
 
     @Test
-    default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReachedAndOffsetIsGiven() {
+    default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReachedAndOffsetIsGiven(QuotaSearcher quotaSearcher) {
         int limit = 2;
         int offset = 1;
-        List<User> moreThan = quotaSearcher().search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
 
         assertThat(moreThan).contains(USER4, USER5);
     }
 
     @Test
-    default void searchShouldReturnFilteredUsersWhenDomainIsGiven() {
+    default void searchShouldReturnFilteredUsersWhenDomainIsGiven(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new HasDomainQuery(Domain.of(DOMAIN2)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new HasDomainQuery(Domain.of(DOMAIN2)), limit, offset);
 
         assertThat(moreThan).contains(USER4);
     }
 
     @Test
-    default void searchShouldReturnFilteredUsersWhenAndQuery() {
+    default void searchShouldReturnFilteredUsersWhenAndQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new AndQuery(new MoreThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new AndQuery(new MoreThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER5);
     }
 
     @Test
-    default void searchShouldReturnFilteredUsersWhenOrQuery() {
+    default void searchShouldReturnFilteredUsersWhenOrQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher().search(new AndQuery(new LessThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new AndQuery(new LessThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
 
         assertThat(moreThan).contains(USER, USER2, USER4);
     }
