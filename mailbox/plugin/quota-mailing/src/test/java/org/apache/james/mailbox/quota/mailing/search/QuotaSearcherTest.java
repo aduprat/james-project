@@ -41,7 +41,10 @@ import org.apache.james.mailbox.quota.model.HistoryEvolution;
 import org.apache.james.mailbox.quota.model.QuotaThreshold;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 
+@TestInstance(Lifecycle.PER_CLASS)
 public interface QuotaSearcherTest {
 
     String DOMAIN = "bar.com";
@@ -58,35 +61,35 @@ public interface QuotaSearcherTest {
     Quota<QuotaCount> _3_ON_4_COUNT_QUOTA = Quota.<QuotaCount>builder().used(QuotaCount.count(3)).computedLimit(QuotaCount.count(4)).build();
     Instant INSTANT = Instant.ofEpochMilli(45554);
     QuotaThresholdChangedEvent _1_ON_3_SIZE_EVENT = new QuotaThresholdChangedEvent(
-            EventId.first(),
+            EventId.fromSerialized(1),
             HistoryEvolution.noChanges(),
             HistoryEvolution.noChanges(),
             _1_ON_3_SIZE_QUOTA,
             _1_ON_4_COUNT_QUOTA,
             UserQuotaThresholds.Id.from(USER));
     QuotaThresholdChangedEvent _2_ON_3_SIZE_EVENT = new QuotaThresholdChangedEvent(
-            EventId.first(),
+            EventId.fromSerialized(2),
             HistoryEvolution.noChanges(),
             HistoryEvolution.noChanges(),
             _2_ON_3_SIZE_QUOTA,
             _1_ON_4_COUNT_QUOTA,
             UserQuotaThresholds.Id.from(USER2));
     QuotaThresholdChangedEvent _2_ON_4_COUNT_EVENT = new QuotaThresholdChangedEvent(
-            EventId.first(),
+            EventId.fromSerialized(3),
             HistoryEvolution.noChanges(),
             HistoryEvolution.noChanges(),
             _1_ON_3_SIZE_QUOTA,
             _2_ON_4_COUNT_QUOTA,
             UserQuotaThresholds.Id.from(USER3));
     QuotaThresholdChangedEvent _3_ON_4_COUNT_EVENT = new QuotaThresholdChangedEvent(
-            EventId.first(),
+            EventId.fromSerialized(4),
             HistoryEvolution.noChanges(),
             HistoryEvolution.noChanges(),
             _1_ON_3_SIZE_QUOTA,
             _3_ON_4_COUNT_QUOTA,
             UserQuotaThresholds.Id.from(USER4));
     QuotaThresholdChangedEvent _2_ON_3_SIZE_3_ON_4_COUNT_EVENT = new QuotaThresholdChangedEvent(
-            EventId.first(),
+            EventId.fromSerialized(5),
             HistoryEvolution.noChanges(),
             HistoryEvolution.noChanges(),
             _2_ON_3_SIZE_QUOTA,
