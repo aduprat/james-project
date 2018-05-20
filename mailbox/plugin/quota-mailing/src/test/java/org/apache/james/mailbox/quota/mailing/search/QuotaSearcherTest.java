@@ -53,7 +53,7 @@ public interface QuotaSearcherTest {
     User USER2 = User.from("foo2", Optional.of(DOMAIN));
     User USER3 = User.from("foo3", Optional.of(DOMAIN));
     User USER4 = User.from("foo", Optional.of(DOMAIN2));
-    User USER5 = User.from("foo", Optional.of(DOMAIN));
+    User USER5 = User.from("foo5", Optional.of(DOMAIN));
     Quota<QuotaSize> _1_ON_3_SIZE_QUOTA = Quota.<QuotaSize>builder().used(QuotaSize.size(10)).computedLimit(QuotaSize.size(30)).build();
     Quota<QuotaSize> _2_ON_3_SIZE_QUOTA = Quota.<QuotaSize>builder().used(QuotaSize.size(20)).computedLimit(QuotaSize.size(30)).build();
     Quota<QuotaCount> _1_ON_4_COUNT_QUOTA = Quota.<QuotaCount>builder().used(QuotaCount.count(1)).computedLimit(QuotaCount.count(4)).build();
@@ -109,7 +109,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnFilteredUsersWhenLessThanQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher.search(new LessThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new LessThanQuery(new QuotaThreshold(0.666)), limit, offset);
 
         assertThat(moreThan).contains(USER, USER2);
     }
@@ -118,7 +118,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnFilteredUsersWhenMoreThanQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(0.333)), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER4, USER5);
     }
@@ -127,7 +127,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReached(QuotaSearcher quotaSearcher) {
         int limit = 2;
         int offset = 0;
-        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(0.333)), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER4);
     }
@@ -136,7 +136,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnALimitedNumberOfUsersWhenLimitIsReachedAndOffsetIsGiven(QuotaSearcher quotaSearcher) {
         int limit = 2;
         int offset = 1;
-        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(2/3)), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new MoreThanQuery(new QuotaThreshold(0.333)), limit, offset);
 
         assertThat(moreThan).contains(USER4, USER5);
     }
@@ -154,7 +154,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnFilteredUsersWhenAndQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher.search(new AndQuery(new MoreThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new AndQuery(new MoreThanQuery(new QuotaThreshold(0.333)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
 
         assertThat(moreThan).contains(USER3, USER5);
     }
@@ -163,7 +163,7 @@ public interface QuotaSearcherTest {
     default void searchShouldReturnFilteredUsersWhenOrQuery(QuotaSearcher quotaSearcher) {
         int limit = 10;
         int offset = 0;
-        List<User> moreThan = quotaSearcher.search(new AndQuery(new LessThanQuery(new QuotaThreshold(2/3)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
+        List<User> moreThan = quotaSearcher.search(new AndQuery(new LessThanQuery(new QuotaThreshold(0.333)), new HasDomainQuery(Domain.of(DOMAIN))), limit, offset);
 
         assertThat(moreThan).contains(USER, USER2, USER4);
     }
