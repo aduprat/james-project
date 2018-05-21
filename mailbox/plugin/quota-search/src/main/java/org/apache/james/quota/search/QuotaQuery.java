@@ -23,8 +23,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
-import org.apache.james.util.streams.Limit;
-import org.apache.james.util.streams.Offset;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;

@@ -23,8 +23,6 @@ import static org.apache.james.quota.search.QuotaBoundaryFixture._50;
 import static org.apache.james.quota.search.QuotaBoundaryFixture._75;
 
 import org.apache.james.core.Domain;
-import org.apache.james.util.streams.Limit;
-import org.apache.james.util.streams.Offset;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -53,9 +51,9 @@ public class QuotaQueryTest {
 
     @Test
     public void builderShouldUseProvidedValues() {
-        Limit limit = Limit.limit(10);
+        Limit limit = Limit.of(10);
 
-        Offset offset = Offset.from(50);
+        Offset offset = Offset.of(50);
         QuotaQuery quotaQuery = QuotaQuery.builder()
             .withLimit(limit)
             .withOffset(offset)
