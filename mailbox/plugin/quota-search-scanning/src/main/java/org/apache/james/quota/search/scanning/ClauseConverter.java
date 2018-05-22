@@ -89,7 +89,7 @@ public class ClauseConverter {
         return andToPredicate(and);
     }
 
-    public Double retrieveUserRatio(User user) {
+    public double retrieveUserRatio(User user) {
         try {
             QuotaRoot quotaRoot = quotaRootResolver.forUser(user);
             Quota<QuotaSize> storageQuota = quotaManager.getStorageQuota(quotaRoot);
