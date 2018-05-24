@@ -54,6 +54,7 @@ public abstract class CassandraMailboxPathDAOTest {
     protected CassandraCluster cassandra;
 
     private CassandraMailboxPathDAO testee;
+
     abstract CassandraMailboxPathDAO testee();
 
     @Before
