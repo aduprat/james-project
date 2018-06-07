@@ -173,6 +173,6 @@ public class MailRepositoryStoreServiceTest {
 
         String eml = IOUtils.toString(new MimeMessageInputStream(mimeMessage.get()), StandardCharsets.UTF_8);
         String expectedContent = ClassLoaderUtils.getSystemResourceAsString("mail.eml");
-        assertThat(eml).isEqualTo(expectedContent);
+        assertThat(eml).isEqualToNormalizingNewlines(expectedContent);
     }
 }
