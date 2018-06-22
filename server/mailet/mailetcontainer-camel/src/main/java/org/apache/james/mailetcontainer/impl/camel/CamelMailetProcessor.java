@@ -19,6 +19,7 @@
 package org.apache.james.mailetcontainer.impl.camel;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import javax.annotation.PostConstruct;
 import javax.mail.MessagingException;
@@ -135,39 +136,42 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
         @Override
         public void configure() throws Exception {
             Processor disposeProcessor = new DisposeProcessor();
-            Processor removePropsProcessor = new RemovePropertiesProcessor();
             Processor completeProcessor = new CompleteProcessor();
-            Processor stateChangedProcessor = new StateChangedProcessor();
 
             String state = getState();
 
             RouteDefinition processorDef = from(getEndpoint()).routeId(state).setExchangePattern(ExchangePattern.InOnly)
                     // store the logger in properties
                     .setProperty(MatcherSplitter.LOGGER_PROPERTY, constant(LOGGER))
-                    .setProperty(MatcherSplitter.METRIC_FACTORY, constant(metricFactory));
+                    .setProperty(MatcherSplitter.METRIC_FACTORY, constant(metricFactory))
+                    .setProperty(MatcherSplitter.MAILETCONTAINER_PROPERTY, constant(CamelMailetProcessor.this));
 
-            for (MatcherMailetPair pair : pairs) {
-                Matcher matcher = pair.getMatcher();
-                Mailet mailet = pair.getMailet();
-
-                MailetConfig mailetConfig = mailet.getMailetConfig();
-                String onMatchException = mailetConfig.getInitParameter("onMatchException");
-
-                CamelProcessor mailetProccessor = new CamelProcessor(metricFactory, mailet, CamelMailetProcessor.this);
-                // Store the matcher to use for splitter in properties
-                processorDef.setProperty(MatcherSplitter.MATCHER_PROPERTY, constant(matcher))
-                        .setProperty(MatcherSplitter.ON_MATCH_EXCEPTION_PROPERTY, constant(onMatchException))
-                        .setProperty(MatcherSplitter.MAILETCONTAINER_PROPERTY, constant(CamelMailetProcessor.this))
-
-                        // do splitting of the mail based on the stored matcher
-                        .split().method(MatcherSplitter.class).aggregationStrategy(aggr)
-
-                        .choice().when(new MatcherMatch()).process(mailetProccessor).end()
-
-                        .choice().when(new MailStateEquals(Mail.GHOST)).process(disposeProcessor).stop().otherwise().process(removePropsProcessor).end()
-
-                        .choice().when(new MailStateNotEquals(state)).process(stateChangedProcessor).process(completeProcessor).stop().end();
-            }
+            CompletableFuture<?>[] map = pairs.stream()
+                .map(pair -> CompletableFuture.runAsync(() -> {
+                        Processor removePropsProcessor = new RemovePropertiesProcessor();
+                        Processor stateChangedProcessor = new StateChangedProcessor();
+                        Matcher matcher = pair.getMatcher();
+                        Mailet mailet = pair.getMailet();
+    
+                        MailetConfig mailetConfig = mailet.getMailetConfig();
+                        String onMatchException = mailetConfig.getInitParameter("onMatchException");
+    
+                        CamelProcessor mailetProccessor = new CamelProcessor(metricFactory, mailet, CamelMailetProcessor.this);
+                        // Store the matcher to use for splitter in properties
+                        processorDef.setProperty(MatcherSplitter.MATCHER_PROPERTY, constant(matcher))
+                                .setProperty(MatcherSplitter.ON_MATCH_EXCEPTION_PROPERTY, constant(onMatchException))
+    
+                                // do splitting of the mail based on the stored matcher
+                                .split().method(MatcherSplitter.class).aggregationStrategy(aggr)
+    
+                                .choice().when(new MatcherMatch()).process(mailetProccessor).end()
+    
+                                .choice().when(new MailStateEquals(Mail.GHOST)).process(disposeProcessor).stop().otherwise().process(removePropsProcessor).end()
+    
+                                .choice().when(new MailStateNotEquals(state)).process(stateChangedProcessor).process(completeProcessor).stop().end();
+                    }))
+                .toArray(CompletableFuture<?>[]::new);
+            CompletableFuture.allOf(map).complete(null);
 
             Processor terminatingMailetProcessor = new CamelProcessor(metricFactory, new TerminatingMailet(), CamelMailetProcessor.this);
 
