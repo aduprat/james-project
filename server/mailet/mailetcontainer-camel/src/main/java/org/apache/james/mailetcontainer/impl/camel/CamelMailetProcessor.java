@@ -155,7 +155,9 @@ public class CamelMailetProcessor extends AbstractStateMailetProcessor implement
 
                 CamelProcessor mailetProccessor = new CamelProcessor(metricFactory, mailet, CamelMailetProcessor.this);
                 // Store the matcher to use for splitter in properties
-                processorDef.setProperty(MatcherSplitter.MATCHER_PROPERTY, constant(matcher)).setProperty(MatcherSplitter.ON_MATCH_EXCEPTION_PROPERTY, constant(onMatchException)).setProperty(MatcherSplitter.MAILETCONTAINER_PROPERTY, constant(CamelMailetProcessor.this))
+                processorDef.setProperty(MatcherSplitter.MATCHER_PROPERTY, constant(matcher))
+                        .setProperty(MatcherSplitter.ON_MATCH_EXCEPTION_PROPERTY, constant(onMatchException))
+                        .setProperty(MatcherSplitter.MAILETCONTAINER_PROPERTY, constant(CamelMailetProcessor.this))
 
                         // do splitting of the mail based on the stored matcher
                         .split().method(MatcherSplitter.class).aggregationStrategy(aggr)
