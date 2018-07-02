@@ -84,7 +84,7 @@ public class DNSJavaService implements DNSService, DNSServiceMBean, Configurable
      */
     private int maxCacheSize = 50000;
 
-    private int cacheTTL;
+    private int negativeCacheTTL;
 
     /**
      * Whether the DNS response is required to be authoritative
@@ -186,7 +186,7 @@ public class DNSJavaService implements DNSService, DNSServiceMBean, Configurable
 
         maxCacheSize = configuration.getInt("maxcachesize", maxCacheSize);
 
-        cacheTTL = configuration.getInt("cacheTTL", CACHE_TTL_DISABLE);
+        negativeCacheTTL = configuration.getInt("negativeCacheTTL", CACHE_TTL_DISABLE);
     }
 
     @PostConstruct
@@ -220,7 +220,7 @@ public class DNSJavaService implements DNSService, DNSServiceMBean, Configurable
 
         cache = new Cache(DClass.IN);
         cache.setMaxEntries(maxCacheSize);
-        cache.setMaxCache(cacheTTL);
+        cache.setMaxNCache(negativeCacheTTL);
 
         if (setAsDNSJavaDefault) {
             Lookup.setDefaultResolver(resolver);
