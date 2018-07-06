@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import javax.inject.Inject;
@@ -51,6 +52,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 public class TikaTextExtractor implements TextExtractor {
 
@@ -85,8 +87,10 @@ public class TikaTextExtractor implements TextExtractor {
         return new ParsedContent(contentAndMetadata.getContent(), contentAndMetadata.getMetadata());
     }
 
-    private ContentAndMetadata convert(InputStream json) throws IOException, JsonParseException, JsonMappingException {
-        return objectMapper.readValue(json, ContentAndMetadata.class);
+    private ContentAndMetadata convert(Optional<InputStream> maybeInputStream) throws IOException, JsonParseException, JsonMappingException {
+        return maybeInputStream
+                .map(Throwing.function(inputStream -> objectMapper.readValue(inputStream, ContentAndMetadata.class)))
+                .orElse(ContentAndMetadata.empty());
     }
 
     @VisibleForTesting
@@ -118,6 +122,10 @@ public class TikaTextExtractor implements TextExtractor {
 
         private static final String TIKA_HEADER = "X-TIKA";
         private static final String CONTENT_METADATA_HEADER_NAME = TIKA_HEADER + ":content";
+
+        public static ContentAndMetadata empty() {
+            return new ContentAndMetadata(null, ImmutableMap.of());
+        }
 
         public static ContentAndMetadata from(Map<String, List<String>> contentAndMetadataMap) {
             return new ContentAndMetadata(content(contentAndMetadataMap),
