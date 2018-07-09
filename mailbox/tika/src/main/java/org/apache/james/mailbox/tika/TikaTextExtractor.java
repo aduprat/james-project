@@ -124,7 +124,7 @@ public class TikaTextExtractor implements TextExtractor {
         private static final String CONTENT_METADATA_HEADER_NAME = TIKA_HEADER + ":content";
 
         public static ContentAndMetadata empty() {
-            return new ContentAndMetadata(null, ImmutableMap.of());
+            return new ContentAndMetadata();
         }
 
         public static ContentAndMetadata from(Map<String, List<String>> contentAndMetadataMap) {
@@ -149,6 +149,10 @@ public class TikaTextExtractor implements TextExtractor {
 
         private final String content;
         private final Map<String, List<String>> metadata;
+
+        private ContentAndMetadata() {
+            this(null, ImmutableMap.of());
+        }
 
         private ContentAndMetadata(String content, Map<String, List<String>> metadata) {
             this.content = content;
