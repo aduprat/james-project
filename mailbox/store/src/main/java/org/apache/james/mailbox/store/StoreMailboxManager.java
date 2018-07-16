@@ -30,6 +30,8 @@ import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 
+import org.apache.james.core.quota.QuotaCount;
+import org.apache.james.core.quota.QuotaSize;
 import org.apache.james.mailbox.MailboxAnnotationManager;
 import org.apache.james.mailbox.MailboxListener;
 import org.apache.james.mailbox.MailboxManager;
@@ -60,6 +62,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageId.Factory;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
+import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.model.search.MailboxNameExpression;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.quota.QuotaManager;
@@ -531,7 +534,10 @@ public class StoreMailboxManager implements MailboxManager {
         assertIsOwner(session, mailboxPath);
         final MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
 
-        Mailbox mailbox = mapper.execute((Mapper.Transaction<Mailbox>) () -> {
+        QuotaRoot quotaRoot = quotaRootResolver.getQuotaRoot(mailboxPath);
+        QuotaCount quotaCount = quotaManager.getMessageQuota(quotaRoot).getUsed();
+        QuotaSize quotaSize = quotaManager.getStorageQuota(quotaRoot).getUsed();
+        mapper.execute((Mapper.Transaction<Mailbox>) () -> {
             final Mailbox mailbox1 = mapper.findMailboxByPath(mailboxPath);
             if (mailbox1 == null) {
                 throw new MailboxNotFoundException(mailboxPath);
@@ -541,10 +547,10 @@ public class StoreMailboxManager implements MailboxManager {
             // mailbox once we remove it
             SimpleMailbox m = new SimpleMailbox(mailbox1);
             mapper.delete(mailbox1);
+            dispatcher.mailboxDeleted(session, mailbox1, quotaRoot, quotaCount, quotaSize);
             return m;
         });
 
-        dispatcher.mailboxDeleted(session, mailbox);
 
     }
 

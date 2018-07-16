@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 
+import org.apache.james.core.quota.QuotaCount;
+import org.apache.james.core.quota.QuotaSize;
 import org.apache.james.mailbox.MailboxListener;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
@@ -30,6 +32,7 @@ import org.apache.james.mailbox.acl.ACLDiff;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageMoves;
+import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.StoreMailboxPath;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
@@ -136,8 +139,8 @@ public class EventFactory {
     public final class MailboxDeletionImpl extends MailboxListener.MailboxDeletion implements MailboxAware {
         private final Mailbox mailbox;
 
-        public MailboxDeletionImpl(MailboxSession session, Mailbox mailbox) {
-            super(session, new StoreMailboxPath(mailbox));
+        public MailboxDeletionImpl(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot, QuotaCount quotaCount, QuotaSize quotaSize) {
+            super(session, new StoreMailboxPath(mailbox), quotaRoot, quotaCount, quotaSize);
             this.mailbox = mailbox;
         }
 
@@ -204,8 +207,8 @@ public class EventFactory {
         return new MailboxRenamedEventImpl(session, from, to);
     }
 
-    public MailboxListener.MailboxDeletion mailboxDeleted(MailboxSession session, Mailbox mailbox) {
-        return new MailboxDeletionImpl(session, mailbox);
+    public MailboxListener.MailboxDeletion mailboxDeleted(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot, QuotaCount quotaCount, QuotaSize quotaSize) {
+        return new MailboxDeletionImpl(session, mailbox, quotaRoot, quotaCount, quotaSize);
     }
 
     public MailboxListener.MailboxAdded mailboxAdded(MailboxSession session, Mailbox mailbox) {

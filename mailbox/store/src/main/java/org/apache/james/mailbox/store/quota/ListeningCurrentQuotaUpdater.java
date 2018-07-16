@@ -29,6 +29,7 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
+import org.apache.james.mailbox.store.event.EventFactory.MailboxDeletionImpl;
 import org.apache.james.mailbox.store.event.MailboxEventDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,9 @@ public class ListeningCurrentQuotaUpdater implements MailboxListener, QuotaUpdat
                 Expunged expungedEvent = (Expunged) event;
                 QuotaRoot quotaRoot = quotaRootResolver.getQuotaRoot(expungedEvent.getMailboxPath());
                 handleExpungedEvent(expungedEvent, quotaRoot);
+            } else if (event instanceof MailboxDeletionImpl) {
+                MailboxDeletionImpl mailboxDeletionEvent = (MailboxDeletionImpl) event;
+                handleMailboxDeletionEvent(mailboxDeletionEvent);
             }
         } catch (MailboxException e) {
             LOGGER.error("Error while updating quotas", e);
@@ -105,6 +109,12 @@ public class ListeningCurrentQuotaUpdater implements MailboxListener, QuotaUpdat
             quotaRoot,
             quotaManager.getMessageQuota(quotaRoot),
             quotaManager.getStorageQuota(quotaRoot));
+    }
+
+    private void handleMailboxDeletionEvent(MailboxDeletionImpl mailboxDeletionEvent) throws MailboxException {
+        currentQuotaManager.decrease(mailboxDeletionEvent.getQuotaRoot(),
+                mailboxDeletionEvent.getQuotaCount().asLong(),
+                mailboxDeletionEvent.getQuotaSize().asLong());
     }
 
 }

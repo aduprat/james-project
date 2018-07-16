@@ -170,8 +170,31 @@ public interface MailboxListener {
          */
         private static final long serialVersionUID = 1L;
 
-        public MailboxDeletion(MailboxSession session, MailboxPath path) {
+        private final QuotaRoot quotaRoot;
+        private final QuotaCount quotaCount;
+        private final QuotaSize quotaSize;
+
+        public MailboxDeletion(MailboxSession session, MailboxPath path, QuotaRoot quotaRoot, QuotaCount quotaCount, QuotaSize quotaSize) {
             super(session, path);
+            this.quotaRoot = quotaRoot;
+            this.quotaCount = quotaCount;
+            this.quotaSize = quotaSize;
+        }
+
+        public static long getSerialversionuid() {
+            return serialVersionUID;
+        }
+
+        public QuotaRoot getQuotaRoot() {
+            return quotaRoot;
+        }
+
+        public QuotaCount getQuotaCount() {
+            return quotaCount;
+        }
+
+        public QuotaSize getQuotaSize() {
+            return quotaSize;
         }
     }
 
