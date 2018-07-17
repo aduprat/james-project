@@ -181,10 +181,6 @@ public interface MailboxListener {
             this.quotaSize = quotaSize;
         }
 
-        public static long getSerialversionuid() {
-            return serialVersionUID;
-        }
-
         public QuotaRoot getQuotaRoot() {
             return quotaRoot;
         }

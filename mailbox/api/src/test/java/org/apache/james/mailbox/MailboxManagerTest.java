@@ -933,7 +933,7 @@ public abstract class MailboxManagerTest {
     }
 
     @Test
-    public void deleteMailboxShouldFireQuotaUpdateEvent() throws Exception {
+    public void deleteMailboxShouldFireMailboxDeletionEvent() throws Exception {
         Assume.assumeTrue(mailboxManager.hasCapability(MailboxCapabilities.Quota));
         session = mailboxManager.createSystemSession(USER_1);
 

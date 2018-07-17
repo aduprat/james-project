@@ -532,16 +532,17 @@ public class StoreMailboxManager implements MailboxManager {
     public void deleteMailbox(final MailboxPath mailboxPath, final MailboxSession session) throws MailboxException {
         LOGGER.info("deleteMailbox {}", mailboxPath);
         assertIsOwner(session, mailboxPath);
-        final MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
+        MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
 
-        QuotaRoot quotaRoot = quotaRootResolver.getQuotaRoot(mailboxPath);
-        QuotaCount quotaCount = quotaManager.getMessageQuota(quotaRoot).getUsed();
-        QuotaSize quotaSize = quotaManager.getStorageQuota(quotaRoot).getUsed();
         mapper.execute((Mapper.Transaction<Mailbox>) () -> {
-            final Mailbox mailbox1 = mapper.findMailboxByPath(mailboxPath);
+            Mailbox mailbox1 = mapper.findMailboxByPath(mailboxPath);
             if (mailbox1 == null) {
                 throw new MailboxNotFoundException(mailboxPath);
             }
+
+            QuotaRoot quotaRoot = quotaRootResolver.getQuotaRoot(mailboxPath);
+            QuotaCount quotaCount = quotaManager.getMessageQuota(quotaRoot).getUsed();
+            QuotaSize quotaSize = quotaManager.getStorageQuota(quotaRoot).getUsed();
 
             // We need to create a copy of the mailbox as maybe we can not refer to the real
             // mailbox once we remove it
