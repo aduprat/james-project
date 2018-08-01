@@ -72,7 +72,9 @@ import org.apache.james.mailbox.store.event.MailboxAnnotationListener;
 import org.apache.james.mailbox.store.event.MailboxEventDispatcher;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
+import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.Mailbox;
+import org.apache.james.mailbox.store.mail.model.Message;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailbox;
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
@@ -82,6 +84,7 @@ import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.mailbox.store.transaction.Mapper;
+import org.apache.james.util.streams.Iterators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -533,6 +536,7 @@ public class StoreMailboxManager implements MailboxManager {
         LOGGER.info("deleteMailbox {}", mailboxPath);
         assertIsOwner(session, mailboxPath);
         MailboxMapper mapper = mailboxSessionMapperFactory.getMailboxMapper(session);
+        MessageMapper messageMapper = mailboxSessionMapperFactory.getMessageMapper(session);
 
         mapper.execute((Mapper.Transaction<Mailbox>) () -> {
             Mailbox mailbox1 = mapper.findMailboxByPath(mailboxPath);
@@ -541,14 +545,16 @@ public class StoreMailboxManager implements MailboxManager {
             }
 
             QuotaRoot quotaRoot = quotaRootResolver.getQuotaRoot(mailboxPath);
-            QuotaCount quotaCount = quotaManager.getMessageQuota(quotaRoot).getUsed();
-            QuotaSize quotaSize = quotaManager.getStorageQuota(quotaRoot).getUsed();
+            long messageCount = messageMapper.countMessagesInMailbox(mailbox1);
+            long totalSize = Iterators.toStream(messageMapper.findInMailbox(mailbox1, MessageRange.all(), MessageMapper.FetchType.Metadata, -1))
+                .mapToLong(Message::getFullContentOctets)
+                .sum();
 
             // We need to create a copy of the mailbox as maybe we can not refer to the real
             // mailbox once we remove it
             SimpleMailbox m = new SimpleMailbox(mailbox1);
             mapper.delete(mailbox1);
-            dispatcher.mailboxDeleted(session, mailbox1, quotaRoot, quotaCount, quotaSize);
+            dispatcher.mailboxDeleted(session, mailbox1, quotaRoot, QuotaCount.count(messageCount), QuotaSize.size(totalSize));
             return m;
         });
 

@@ -139,8 +139,8 @@ public class EventFactory {
     public final class MailboxDeletionImpl extends MailboxListener.MailboxDeletion implements MailboxAware {
         private final Mailbox mailbox;
 
-        public MailboxDeletionImpl(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot, QuotaCount quotaCount, QuotaSize quotaSize) {
-            super(session, new StoreMailboxPath(mailbox), quotaRoot, quotaCount, quotaSize);
+        public MailboxDeletionImpl(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot, QuotaCount deletedMessageCount, QuotaSize totalDeletedSize) {
+            super(session, new StoreMailboxPath(mailbox), quotaRoot, deletedMessageCount, totalDeletedSize);
             this.mailbox = mailbox;
         }
 
@@ -207,8 +207,9 @@ public class EventFactory {
         return new MailboxRenamedEventImpl(session, from, to);
     }
 
-    public MailboxListener.MailboxDeletion mailboxDeleted(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot, QuotaCount quotaCount, QuotaSize quotaSize) {
-        return new MailboxDeletionImpl(session, mailbox, quotaRoot, quotaCount, quotaSize);
+    public MailboxListener.MailboxDeletion mailboxDeleted(MailboxSession session, Mailbox mailbox, QuotaRoot quotaRoot,
+                                                          QuotaCount deletedMessageCount, QuotaSize totalDeletedSize) {
+        return new MailboxDeletionImpl(session, mailbox, quotaRoot, deletedMessageCount, totalDeletedSize);
     }
 
     public MailboxListener.MailboxAdded mailboxAdded(MailboxSession session, Mailbox mailbox) {
