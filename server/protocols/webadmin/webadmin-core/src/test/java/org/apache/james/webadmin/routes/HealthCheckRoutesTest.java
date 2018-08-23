@@ -43,11 +43,11 @@ import io.restassured.RestAssured;
 
 public class HealthCheckRoutesTest {
 
-    private static HealthCheck healthCheck(ComponentName componentName, Result result) {
+    private static HealthCheck healthCheck(Result result) {
         return new HealthCheck() {
             @Override
             public ComponentName componentName() {
-                return componentName;
+                return result.getComponentName();
             }
 
             @Override
@@ -102,8 +102,8 @@ public class HealthCheckRoutesTest {
 
     @Test
     public void validateHealthchecksShouldReturnOkWhenHealthChecksAreHealthy() {
-        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.healthy()));
-        healthChecks.add(healthCheck(new ComponentName("component-2"), Result.healthy()));
+        healthChecks.add(healthCheck(Result.healthy(new ComponentName("component-1"))));
+        healthChecks.add(healthCheck(Result.healthy(new ComponentName("component-2"))));
 
         when()
             .get()
@@ -113,8 +113,8 @@ public class HealthCheckRoutesTest {
 
     @Test
     public void validateHealthchecksShouldReturnInternalErrorWhenOneHealthCheckIsUnhealthy() {
-        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.unhealthy("cause")));
-        healthChecks.add(healthCheck(new ComponentName("component-2"), Result.healthy()));
+        healthChecks.add(healthCheck(Result.unhealthy(new ComponentName("component-1"), "cause")));
+        healthChecks.add(healthCheck(Result.healthy(new ComponentName("component-2"))));
 
         when()
             .get()
@@ -124,8 +124,8 @@ public class HealthCheckRoutesTest {
 
     @Test
     public void validateHealthchecksShouldReturnInternalErrorWhenAllHealthChecksAreUnhealthy() {
-        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.unhealthy("cause")));
-        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.unhealthy()));
+        healthChecks.add(healthCheck(Result.unhealthy(new ComponentName("component-1"), "cause")));
+        healthChecks.add(healthCheck(Result.unhealthy(new ComponentName("component-2"))));
 
         when()
             .get()
@@ -135,8 +135,8 @@ public class HealthCheckRoutesTest {
 
     @Test
     public void validateHealthchecksShouldReturnInternalErrorWhenOneHealthCheckIsDegraded() {
-        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.degraded("cause")));
-        healthChecks.add(healthCheck(new ComponentName("component-2"), Result.healthy()));
+        healthChecks.add(healthCheck(Result.degraded(new ComponentName("component-1"), "cause")));
+        healthChecks.add(healthCheck(Result.healthy(new ComponentName("component-2"))));
 
         when()
             .get()

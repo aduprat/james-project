@@ -26,8 +26,6 @@ import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
 import org.apache.james.webadmin.PublicRoutes;
@@ -82,7 +80,7 @@ public class HealthCheckRoutes implements PublicRoutes {
     public void validateHealthchecks() {
         service.get(HEALTHCHECK,
             (request, response) -> {
-                List<Pair<ComponentName, Result>> anyUnhealthyOrDegraded = retrieveUnhealthyOrDegradedHealthChecks();
+                List<Result> anyUnhealthyOrDegraded = retrieveUnhealthyOrDegradedHealthChecks();
 
                 anyUnhealthyOrDegraded.forEach(this::logFailedCheck);
                 response.status(getCorrespondingStatusCode(anyUnhealthyOrDegraded));
@@ -90,7 +88,7 @@ public class HealthCheckRoutes implements PublicRoutes {
             });
     }
 
-    private int getCorrespondingStatusCode(List<Pair<ComponentName, Result>> anyUnhealthy) {
+    private int getCorrespondingStatusCode(List<Result> anyUnhealthy) {
         if (anyUnhealthy.isEmpty()) {
             return HttpStatus.OK_200;
         } else {
@@ -98,17 +96,17 @@ public class HealthCheckRoutes implements PublicRoutes {
         }
     }
 
-    private void logFailedCheck(Pair<ComponentName, Result> pair) {
-        switch (pair.getValue().getStatus()) {
+    private void logFailedCheck(Result result) {
+        switch (result.getStatus()) {
         case UNHEALTHY:
             LOGGER.error("HealthCheck failed for {} : {}",
-                    pair.getKey().getName(),
-                    pair.getValue().getCause().orElse(""));
+                    result.getComponentName().toString(),
+                    result.getCause().orElse(""));
             break;
         case DEGRADED:
             LOGGER.warn("HealthCheck is unstable for {} : {}",
-                    pair.getKey().getName(),
-                    pair.getValue().getCause().orElse(""));
+                    result.getComponentName().toString(),
+                    result.getCause().orElse(""));
             break;
         case HEALTHY:
             // Here only to fix a warning, such cases are already filtered
@@ -116,10 +114,10 @@ public class HealthCheckRoutes implements PublicRoutes {
         }
     }
 
-    private List<Pair<ComponentName, Result>> retrieveUnhealthyOrDegradedHealthChecks() {
+    private List<Result> retrieveUnhealthyOrDegradedHealthChecks() {
         return healthChecks.stream()
-            .map(healthCheck -> Pair.of(healthCheck.componentName(), healthCheck.check()))
-            .filter(pair -> pair.getValue().isUnHealthy() || pair.getValue().isDegraded())
+            .map(HealthCheck::check)
+            .filter(result -> result.isUnHealthy() || result.isDegraded())
             .collect(Guavate.toImmutableList());
     }
 }
