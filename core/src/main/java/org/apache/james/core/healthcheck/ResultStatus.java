@@ -19,5 +19,5 @@
 package org.apache.james.core.healthcheck;
 
 public enum ResultStatus {
-    HEALTHY, UNHEALTHY;
+    HEALTHY, DEGRADED, UNHEALTHY;
 }

@@ -47,8 +47,64 @@ public class ResultTest {
     }
 
     @Test
+    public void isDegradedShouldBeFalseWhenHealthy() {
+        Result result = Result.healthy();
+
+        assertThat(result.isDegraded()).isFalse();
+    }
+
+    @Test
     public void isUnhealthyShouldBeFalseWhenHealthy() {
         Result result = Result.healthy();
+
+        assertThat(result.isUnHealthy()).isFalse();
+    }
+
+    @Test
+    public void statusShouldBeDegradedWhenDegraded() {
+        Result result = Result.degraded("cause");
+
+        assertThat(result.getStatus()).isEqualTo(ResultStatus.DEGRADED);
+    }
+
+    @Test
+    public void causeMayBeEmptyWhenDegraded() {
+        Result result = Result.degraded();
+
+        assertThat(result.getCause()).isEmpty();
+    }
+
+    @Test
+    public void degradedShouldThrowWhenNullCause() {
+        assertThatThrownBy(() -> Result.degraded(null))
+            .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void causeShouldBeKeptWhenNotDegraded() {
+        String cause = "cause";
+        Result result = Result.degraded(cause);
+
+        assertThat(result.getCause()).contains(cause);
+    }
+
+    @Test
+    public void isHealthyShouldBeFalseWhenDegraded() {
+        Result result = Result.degraded();
+
+        assertThat(result.isHealthy()).isFalse();
+    }
+
+    @Test
+    public void isDegradedShouldBeFalseWhenDegraded() {
+        Result result = Result.degraded();
+
+        assertThat(result.isDegraded()).isTrue();
+    }
+
+    @Test
+    public void isUnhealthyShouldBeTrueWhenDegraded() {
+        Result result = Result.degraded();
 
         assertThat(result.isUnHealthy()).isFalse();
     }
@@ -80,6 +136,13 @@ public class ResultTest {
         Result result = Result.unhealthy();
 
         assertThat(result.isHealthy()).isFalse();
+    }
+
+    @Test
+    public void isDegradedShouldBeFalseWhenUnhealthy() {
+        Result result = Result.unhealthy();
+
+        assertThat(result.isDegraded()).isFalse();
     }
 
     @Test

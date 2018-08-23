@@ -34,6 +34,14 @@ public class Result {
         return new Result(ResultStatus.UNHEALTHY, Optional.empty());
     }
 
+    public static Result degraded(String cause) {
+        return new Result(ResultStatus.DEGRADED, Optional.of(cause));
+    }
+
+    public static Result degraded() {
+        return new Result(ResultStatus.DEGRADED, Optional.empty());
+    }
+
     private final ResultStatus status;
     private final Optional<String> cause;
 
@@ -48,6 +56,10 @@ public class Result {
 
     public boolean isHealthy() {
         return status == ResultStatus.HEALTHY;
+    }
+
+    public boolean isDegraded() {
+        return status == ResultStatus.DEGRADED;
     }
 
     public boolean isUnHealthy() {
