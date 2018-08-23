@@ -19,9 +19,9 @@
 
 package org.apache.james.modules;
 
-import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.GuiceLifecycleHealthCheck;
 import org.apache.james.IsStartedProbe;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.utils.GuiceProbe;
 
 import com.google.inject.AbstractModule;
