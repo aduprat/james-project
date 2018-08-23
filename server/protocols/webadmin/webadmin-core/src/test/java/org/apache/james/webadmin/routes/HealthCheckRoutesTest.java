@@ -19,7 +19,14 @@
 
 package org.apache.james.webadmin.routes;
 
-import io.restassured.RestAssured;
+import static io.restassured.RestAssured.when;
+import static io.restassured.RestAssured.with;
+import static org.apache.james.webadmin.WebAdminServer.NO_CONFIGURATION;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
@@ -32,13 +39,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static io.restassured.RestAssured.when;
-import static io.restassured.RestAssured.with;
-import static org.apache.james.webadmin.WebAdminServer.NO_CONFIGURATION;
-import static org.assertj.core.api.Assertions.assertThat;
+import io.restassured.RestAssured;
 
 public class HealthCheckRoutesTest {
 
@@ -125,6 +126,17 @@ public class HealthCheckRoutesTest {
     public void validateHealthchecksShouldReturnInternalErrorWhenAllHealthChecksAreUnhealthy() {
         healthChecks.add(healthCheck(new ComponentName("component-1"), Result.unhealthy("cause")));
         healthChecks.add(healthCheck(new ComponentName("component-1"), Result.unhealthy()));
+
+        when()
+            .get()
+        .then()
+            .statusCode(HttpStatus.INTERNAL_SERVER_ERROR_500);
+    }
+
+    @Test
+    public void validateHealthchecksShouldReturnInternalErrorWhenOneHealthCheckIsDegraded() {
+        healthChecks.add(healthCheck(new ComponentName("component-1"), Result.degraded("cause")));
+        healthChecks.add(healthCheck(new ComponentName("component-2"), Result.healthy()));
 
         when()
             .get()

@@ -19,11 +19,13 @@
 
 package org.apache.james.webadmin.routes;
 
-import com.github.steveash.guavate.Guavate;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import java.util.List;
+import java.util.Set;
+
+import javax.inject.Inject;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
@@ -32,14 +34,14 @@ import org.apache.james.webadmin.PublicRoutes;
 import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import spark.Response;
-import spark.Service;
 
-import javax.inject.Inject;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import java.util.List;
-import java.util.Set;
+import com.github.steveash.guavate.Guavate;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import spark.Service;
 
 @Api(tags = "Healthchecks")
 @Path(HealthCheckRoutes.HEALTHCHECK)
@@ -80,10 +82,10 @@ public class HealthCheckRoutes implements PublicRoutes {
     public void validateHealthchecks() {
         service.get(HEALTHCHECK,
             (request, response) -> {
-                List<Pair<ComponentName, Result>> anyUnhealthy = retrieveUnhealthyHealthChecks();
+                List<Pair<ComponentName, Result>> anyUnhealthyOrDegraded = retrieveUnhealthyOrDegradedHealthChecks();
 
-                anyUnhealthy.forEach(this::logFailedCheck);
-                response.status(getCorrespondingStatusCode(anyUnhealthy));
+                anyUnhealthyOrDegraded.forEach(this::logFailedCheck);
+                response.status(getCorrespondingStatusCode(anyUnhealthyOrDegraded));
                 return response;
             });
     }
@@ -97,15 +99,27 @@ public class HealthCheckRoutes implements PublicRoutes {
     }
 
     private void logFailedCheck(Pair<ComponentName, Result> pair) {
-        LOGGER.error("HealthCheck failed for {} : {}",
-            pair.getKey().getName(),
-            pair.getValue().getCause().orElse(""));
+        switch (pair.getValue().getStatus()) {
+        case UNHEALTHY:
+            LOGGER.error("HealthCheck failed for {} : {}",
+                    pair.getKey().getName(),
+                    pair.getValue().getCause().orElse(""));
+            break;
+        case DEGRADED:
+            LOGGER.warn("HealthCheck is unstable for {} : {}",
+                    pair.getKey().getName(),
+                    pair.getValue().getCause().orElse(""));
+            break;
+        case HEALTHY:
+            // Here only to fix a warning, such cases are already filtered
+            break;
+        }
     }
 
-    private List<Pair<ComponentName, Result>> retrieveUnhealthyHealthChecks() {
+    private List<Pair<ComponentName, Result>> retrieveUnhealthyOrDegradedHealthChecks() {
         return healthChecks.stream()
             .map(healthCheck -> Pair.of(healthCheck.componentName(), healthCheck.check()))
-            .filter(pair -> pair.getValue().isUnHealthy())
+            .filter(pair -> pair.getValue().isUnHealthy() || pair.getValue().isDegraded())
             .collect(Guavate.toImmutableList());
     }
 }
