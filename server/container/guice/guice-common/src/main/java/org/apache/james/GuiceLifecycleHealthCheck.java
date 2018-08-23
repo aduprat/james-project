@@ -19,11 +19,11 @@
 
 package org.apache.james;
 
+import javax.inject.Inject;
+
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
-
-import javax.inject.Inject;
 
 public class GuiceLifecycleHealthCheck implements HealthCheck {
     private final IsStartedProbe probe;

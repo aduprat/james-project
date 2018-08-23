@@ -36,6 +36,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.google.inject.multibindings.Multibinder;
+
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
