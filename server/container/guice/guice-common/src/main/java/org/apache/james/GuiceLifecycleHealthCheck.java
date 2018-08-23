@@ -41,9 +41,9 @@ public class GuiceLifecycleHealthCheck implements HealthCheck {
     @Override
     public Result check() {
         if (probe.isStarted()) {
-            return Result.healthy();
+            return Result.healthy(componentName());
         } else {
-            return Result.unhealthy("James server is not started.");
+            return Result.unhealthy(componentName(), "James server is not started.");
         }
     }
 }
