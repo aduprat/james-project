@@ -22,32 +22,38 @@ import java.util.Optional;
 
 public class Result {
 
-    public static Result healthy() {
-        return new Result(ResultStatus.HEALTHY, Optional.empty());
+    public static Result healthy(ComponentName componentName) {
+        return new Result(componentName, ResultStatus.HEALTHY, Optional.empty());
     }
 
-    public static Result unhealthy(String cause) {
-        return new Result(ResultStatus.UNHEALTHY, Optional.of(cause));
+    public static Result unhealthy(ComponentName componentName, String cause) {
+        return new Result(componentName, ResultStatus.UNHEALTHY, Optional.of(cause));
     }
 
-    public static Result unhealthy() {
-        return new Result(ResultStatus.UNHEALTHY, Optional.empty());
+    public static Result unhealthy(ComponentName componentName) {
+        return new Result(componentName, ResultStatus.UNHEALTHY, Optional.empty());
     }
 
-    public static Result degraded(String cause) {
-        return new Result(ResultStatus.DEGRADED, Optional.of(cause));
+    public static Result degraded(ComponentName componentName, String cause) {
+        return new Result(componentName, ResultStatus.DEGRADED, Optional.of(cause));
     }
 
-    public static Result degraded() {
-        return new Result(ResultStatus.DEGRADED, Optional.empty());
+    public static Result degraded(ComponentName componentName) {
+        return new Result(componentName, ResultStatus.DEGRADED, Optional.empty());
     }
 
+    private final ComponentName componentName;
     private final ResultStatus status;
     private final Optional<String> cause;
 
-    private Result(ResultStatus status, Optional<String> cause) {
+    private Result(ComponentName componentName, ResultStatus status, Optional<String> cause) {
+        this.componentName = componentName;
         this.status = status;
         this.cause = cause;
+    }
+
+    public ComponentName getComponentName() {
+        return componentName;
     }
 
     public ResultStatus getStatus() {
