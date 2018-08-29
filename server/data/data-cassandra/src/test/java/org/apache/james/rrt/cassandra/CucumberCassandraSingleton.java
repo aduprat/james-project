@@ -18,27 +18,10 @@
  ****************************************************************/
 package org.apache.james.rrt.cassandra;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.runner.RunWith;
+import org.apache.james.backends.cassandra.DockerCassandraRule;
 
-import cucumber.api.CucumberOptions;
-import cucumber.api.junit.Cucumber;
+public class CucumberCassandraSingleton {
 
-@RunWith(Cucumber.class)
-@CucumberOptions(
-        features = { "classpath:cucumber/" },
-        glue = { "org.apache.james.rrt.lib", "org.apache.james.rrt.cassandra" }
-    )
-public class RewriteTablesTest {
+    public static DockerCassandraRule cassandraServer = new DockerCassandraRule();
 
-    @BeforeClass
-    public static void init() {
-        CucumberCassandraSingleton.cassandraServer.start();
-    }
-
-    @AfterClass
-    public static void after() {
-        CucumberCassandraSingleton.cassandraServer.stop();
-    }
 }

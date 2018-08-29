@@ -39,7 +39,7 @@ public class CassandraStepdefs {
 
     @Before
     public void setup() throws Throwable {
-        cassandra = CassandraCluster.create(CassandraRRTModule.MODULE, RewriteTablesTest.cassandraServer.getHost());
+        cassandra = CassandraCluster.create(CassandraRRTModule.MODULE, CucumberCassandraSingleton.cassandraServer.getHost());
         mainStepdefs.rewriteTable = getRecipientRewriteTable();
     }
 
