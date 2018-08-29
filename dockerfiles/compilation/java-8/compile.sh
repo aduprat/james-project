@@ -50,9 +50,9 @@ git checkout $SHA1
 # Compilation
 
 if [ "$SKIPTESTS" = "skipTests" ]; then
-   mvn package -DskipTests -T1C -Dorg.slf4j.simpleLogger.showThreadName=true ${MVN_ADDITIONAL_ARG_LINE}
+   mvn package -DskipTests -T4 -Dorg.slf4j.simpleLogger.showThreadName=true ${MVN_ADDITIONAL_ARG_LINE}
 else
-   mvn package -T1C -Dorg.slf4j.simpleLogger.showThreadName=true ${MVN_ADDITIONAL_ARG_LINE}
+   mvn package -T4 -Dorg.slf4j.simpleLogger.showThreadName=true ${MVN_ADDITIONAL_ARG_LINE}
 fi
 
 # Retrieve result
