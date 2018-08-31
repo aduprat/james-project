@@ -1,0 +1,140 @@
+# Docker compose file for a full-featured Linshare architecture
+version: '2'
+
+services:
+
+    database:
+        container_name: linshare_database
+        image: linagora/linshare-database:2.1
+        networks:
+            - linshare-backend-tier
+        volumes:
+            - ./data/postgres_data/lib:/var/lib/postgresql/data
+        environment:
+            - PGDATA=/var/lib/postgresql/data/pgdata
+            - POSTGRES_USER=linshare
+            - POSTGRES_PASSWORD=PWD_linshare
+
+    backend:
+        container_name: linshare_backend
+        image: linagora/linshare-backend:2.1
+        links:
+            - database:linshare_database
+            - mongodb:linshare_mongodb
+            - thumbnail-server:linshare_thumbnail-server
+        networks:
+            - linshare-web-tier
+            - linshare-tomcat-tier
+            - linshare-service-tier
+            - linshare-backend-tier
+        volumes:
+            - ./data/linshare_data/lib:/var/lib/linshare
+            - ./conf/catalina.properties:/usr/local/tomcat/conf/catalina.properties
+            - ./conf/log4j.properties:/etc/linshare/log4j.properties
+        environment:
+            # These variables are mandatory
+            - SMTP_HOST=linshare_smtp
+            - SMTP_PORT=25
+            - CLAMAV_HOST=linshare_clamav
+            - POSTGRES_HOST=linshare_database
+            - POSTGRES_PORT=5432
+            - POSTGRES_USER=linshare
+            - POSTGRES_PASS=PWD_linshare
+            - CLAMAV_PORT=3310
+            - MONGODB_HOST=linshare_mongodb
+            - MONGODB_PORT=27017
+            - THUMBNAIL_ENABLE=true
+            # - THUMBNAIL_HOST=thumbnail-server
+            # - THUMBNAIL_PORT=8080
+            # Default variables can be overriden if needed.
+            #- SMTP_USER=<undefined>
+            #- SMTP_PASS=<undefined>
+            #- CLAMAV_PORT=3310
+            #- POSTGRES_PORT=5432
+
+    thumbnail-server:
+        container_name: linshare_thumbnail-server
+        image: linagora/linshare-thumbnail-server:2.0
+        networks:
+            - linshare-backend-tier
+
+    frontend:
+        container_name: linshare_frontend
+        build: ./frontend
+        ports:
+            - 80:80
+            - 443:443
+        networks:
+            - linshare-web-tier
+        volumes:
+            - ./ssl/linshare.pem:/usr/local/apache2/conf/server.crt
+            - ./ssl/linshare.key:/usr/local/apache2/conf/server.key
+            - ./ssl/ca.pem:/usr/local/apache2/conf/server-ca.pem
+            - ./conf/home:/usr/local/apache2/htdocs/home
+
+
+    ui-admin:
+        container_name: linshare_ui-admin
+        image: linagora/linshare-ui-admin:3.1
+        networks:
+            - linshare-web-tier
+            - linshare-tomcat-tier
+        volumes:
+            - ./ssl/ca.pem:/usr/local/apache2/conf/ssl/server-ca.crt
+            - ./ssl/linshare.pem:/usr/local/apache2/conf/ssl/server.crt
+            - ./ssl/linshare.key:/usr/local/apache2/conf/ssl/server.key
+        environment:
+            - EXTERNAL_URL=admin.linshare.local
+            - TOMCAT_URL=backend
+            - TOMCAT_PORT=8080
+
+    ui-user:
+        container_name: linshare_ui-user
+        image: linagora/linshare-ui-user:2.1
+        volumes:
+            - ./ssl/ca.pem:/usr/local/apache2/conf/ssl/server-ca.crt
+            - ./ssl/linshare.pem:/usr/local/apache2/conf/ssl/server.crt
+            - ./ssl/linshare.key:/usr/local/apache2/conf/ssl/server.key
+        networks:
+            - linshare-web-tier
+            - linshare-tomcat-tier
+        environment:
+            - EXTERNAL_URL=files.linshare.local
+            - TOMCAT_URL=backend
+            - TOMCAT_PORT=8080
+
+    mongodb:
+        container_name: linshare_mongodb
+        image: mongo:3.2
+        volumes:
+            - ./data/mongodb_data/db:/data/db
+        networks:
+            - linshare-backend-tier
+        command: mongod --smallfiles
+
+    smtp:
+        container_name: linshare_smtp
+        image: linagora/opensmtpd
+        networks:
+            - linshare-service-tier
+        volumes:
+            - ./conf/smtpd.conf:/etc/smtpd/smtpd.conf
+            - ./data/smtp_data/spool:/var/spool/mail
+
+    clamav:
+        container_name: linshare_clamav
+        image: mkodockx/docker-clamav
+        networks:
+            - linshare-backend-tier
+
+networks:
+    linshare-tomcat-tier:
+        driver: bridge
+    linshare-web-tier:
+        driver: bridge
+    linshare-service-tier:
+        driver: bridge
+    linshare-backend-tier:
+        driver: bridge
+
+
