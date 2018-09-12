@@ -21,10 +21,23 @@ package org.apache.james.backend.rabbitmq;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.nurkiewicz.asyncretry.AsyncRetryExecutor;
+
 class RabbitMQConnectionFactoryTest {
+
+    private ScheduledExecutorService scheduledExecutor;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    }
 
     @Test
     void creatingAFactoryShouldWorkWhenConfigurationIsValid() {
@@ -33,7 +46,7 @@ class RabbitMQConnectionFactoryTest {
             .managementUri(URI.create("http://james:james@rabbitmq_host:15672/api/"))
             .build();
 
-        new RabbitMQConnectionFactory(rabbitMQConfiguration);
+        new RabbitMQConnectionFactory(rabbitMQConfiguration, new AsyncRetryExecutor(scheduledExecutor));
     }
 
     @Test
@@ -43,7 +56,7 @@ class RabbitMQConnectionFactoryTest {
             .managementUri(URI.create("http://james:james@rabbitmq_host:15672/api/"))
             .build();
 
-        assertThatThrownBy(() -> new RabbitMQConnectionFactory(rabbitMQConfiguration))
+        assertThatThrownBy(() -> new RabbitMQConnectionFactory(rabbitMQConfiguration, new AsyncRetryExecutor(scheduledExecutor)))
             .isInstanceOf(RuntimeException.class);
     }
 
@@ -52,11 +65,13 @@ class RabbitMQConnectionFactoryTest {
         RabbitMQConfiguration rabbitMQConfiguration = RabbitMQConfiguration.builder()
                 .amqpUri(URI.create("amqp://james:james@rabbitmq_host:5672"))
                 .managementUri(URI.create("http://james:james@rabbitmq_host:15672/api/"))
+                .maxRetries(1)
+                .minDelay(1)
                 .build();
 
-        RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
+        RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration, new AsyncRetryExecutor(scheduledExecutor));
 
         assertThatThrownBy(() -> rabbitMQConnectionFactory.create())
-            .isInstanceOf(RuntimeException.class);
+            .isInstanceOf(ExecutionException.class);
     }
 }

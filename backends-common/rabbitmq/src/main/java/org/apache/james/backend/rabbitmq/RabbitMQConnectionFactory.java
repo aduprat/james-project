@@ -18,11 +18,17 @@
  ****************************************************************/
 package org.apache.james.backend.rabbitmq;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
 import javax.inject.Inject;
 
+import org.apache.james.util.retry.RetryExecutorUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.nurkiewicz.asyncretry.AsyncRetryExecutor;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
@@ -30,11 +36,18 @@ public class RabbitMQConnectionFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQConnectionFactory.class);
 
+    private final AsyncRetryExecutor executor;
     private final ConnectionFactory connectionFactory;
 
+    private final int maxRetries;
+    private final int minDelay;
+
     @Inject
-    public RabbitMQConnectionFactory(RabbitMQConfiguration rabbitMQConfiguration) {
+    public RabbitMQConnectionFactory(RabbitMQConfiguration rabbitMQConfiguration, AsyncRetryExecutor executor) {
+        this.executor = executor;
         this.connectionFactory = from(rabbitMQConfiguration);
+        this.maxRetries = rabbitMQConfiguration.getMaxRetries();
+        this.minDelay = rabbitMQConfiguration.getMinDelay();
     }
 
     private ConnectionFactory from(RabbitMQConfiguration rabbitMQConfiguration) {
@@ -50,9 +63,11 @@ public class RabbitMQConnectionFactory {
 
     public Connection create() {
         try {
-            return connectionFactory.newConnection();
-        } catch (Exception e) {
-            LOGGER.error("Fail to create a RabbitMQ connection.");
+            return RetryExecutorUtil.retryOnExceptions(executor, maxRetries, minDelay, IOException.class, TimeoutException.class)
+                    .getWithRetry(context -> connectionFactory.newConnection())
+                    .get();
+        } catch (InterruptedException | ExecutionException e) {
+            LOGGER.error("Fail to connect to RabbitMQ.");
             throw new RuntimeException(e);
         }
     }
