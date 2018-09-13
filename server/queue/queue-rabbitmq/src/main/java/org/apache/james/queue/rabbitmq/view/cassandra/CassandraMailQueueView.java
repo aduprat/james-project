@@ -24,8 +24,10 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.inject.Inject;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.rabbitmq.MailQueueName;
+import org.apache.james.queue.rabbitmq.view.api.DeleteCondition;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.mailet.Mail;
 
@@ -93,5 +95,15 @@ public class CassandraMailQueueView implements MailQueueView {
     @Override
     public long getSize() {
         return Iterators.size(browse());
+    }
+
+    @Override
+    public CompletableFuture<Long> delete(DeleteCondition deleteCondition) {
+        throw new NotImplementedException("Not implemented yet");
+    }
+
+    @Override
+    public CompletableFuture<Boolean> isDeleted(Mail mail) {
+        throw new NotImplementedException("Not implemented yet");
     }
 }
