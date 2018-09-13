@@ -21,7 +21,6 @@ package org.apache.james.backend.rabbitmq;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -72,6 +71,6 @@ class RabbitMQConnectionFactoryTest {
         RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration, new AsyncRetryExecutor(scheduledExecutor));
 
         assertThatThrownBy(() -> rabbitMQConnectionFactory.create())
-            .isInstanceOf(ExecutionException.class);
+            .isInstanceOf(RuntimeException.class);
     }
 }
