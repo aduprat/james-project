@@ -112,6 +112,7 @@ public class RabbitMQMailQueue implements ManageableMailQueue {
         }
 
         RabbitMQMailQueue create(MailQueueName mailQueueName) {
+            mailQueueView.initialize(mailQueueName);
             return new RabbitMQMailQueue(mailQueueName, rabbitClient, mimeMessageStore, blobIdFactory, mailQueueView);
         }
     }

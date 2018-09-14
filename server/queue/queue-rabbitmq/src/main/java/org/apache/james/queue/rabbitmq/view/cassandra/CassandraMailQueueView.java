@@ -47,6 +47,7 @@ public class CassandraMailQueueView implements MailQueueView {
         public MailQueueView create(MailQueueName mailQueueName) {
             return new CassandraMailQueueView(storeHelper, mailQueueName, cassandraMailQueueBrowser, cassandraMailQueueMailDelete);
         }
+
     }
 
     private final CassandraMailQueueMailStore storeHelper;
@@ -63,6 +64,12 @@ public class CassandraMailQueueView implements MailQueueView {
         this.storeHelper = storeHelper;
         this.cassandraMailQueueBrowser = cassandraMailQueueBrowser;
         this.cassandraMailQueueMailDelete = cassandraMailQueueMailDelete;
+    }
+
+    @Override
+    public void initialize(MailQueueName mailQueueName) {
+        storeHelper.initializeBrowseStart(mailQueueName)
+            .join();
     }
 
     @Override
@@ -87,5 +94,4 @@ public class CassandraMailQueueView implements MailQueueView {
     public long getSize() {
         return Iterators.size(browse());
     }
-
 }
