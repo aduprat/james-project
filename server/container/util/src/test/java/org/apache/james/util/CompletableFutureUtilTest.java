@@ -326,4 +326,11 @@ public class CompletableFutureUtilTest {
         assertThat(futureStream.sorted(Long::compareTo).join())
             .containsExactly(1L, 2L, 3L, 4L);
     }
+
+    @Test
+    public void exceptionallyFutureShouldReturnACompletedExceptionallyFuture() {
+        CompletableFuture<Object> failedFuture = CompletableFutureUtil.exceptionallyFuture(new Exception("failure"));
+        assertThat(failedFuture)
+            .isCompletedExceptionally();
+    }
 }

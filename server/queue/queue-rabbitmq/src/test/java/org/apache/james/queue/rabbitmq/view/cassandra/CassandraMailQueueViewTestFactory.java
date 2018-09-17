@@ -23,23 +23,38 @@ import java.time.Clock;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
+import javax.mail.internet.MimeMessage;
+
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
+import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.api.Store;
+import org.apache.james.blob.mail.MimeMessagePartsId;
+import org.apache.james.blob.mail.MimeMessageStore;
+import org.apache.james.blob.memory.MemoryBlobStore;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 
 import com.datastax.driver.core.Session;
 
 public class CassandraMailQueueViewTestFactory {
 
+    private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
+
     public static CassandraMailQueueView.Factory factory(Clock clock, ThreadLocalRandom random, Session session,
                                                          CassandraTypesProvider typesProvider,
                                                          CassandraMailQueueViewConfiguration configuration) {
-        EnqueuedMailsDAO enqueuedMailsDao = new EnqueuedMailsDAO(session, CassandraUtils.WITH_DEFAULT_CONFIGURATION, typesProvider);
+        MemoryBlobStore blobStore = new MemoryBlobStore(BLOB_ID_FACTORY);
+        MimeMessageStore.Factory mimeMessageStoreFactory = new MimeMessageStore.Factory(blobStore);
+        Store<MimeMessage, MimeMessagePartsId> mimeMessageStore = mimeMessageStoreFactory.mimeMessageStore();
+
+        HashBlobId.Factory blobIdFactory = new HashBlobId.Factory();
+
+        EnqueuedMailsDAO enqueuedMailsDao = new EnqueuedMailsDAO(session, CassandraUtils.WITH_DEFAULT_CONFIGURATION, typesProvider, blobIdFactory);
         BrowseStartDAO browseStartDao = new BrowseStartDAO(session);
         DeletedMailsDAO deletedMailsDao = new DeletedMailsDAO(session);
 
-        CassandraMailQueueBrowser cassandraMailQueueBrowser = new CassandraMailQueueBrowser(browseStartDao, deletedMailsDao, enqueuedMailsDao, configuration, clock);
-        CassandraMailQueueMailStore cassandraMailQueueMailStore = new CassandraMailQueueMailStore(enqueuedMailsDao, browseStartDao, configuration, clock);
+        CassandraMailQueueBrowser cassandraMailQueueBrowser = new CassandraMailQueueBrowser(browseStartDao, deletedMailsDao, enqueuedMailsDao, mimeMessageStore, configuration, clock);
+        CassandraMailQueueMailStore cassandraMailQueueMailStore = new CassandraMailQueueMailStore(enqueuedMailsDao, browseStartDao, mimeMessageStore, configuration, clock);
         CassandraMailQueueMailDelete cassandraMailQueueMailDelete = new CassandraMailQueueMailDelete(deletedMailsDao, browseStartDao, cassandraMailQueueBrowser, configuration, random);
 
         return new CassandraMailQueueView.Factory(

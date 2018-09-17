@@ -22,6 +22,7 @@ package org.apache.james.queue.rabbitmq.view.cassandra.model;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.mailet.Mail;
 
@@ -56,7 +57,12 @@ public class EnqueuedMail {
 
         @FunctionalInterface
         interface RequireMailQueueName {
-            LastStage mailQueueName(MailQueueName mailQueueName);
+            RequireMimeMessagePartsId mailQueueName(MailQueueName mailQueueName);
+        }
+
+        @FunctionalInterface
+        interface RequireMimeMessagePartsId {
+            LastStage mimeMessagePartsId(MimeMessagePartsId mimeMessagePartsId);
         }
 
         class LastStage {
@@ -66,27 +72,30 @@ public class EnqueuedMail {
             private Instant enqueuedTime;
             private MailKey mailKey;
             private MailQueueName mailQueueName;
+            private MimeMessagePartsId mimeMessagePartsId;
 
             private LastStage(Mail mail, BucketedSlices.BucketId bucketId,
                               Instant timeRangeStart, Instant enqueuedTime,
-                              MailKey mailKey, MailQueueName mailQueueName) {
+                              MailKey mailKey, MailQueueName mailQueueName,
+                              MimeMessagePartsId mimeMessagePartsId) {
                 this.mail = mail;
                 this.bucketId = bucketId;
                 this.timeRangeStart = timeRangeStart;
                 this.enqueuedTime = enqueuedTime;
                 this.mailKey = mailKey;
                 this.mailQueueName = mailQueueName;
+                this.mimeMessagePartsId = mimeMessagePartsId;
             }
 
             public EnqueuedMail build() {
-                return new EnqueuedMail(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName);
+                return new EnqueuedMail(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName, mimeMessagePartsId);
             }
         }
     }
 
     public static Builder.RequireMail builder() {
-        return mail -> bucketId -> timeRangeStart -> enqueuedTime -> mailKey -> mailQueueName ->
-            new Builder.LastStage(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName);
+        return mail -> bucketId -> timeRangeStart -> enqueuedTime -> mailKey -> mailQueueName -> mimeMessagePartsId ->
+            new Builder.LastStage(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName, mimeMessagePartsId);
     }
 
     private final Mail mail;
@@ -95,15 +104,18 @@ public class EnqueuedMail {
     private final Instant enqueuedTime;
     private final MailKey mailKey;
     private final MailQueueName mailQueueName;
+    private final MimeMessagePartsId mimeMessagePartsId;
 
     private EnqueuedMail(Mail mail, BucketedSlices.BucketId bucketId, Instant timeRangeStart,
-                         Instant enqueuedTime, MailKey mailKey, MailQueueName mailQueueName) {
+                         Instant enqueuedTime, MailKey mailKey, MailQueueName mailQueueName,
+                         MimeMessagePartsId mimeMessagePartsId) {
         this.mail = mail;
         this.bucketId = bucketId;
         this.timeRangeStart = timeRangeStart;
         this.enqueuedTime = enqueuedTime;
         this.mailKey = mailKey;
         this.mailQueueName = mailQueueName;
+        this.mimeMessagePartsId = mimeMessagePartsId;
     }
 
     public Mail getMail() {
@@ -130,6 +142,10 @@ public class EnqueuedMail {
         return enqueuedTime;
     }
 
+    public MimeMessagePartsId getMimeMessagePartsId() {
+        return mimeMessagePartsId;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof EnqueuedMail) {
@@ -140,13 +156,14 @@ public class EnqueuedMail {
                     && Objects.equals(this.timeRangeStart, that.timeRangeStart)
                     && Objects.equals(this.enqueuedTime, that.enqueuedTime)
                     && Objects.equals(this.mailKey, that.mailKey)
-                    && Objects.equals(this.mailQueueName, that.mailQueueName);
+                    && Objects.equals(this.mailQueueName, that.mailQueueName)
+                    && Objects.equals(this.mimeMessagePartsId, that.mimeMessagePartsId);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName);
+        return Objects.hash(mail, bucketId, timeRangeStart, enqueuedTime, mailKey, mailQueueName, mimeMessagePartsId);
     }
 }

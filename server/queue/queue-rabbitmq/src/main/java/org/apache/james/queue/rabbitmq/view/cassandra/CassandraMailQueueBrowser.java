@@ -33,11 +33,18 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 
+import org.apache.james.blob.api.Store;
+import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
 import org.apache.james.util.FluentFutureStream;
+import org.apache.mailet.Mail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
@@ -67,9 +74,12 @@ class CassandraMailQueueBrowser {
         }
     }
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraMailQueueBrowser.class);
+
     private final BrowseStartDAO browseStartDao;
     private final DeletedMailsDAO deletedMailsDao;
     private final EnqueuedMailsDAO enqueuedMailsDao;
+    private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
     private final CassandraMailQueueViewConfiguration configuration;
     private final Clock clock;
 
@@ -77,17 +87,20 @@ class CassandraMailQueueBrowser {
     CassandraMailQueueBrowser(BrowseStartDAO browseStartDao,
                               DeletedMailsDAO deletedMailsDao,
                               EnqueuedMailsDAO enqueuedMailsDao,
-                              CassandraMailQueueViewConfiguration configuration, Clock clock) {
+                              Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
+                              CassandraMailQueueViewConfiguration configuration,
+                              Clock clock) {
         this.browseStartDao = browseStartDao;
         this.deletedMailsDao = deletedMailsDao;
         this.enqueuedMailsDao = enqueuedMailsDao;
+        this.mimeMessageStore = mimeMessageStore;
         this.configuration = configuration;
         this.clock = clock;
     }
 
     CompletableFuture<Stream<ManageableMailQueue.MailQueueItemView>> browse(MailQueueName queueName) {
         return browseReferences(queueName)
-            .map(EnqueuedMail::getMail)
+            .map(this::toMailFuture, FluentFutureStream::unboxFuture)
             .map(ManageableMailQueue.MailQueueItemView::new)
             .completableFuture();
     }
@@ -96,6 +109,23 @@ class CassandraMailQueueBrowser {
         return FluentFutureStream.of(browseStartDao.findBrowseStart(queueName)
             .thenApply(this::allSlicesStartingAt))
             .map(slice -> browseSlice(queueName, slice), FluentFutureStream::unboxFluentFuture);
+    }
+
+    private CompletableFuture<Mail> toMailFuture(EnqueuedMail enqueuedMail) {
+        return mimeMessageStore.read(enqueuedMail.getMimeMessagePartsId())
+            .thenApply(mimeMessage -> toMail(enqueuedMail, mimeMessage));
+    }
+
+    private Mail toMail(EnqueuedMail enqueuedMail, MimeMessage mimeMessage) {
+        Mail mail = enqueuedMail.getMail();
+
+        try {
+            enqueuedMail.getMail().setMessage(mimeMessage);
+        } catch (MessagingException e) {
+            LOGGER.error("error while setting mime message to mail {}", mail.getName(), e);
+        }
+
+        return mail;
     }
 
     private FluentFutureStream<EnqueuedMail> browseSlice(MailQueueName queueName, Slice slice) {

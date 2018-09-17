@@ -57,9 +57,9 @@ public class CassandraMailQueueView implements MailQueueView {
     private final MailQueueName mailQueueName;
 
     CassandraMailQueueView(CassandraMailQueueMailStore storeHelper,
-                                  MailQueueName mailQueueName,
-                                  CassandraMailQueueBrowser cassandraMailQueueBrowser,
-                                  CassandraMailQueueMailDelete cassandraMailQueueMailDelete) {
+                           MailQueueName mailQueueName,
+                           CassandraMailQueueBrowser cassandraMailQueueBrowser,
+                           CassandraMailQueueMailDelete cassandraMailQueueMailDelete) {
         this.mailQueueName = mailQueueName;
         this.storeHelper = storeHelper;
         this.cassandraMailQueueBrowser = cassandraMailQueueBrowser;
@@ -74,7 +74,7 @@ public class CassandraMailQueueView implements MailQueueView {
 
     @Override
     public CompletableFuture<Void> storeMail(Instant enqueuedTime, Mail mail) {
-        return storeHelper.storeMailInEnqueueTable(mail, mailQueueName, enqueuedTime);
+        return storeHelper.storeMail(mail, mailQueueName, enqueuedTime);
     }
 
     @Override

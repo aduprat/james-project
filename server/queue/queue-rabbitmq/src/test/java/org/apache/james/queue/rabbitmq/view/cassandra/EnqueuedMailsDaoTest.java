@@ -30,6 +30,9 @@ import java.util.stream.Stream;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
+import org.apache.james.blob.api.BlobId;
+import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
@@ -48,6 +51,14 @@ class EnqueuedMailsDaoTest {
     private static final Instant NOW = Instant.now();
     private static final Slice SLICE_OF_NOW = Slice.of(NOW, Duration.ofSeconds(100));
 
+    private static final BlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
+    private static final BlobId HEADER_BLOB_ID = BLOB_ID_FACTORY.from("header blob id");
+    private static final BlobId BODY_BLOB_ID = BLOB_ID_FACTORY.from("body blob id");
+    private static final MimeMessagePartsId MIME_MESSAGE_PARTS_ID = MimeMessagePartsId.builder()
+        .headerBlobId(HEADER_BLOB_ID)
+        .bodyBlobId(BODY_BLOB_ID)
+        .build();
+
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraMailQueueViewModule.MODULE);
 
@@ -55,10 +66,11 @@ class EnqueuedMailsDaoTest {
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
+        BlobId.Factory blobFactory = new HashBlobId.Factory();
         testee = new EnqueuedMailsDAO(
             cassandra.getConf(),
             CassandraUtils.WITH_DEFAULT_CONFIGURATION,
-            cassandra.getTypesProvider());
+            cassandra.getTypesProvider(), blobFactory);
     }
 
     @Test
@@ -72,6 +84,7 @@ class EnqueuedMailsDaoTest {
                 .enqueuedTime(NOW)
                 .mailKey(MAIL_KEY_1)
                 .mailQueueName(OUT_GOING_1)
+                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                 .build())
             .join();
 
@@ -93,6 +106,7 @@ class EnqueuedMailsDaoTest {
                 .enqueuedTime(NOW)
                 .mailKey(MAIL_KEY_1)
                 .mailQueueName(OUT_GOING_1)
+                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                 .build())
             .join();
 
@@ -105,6 +119,7 @@ class EnqueuedMailsDaoTest {
                 .enqueuedTime(NOW)
                 .mailKey(MAIL_KEY_1)
                 .mailQueueName(OUT_GOING_1)
+                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                 .build())
             .join();
 
@@ -120,6 +135,7 @@ class EnqueuedMailsDaoTest {
                 softly.assertThat(selectedEnqueuedMail.getTimeRangeStart()).isEqualTo(NOW);
                 softly.assertThat(selectedEnqueuedMail.getEnqueuedTime()).isEqualTo(NOW);
                 softly.assertThat(selectedEnqueuedMail.getMailKey()).isEqualTo(MAIL_KEY_1);
+                softly.assertThat(selectedEnqueuedMail.getMimeMessagePartsId()).isEqualTo(MIME_MESSAGE_PARTS_ID);
                 softly.assertAll();
             });
     }
