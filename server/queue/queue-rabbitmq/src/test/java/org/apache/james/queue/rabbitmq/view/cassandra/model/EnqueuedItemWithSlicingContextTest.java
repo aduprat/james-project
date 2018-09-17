@@ -23,11 +23,17 @@ import org.junit.jupiter.api.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
-class EnqueuedMailTest {
+class EnqueuedItemWithSlicingContextTest {
 
     @Test
     void shouldMatchBeanContract() {
-        EqualsVerifier.forClass(EnqueuedMail.class)
+        EqualsVerifier.forClass(EnqueuedItemWithSlicingContext.class)
+            .verify();
+    }
+
+    @Test
+    void slicingContextShouldMatchBeanContract() {
+        EqualsVerifier.forClass(EnqueuedItemWithSlicingContext.SlicingContext.class)
             .verify();
     }
 }

@@ -22,7 +22,8 @@ package org.apache.james.queue.rabbitmq;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -55,6 +56,7 @@ import org.apache.james.blob.cassandra.CassandraBlobModule;
 import org.apache.james.blob.cassandra.CassandraBlobsDAO;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.blob.mail.MimeMessageStore;
+import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.queue.api.MailQueue;
 import org.apache.james.queue.api.MailQueueMetricContract;
 import org.apache.james.queue.api.MailQueueMetricExtension;
@@ -111,16 +113,21 @@ public class RabbitMQMailQueueTest implements ManageableMailQueueContract, MailQ
             .setHost(rabbitMQ.getHostIp())
             .setPort(rabbitMQ.getAdminPort())
             .build();
-        clock = mock(Clock.class);
+        clock = spy(Clock.class);
         when(clock.instant()).thenReturn(IN_SLICE_1);
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
-        MailQueueView mailQueueView = CassandraMailQueueViewTestFactory.factory(clock, random, cassandra.getConf(), cassandra.getTypesProvider(),
+        MailQueueView mailQueueView = CassandraMailQueueViewTestFactory.factory(
+            clock,
+            random,
+            cassandra.getConf(),
+            cassandra.getTypesProvider(),
             CassandraMailQueueViewConfiguration.builder()
                     .bucketCount(THREE_BUCKET_COUNT)
                     .updateBrowseStartPace(UPDATE_BROWSE_START_PACE)
                     .sliceWindow(ONE_HOUR_SLICE_WINDOW)
-                    .build())
+                    .build(),
+            mimeMessageStore)
             .create(MailQueueName.fromString(SPOOL));
 
         RabbitMQConfiguration rabbitMQConfiguration = RabbitMQConfiguration.builder()
