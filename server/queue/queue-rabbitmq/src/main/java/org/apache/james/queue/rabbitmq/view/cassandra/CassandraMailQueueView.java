@@ -92,6 +92,8 @@ public class CassandraMailQueueView implements MailQueueView {
 
     @Override
     public long getSize() {
-        return Iterators.size(browse());
+        return Iterators.size(cassandraMailQueueBrowser.browseReferences(mailQueueName)
+                .join()
+                .iterator());
     }
 }
