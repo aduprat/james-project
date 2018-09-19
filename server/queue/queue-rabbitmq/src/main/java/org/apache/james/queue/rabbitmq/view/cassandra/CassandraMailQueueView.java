@@ -19,12 +19,12 @@
 
 package org.apache.james.queue.rabbitmq.view.cassandra;
 
-import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 
 import javax.inject.Inject;
 
 import org.apache.james.queue.api.ManageableMailQueue;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.mailet.Mail;
@@ -55,9 +55,9 @@ public class CassandraMailQueueView implements MailQueueView {
     private final MailQueueName mailQueueName;
 
     CassandraMailQueueView(CassandraMailQueueMailStore storeHelper,
-                           MailQueueName mailQueueName,
-                           CassandraMailQueueBrowser cassandraMailQueueBrowser,
-                           CassandraMailQueueMailDelete cassandraMailQueueMailDelete) {
+                                  MailQueueName mailQueueName,
+                                  CassandraMailQueueBrowser cassandraMailQueueBrowser,
+                                  CassandraMailQueueMailDelete cassandraMailQueueMailDelete) {
         this.mailQueueName = mailQueueName;
         this.storeHelper = storeHelper;
         this.cassandraMailQueueBrowser = cassandraMailQueueBrowser;
@@ -71,8 +71,8 @@ public class CassandraMailQueueView implements MailQueueView {
     }
 
     @Override
-    public CompletableFuture<Void> storeMail(Instant enqueuedTime, Mail mail) {
-        return storeHelper.storeMail(mail, mailQueueName, enqueuedTime);
+    public CompletableFuture<Void> storeMail(EnqueuedItem enqueuedItem) {
+        return storeHelper.storeMail(mailQueueName, enqueuedItem);
     }
 
     @Override

@@ -24,56 +24,36 @@ import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 
 import javax.inject.Inject;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
-import org.apache.james.blob.api.Store;
-import org.apache.james.blob.mail.MimeMessagePartsId;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlices.BucketId;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
-import org.apache.james.util.CompletableFutureUtil;
 import org.apache.mailet.Mail;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class CassandraMailQueueMailStore {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraMailQueueMailStore.class);
-
     private final EnqueuedMailsDAO enqueuedMailsDao;
     private final BrowseStartDAO browseStartDao;
-    private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
     private final CassandraMailQueueViewConfiguration configuration;
     private final Clock clock;
 
     @Inject
     CassandraMailQueueMailStore(EnqueuedMailsDAO enqueuedMailsDao,
                                 BrowseStartDAO browseStartDao,
-                                Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
                                 CassandraMailQueueViewConfiguration configuration,
                                 Clock clock) {
         this.enqueuedMailsDao = enqueuedMailsDao;
         this.browseStartDao = browseStartDao;
-        this.mimeMessageStore = mimeMessageStore;
         this.configuration = configuration;
         this.clock = clock;
     }
 
-    CompletableFuture<Void> storeMail(Mail mail, MailQueueName mailQueueName, Instant enqueuedTime) {
-        return storeMimeMessage(mail)
-            .thenApply(mimePartIds -> convertToEnqueuedMail(mail, mailQueueName, enqueuedTime, mimePartIds))
-            .thenCompose(enqueuedMailsDao::insert);
-    }
+    CompletableFuture<Void> storeMail(MailQueueName mailQueueName, EnqueuedItem enqueuedItem) {
+        EnqueuedMail enqueuedMail = convertToEnqueuedMail(mailQueueName, enqueuedItem);
 
-    private CompletableFuture<MimeMessagePartsId> storeMimeMessage(Mail mail) {
-        try {
-            return mimeMessageStore.save(mail.getMessage());
-        } catch (MessagingException e) {
-            LOGGER.error("error while getting message for mail {}", mail.getName(), e);
-            return CompletableFutureUtil.exceptionallyFuture(e);
-        }
+        return enqueuedMailsDao.insert(enqueuedMail);
     }
 
     CompletableFuture<Void> initializeBrowseStart(MailQueueName mailQueueName) {
@@ -81,16 +61,17 @@ class CassandraMailQueueMailStore {
             .insertInitialBrowseStart(mailQueueName, currentSliceStartInstant());
     }
 
-    private EnqueuedMail convertToEnqueuedMail(Mail mail, MailQueueName mailQueueName, Instant enqueuedTime,
-                                               MimeMessagePartsId mimeMessagePartsId) {
+    private EnqueuedMail convertToEnqueuedMail(MailQueueName mailQueueName, EnqueuedItem enqueuedItem) {
+        Mail mail = enqueuedItem.getMail();
+
         return EnqueuedMail.builder()
             .mail(mail)
             .bucketId(computedBucketId(mail))
             .timeRangeStart(currentSliceStartInstant())
-            .enqueuedTime(enqueuedTime)
+            .enqueuedTime(enqueuedItem.getEnqueuedTime())
             .mailKey(MailKey.fromMail(mail))
             .mailQueueName(mailQueueName)
-            .mimeMessagePartsId(mimeMessagePartsId)
+            .mimeMessagePartsId(enqueuedItem.getPartsId())
             .build();
     }
 

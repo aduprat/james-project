@@ -17,24 +17,16 @@
  * under the License.                                           *
  ****************************************************************/
 
-package org.apache.james.queue.rabbitmq.view.api;
+package org.apache.james.util;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
-import org.apache.james.queue.api.ManageableMailQueue;
-import org.apache.james.queue.rabbitmq.MailQueueName;
-import org.apache.james.queue.rabbitmq.EnqueuedItem;
-import org.apache.mailet.Mail;
+import com.github.fge.lambdas.Throwing;
+import com.github.fge.lambdas.functions.ThrowingFunction;
 
-public interface MailQueueView {
+public class ThrowingUtil {
 
-    void initialize(MailQueueName mailQueueName);
-
-    CompletableFuture<Void> storeMail(EnqueuedItem enqueuedItem);
-
-    CompletableFuture<Void> deleteMail(Mail mail);
-
-    ManageableMailQueue.MailQueueIterator browse();
-
-    long getSize();
+    public static <T, R> Function<T, R> sneakyThrow(ThrowingFunction<T, R> throwingFunction) {
+        return Throwing.function(throwingFunction).sneakyThrow();
+    }
 }
