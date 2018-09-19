@@ -29,8 +29,6 @@ import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
 import org.apache.mailet.Mail;
 
-import com.google.common.collect.Iterators;
-
 public class CassandraMailQueueView implements MailQueueView {
 
     public static class Factory {
@@ -92,8 +90,8 @@ public class CassandraMailQueueView implements MailQueueView {
 
     @Override
     public long getSize() {
-        return Iterators.size(cassandraMailQueueBrowser.browseReferences(mailQueueName)
+        return cassandraMailQueueBrowser.browseReferences(mailQueueName)
                 .join()
-                .iterator());
+                .count();
     }
 }
