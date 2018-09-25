@@ -80,8 +80,9 @@ class Enqueuer {
         rabbitClient.publish(name, getMailReferenceBytes(mail, partsId));
 
         return EnqueuedItem.builder()
+            .mailQueueName(name)
             .mail(mail)
-            .enqueuedTime(clock)
+            .enqueuedTime(clock.instant())
             .mimeMessagePartsId(partsId)
             .build();
     }

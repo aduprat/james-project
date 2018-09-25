@@ -39,8 +39,9 @@ import javax.mail.internet.MimeMessage;
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.api.ManageableMailQueue;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 import org.apache.james.util.FluentFutureStream;
 import org.apache.mailet.Mail;
 import org.slf4j.Logger;
@@ -105,22 +106,23 @@ class CassandraMailQueueBrowser {
             .completableFuture();
     }
 
-    FluentFutureStream<EnqueuedMail> browseReferences(MailQueueName queueName) {
+    FluentFutureStream<EnqueuedItemWithSlicingContext> browseReferences(MailQueueName queueName) {
         return FluentFutureStream.of(browseStartDao.findBrowseStart(queueName)
             .thenApply(this::allSlicesStartingAt))
             .map(slice -> browseSlice(queueName, slice), FluentFutureStream::unboxFluentFuture);
     }
 
-    private CompletableFuture<Mail> toMailFuture(EnqueuedMail enqueuedMail) {
-        return mimeMessageStore.read(enqueuedMail.getMimeMessagePartsId())
-            .thenApply(mimeMessage -> toMail(enqueuedMail, mimeMessage));
+    private CompletableFuture<Mail> toMailFuture(EnqueuedItemWithSlicingContext enqueuedItemWithSlicingContext) {
+        EnqueuedItem enqueuedItem = enqueuedItemWithSlicingContext.getEnqueuedItem();
+        return mimeMessageStore.read(enqueuedItem.getPartsId())
+            .thenApply(mimeMessage -> toMail(enqueuedItem, mimeMessage));
     }
 
-    private Mail toMail(EnqueuedMail enqueuedMail, MimeMessage mimeMessage) {
-        Mail mail = enqueuedMail.getMail();
+    private Mail toMail(EnqueuedItem enqueuedItem, MimeMessage mimeMessage) {
+        Mail mail = enqueuedItem.getMail();
 
         try {
-            enqueuedMail.getMail().setMessage(mimeMessage);
+            mail.setMessage(mimeMessage);
         } catch (MessagingException e) {
             LOGGER.error("error while setting mime message to mail {}", mail.getName(), e);
         }
@@ -128,19 +130,19 @@ class CassandraMailQueueBrowser {
         return mail;
     }
 
-    private FluentFutureStream<EnqueuedMail> browseSlice(MailQueueName queueName, Slice slice) {
+    private FluentFutureStream<EnqueuedItemWithSlicingContext> browseSlice(MailQueueName queueName, Slice slice) {
         return FluentFutureStream.of(
             allBucketIds()
                 .map(bucketId ->
                     browseBucket(queueName, slice, bucketId).completableFuture()),
             FluentFutureStream::unboxStream)
-            .sorted(Comparator.comparing(EnqueuedMail::getEnqueuedTime));
+            .sorted(Comparator.comparing(enqueuedMail -> enqueuedMail.getEnqueuedItem().getEnqueuedTime()));
     }
 
-    private FluentFutureStream<EnqueuedMail> browseBucket(MailQueueName queueName, Slice slice, BucketId bucketId) {
+    private FluentFutureStream<EnqueuedItemWithSlicingContext> browseBucket(MailQueueName queueName, Slice slice, BucketId bucketId) {
         return FluentFutureStream.of(
             enqueuedMailsDao.selectEnqueuedMails(queueName, slice, bucketId))
-                .thenFilter(mailReference -> deletedMailsDao.isStillEnqueued(queueName, mailReference.getMailKey()));
+                .thenFilter(mailReference -> deletedMailsDao.isStillEnqueued(queueName, mailReference.getEnqueuedItem().getMailKey()));
     }
 
     private Stream<Slice> allSlicesStartingAt(Optional<Instant> maybeBrowseStart) {

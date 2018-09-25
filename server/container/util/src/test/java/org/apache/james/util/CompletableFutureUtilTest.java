@@ -337,7 +337,7 @@ public class CompletableFutureUtilTest {
 
     @Test
     public void whenSuccessShouldExecuteWhenSucceeded() throws Exception {
-        final AtomicBoolean isFutureSucceed = new AtomicBoolean(false);
+        AtomicBoolean isFutureSucceed = new AtomicBoolean(false);
 
         CompletableFuture.supplyAsync(() -> "completableFuture")
             .whenComplete(CompletableFutureUtil.whenSuccess(() -> isFutureSucceed.set(true)))
@@ -348,7 +348,7 @@ public class CompletableFutureUtilTest {
 
     @Test
     public void whenSuccessShouldNotExecuteWhenFailed() {
-        final AtomicBoolean isFutureSucceed = new AtomicBoolean(false);
+        AtomicBoolean isFutureSucceed = new AtomicBoolean(false);
 
         assertThat(CompletableFutureUtil
                 .exceptionallyFuture(new Exception("should fail"))

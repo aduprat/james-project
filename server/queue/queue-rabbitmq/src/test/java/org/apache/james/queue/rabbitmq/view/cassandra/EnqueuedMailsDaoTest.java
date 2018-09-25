@@ -22,6 +22,7 @@ package org.apache.james.queue.rabbitmq.view.cassandra;
 import static org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlices.BucketId;
 import static org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlices.Slice;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,11 +34,11 @@ import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
 import org.apache.mailet.base.test.FakeMail;
-import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -75,20 +76,20 @@ class EnqueuedMailsDaoTest {
 
     @Test
     void insertShouldWork() throws Exception {
-        testee.insert(EnqueuedMail.builder()
-                .mail(FakeMail.builder()
-                    .name(MAIL_KEY_1.getMailKey())
+        testee.insert(EnqueuedItemWithSlicingContext.builder()
+                .enqueuedItem(EnqueuedItem.builder()
+                    .mailQueueName(OUT_GOING_1)
+                    .mail(FakeMail.builder()
+                        .name(MAIL_KEY_1.getMailKey())
+                        .build())
+                    .enqueuedTime(NOW)
+                    .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                     .build())
-                .bucketId(BucketId.of(BUCKET_ID_VALUE))
-                .timeRangeStart(NOW)
-                .enqueuedTime(NOW)
-                .mailKey(MAIL_KEY_1)
-                .mailQueueName(OUT_GOING_1)
-                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
+                .slicingContext(EnqueuedItemWithSlicingContext.SlicingContext.of(BucketId.of(BUCKET_ID_VALUE), NOW))
                 .build())
             .join();
 
-        Stream<EnqueuedMail> selectedEnqueuedMails = testee
+        Stream<EnqueuedItemWithSlicingContext> selectedEnqueuedMails = testee
             .selectEnqueuedMails(OUT_GOING_1, SLICE_OF_NOW, BUCKET_ID)
             .join();
 
@@ -97,46 +98,47 @@ class EnqueuedMailsDaoTest {
 
     @Test
     void selectEnqueuedMailsShouldWork() throws Exception {
-        testee.insert(EnqueuedMail.builder()
-                .mail(FakeMail.builder()
-                    .name(MAIL_KEY_1.getMailKey())
+        testee.insert(EnqueuedItemWithSlicingContext.builder()
+                .enqueuedItem(EnqueuedItem.builder()
+                    .mailQueueName(OUT_GOING_1)
+                    .mail(FakeMail.builder()
+                        .name(MAIL_KEY_1.getMailKey())
+                        .build())
+                    .enqueuedTime(NOW)
+                    .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                     .build())
-                .bucketId(BucketId.of(BUCKET_ID_VALUE))
-                .timeRangeStart(NOW)
-                .enqueuedTime(NOW)
-                .mailKey(MAIL_KEY_1)
-                .mailQueueName(OUT_GOING_1)
-                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
+                .slicingContext(EnqueuedItemWithSlicingContext.SlicingContext.of(BucketId.of(BUCKET_ID_VALUE), NOW))
                 .build())
             .join();
 
-        testee.insert(EnqueuedMail.builder()
-                .mail(FakeMail.builder()
-                    .name(MAIL_KEY_1.getMailKey())
+        testee.insert(EnqueuedItemWithSlicingContext.builder()
+                .enqueuedItem(EnqueuedItem.builder()
+                    .mailQueueName(OUT_GOING_1)
+                    .mail(FakeMail.builder()
+                        .name(MAIL_KEY_1.getMailKey())
+                        .build())
+                    .enqueuedTime(NOW)
+                    .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
                     .build())
-                .bucketId(BucketId.of(BUCKET_ID_VALUE + 1))
-                .timeRangeStart(NOW)
-                .enqueuedTime(NOW)
-                .mailKey(MAIL_KEY_1)
-                .mailQueueName(OUT_GOING_1)
-                .mimeMessagePartsId(MIME_MESSAGE_PARTS_ID)
+                .slicingContext(EnqueuedItemWithSlicingContext.SlicingContext.of(BucketId.of(BUCKET_ID_VALUE + 1), NOW))
                 .build())
             .join();
 
-        Stream<EnqueuedMail> selectedEnqueuedMails = testee.selectEnqueuedMails(OUT_GOING_1, SLICE_OF_NOW, BUCKET_ID)
+        Stream<EnqueuedItemWithSlicingContext> selectedEnqueuedMails = testee.selectEnqueuedMails(OUT_GOING_1, SLICE_OF_NOW, BUCKET_ID)
             .join();
 
         assertThat(selectedEnqueuedMails)
             .hasSize(1)
             .hasOnlyOneElementSatisfying(selectedEnqueuedMail -> {
-                SoftAssertions softly = new SoftAssertions();
-                softly.assertThat(selectedEnqueuedMail.getMailQueueName()).isEqualTo(OUT_GOING_1);
-                softly.assertThat(selectedEnqueuedMail.getBucketId()).isEqualTo(BUCKET_ID);
-                softly.assertThat(selectedEnqueuedMail.getTimeRangeStart()).isEqualTo(NOW);
-                softly.assertThat(selectedEnqueuedMail.getEnqueuedTime()).isEqualTo(NOW);
-                softly.assertThat(selectedEnqueuedMail.getMailKey()).isEqualTo(MAIL_KEY_1);
-                softly.assertThat(selectedEnqueuedMail.getMimeMessagePartsId()).isEqualTo(MIME_MESSAGE_PARTS_ID);
-                softly.assertAll();
+                EnqueuedItem enqueuedItem = selectedEnqueuedMail.getEnqueuedItem();
+                EnqueuedItemWithSlicingContext.SlicingContext slicingContext = selectedEnqueuedMail.getSlicingContext();
+                assertAll(
+                    () -> assertThat(slicingContext.getBucketId()).isEqualTo(BUCKET_ID),
+                    () -> assertThat(slicingContext.getTimeRangeStart()).isEqualTo(NOW),
+                    () -> assertThat(enqueuedItem.getMailQueueName()).isEqualTo(OUT_GOING_1),
+                    () -> assertThat(enqueuedItem.getEnqueuedTime()).isEqualTo(NOW),
+                    () -> assertThat(enqueuedItem.getMailKey()).isEqualTo(MAIL_KEY_1),
+                    () -> assertThat(enqueuedItem.getPartsId()).isEqualTo(MIME_MESSAGE_PARTS_ID));
             });
     }
 }

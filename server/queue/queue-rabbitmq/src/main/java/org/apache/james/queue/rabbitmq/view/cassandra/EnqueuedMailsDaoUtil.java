@@ -60,10 +60,10 @@ import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.core.MailAddress;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlices;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 import org.apache.james.server.core.MailImpl;
 import org.apache.james.util.streams.Iterators;
 import org.apache.mailet.Mail;
@@ -77,7 +77,7 @@ import com.google.common.collect.ImmutableMap;
 
 public class EnqueuedMailsDaoUtil {
 
-    static EnqueuedMail toEnqueuedMail(Row row, BlobId.Factory blobFactory) {
+    static EnqueuedItemWithSlicingContext toEnqueuedMail(Row row, BlobId.Factory blobFactory) {
         MailQueueName queueName = MailQueueName.fromString(row.getString(QUEUE_NAME));
         Instant timeRangeStart = row.getTimestamp(TIME_RANGE_START).toInstant();
         BucketedSlices.BucketId bucketId = BucketedSlices.BucketId.of(row.getInt(BUCKET_ID));
@@ -118,15 +118,17 @@ public class EnqueuedMailsDaoUtil {
             .addAllHeadersForRecipients(perRecipientHeaders)
             .attributes(toAttributes(rawAttributes))
             .build();
-
-        return EnqueuedMail.builder()
-            .mail(mail)
-            .bucketId(bucketId)
-            .timeRangeStart(timeRangeStart)
-            .enqueuedTime(enqueuedTime)
-            .mailKey(MailKey.of(name))
+        EnqueuedItem enqueuedItem = EnqueuedItem.builder()
             .mailQueueName(queueName)
+            .mail(mail)
+            .enqueuedTime(enqueuedTime)
             .mimeMessagePartsId(mimeMessagePartsId)
+            .build();
+
+
+        return EnqueuedItemWithSlicingContext.builder()
+            .enqueuedItem(enqueuedItem)
+            .slicingContext(EnqueuedItemWithSlicingContext.SlicingContext.of(bucketId, timeRangeStart))
             .build();
     }
 

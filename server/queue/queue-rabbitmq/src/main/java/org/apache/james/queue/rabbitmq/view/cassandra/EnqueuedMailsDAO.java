@@ -59,8 +59,9 @@ import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.core.MailAddress;
+import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedMail;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 import org.apache.mailet.Mail;
 
 import com.datastax.driver.core.PreparedStatement;
@@ -115,15 +116,17 @@ class EnqueuedMailsDAO {
             .value(PER_RECIPIENT_SPECIFIC_HEADERS, bindMarker(PER_RECIPIENT_SPECIFIC_HEADERS)));
     }
 
-    CompletableFuture<Void> insert(EnqueuedMail enqueuedMail) {
-        Mail mail = enqueuedMail.getMail();
-        MimeMessagePartsId mimeMessagePartsId = enqueuedMail.getMimeMessagePartsId();
+    CompletableFuture<Void> insert(EnqueuedItemWithSlicingContext enqueuedItemWithSlicing) {
+        EnqueuedItem enqueuedItem = enqueuedItemWithSlicing.getEnqueuedItem();
+        EnqueuedItemWithSlicingContext.SlicingContext slicingContext = enqueuedItemWithSlicing.getSlicingContext();
+        Mail mail = enqueuedItem.getMail();
+        MimeMessagePartsId mimeMessagePartsId = enqueuedItem.getPartsId();
 
         return executor.executeVoid(insert.bind()
-            .setString(QUEUE_NAME, enqueuedMail.getMailQueueName().asString())
-            .setTimestamp(TIME_RANGE_START, Date.from(enqueuedMail.getTimeRangeStart()))
-            .setInt(BUCKET_ID, enqueuedMail.getBucketId().getValue())
-            .setTimestamp(ENQUEUED_TIME, Date.from(enqueuedMail.getEnqueuedTime()))
+            .setString(QUEUE_NAME, enqueuedItem.getMailQueueName().asString())
+            .setTimestamp(TIME_RANGE_START, Date.from(slicingContext.getTimeRangeStart()))
+            .setInt(BUCKET_ID, slicingContext.getBucketId().getValue())
+            .setTimestamp(ENQUEUED_TIME, Date.from(enqueuedItem.getEnqueuedTime()))
             .setString(MAIL_KEY, mail.getName())
             .setString(HEADER_BLOB_ID, mimeMessagePartsId.getHeaderBlobId().asString())
             .setString(BODY_BLOB_ID, mimeMessagePartsId.getBodyBlobId().asString())
@@ -140,7 +143,7 @@ class EnqueuedMailsDAO {
             .setMap(PER_RECIPIENT_SPECIFIC_HEADERS, toHeaderMap(cassandraTypesProvider, mail.getPerRecipientSpecificHeaders())));
     }
 
-    CompletableFuture<Stream<EnqueuedMail>> selectEnqueuedMails(
+    CompletableFuture<Stream<EnqueuedItemWithSlicingContext>> selectEnqueuedMails(
         MailQueueName queueName, Slice slice, BucketId bucketId) {
 
         return executor.execute(

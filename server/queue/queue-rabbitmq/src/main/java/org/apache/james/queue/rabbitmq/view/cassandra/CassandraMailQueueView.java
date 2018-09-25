@@ -72,7 +72,7 @@ public class CassandraMailQueueView implements MailQueueView {
 
     @Override
     public CompletableFuture<Void> storeMail(EnqueuedItem enqueuedItem) {
-        return storeHelper.storeMail(mailQueueName, enqueuedItem);
+        return storeHelper.storeMail(enqueuedItem);
     }
 
     @Override

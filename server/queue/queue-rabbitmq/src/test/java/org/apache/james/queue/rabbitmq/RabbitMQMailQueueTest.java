@@ -22,6 +22,7 @@ package org.apache.james.queue.rabbitmq;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -67,7 +68,6 @@ import org.apache.james.queue.rabbitmq.view.cassandra.CassandraMailQueueViewModu
 import org.apache.james.queue.rabbitmq.view.cassandra.CassandraMailQueueViewTestFactory;
 import org.apache.james.util.streams.Iterators;
 import org.apache.mailet.Mail;
-import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -158,25 +158,6 @@ public class RabbitMQMailQueueTest implements ManageableMailQueueContract, MailQ
     @Override
     public ManageableMailQueue getManageableMailQueue() {
         return mailQueueFactory.createQueue(SPOOL);
-    }
-
-    @Test
-    void browseShouldReturnMailsWithMimeMessage() throws Exception {
-        ManageableMailQueue mailQueue = getManageableMailQueue();
-        mailQueue.enQueue(defaultMail()
-            .name("mail with blob")
-            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-                .setSubject("mail subject")
-                .setText("mail body")
-                .build())
-            .build());
-
-        MimeMessage mimeMessage = mailQueue.browse().next().getMail().getMessage();
-
-        SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(mimeMessage.getSubject()).isEqualTo("mail subject");
-        softly.assertThat(mimeMessage.getContent()).isEqualTo("mail body");
-        softly.assertAll();
     }
 
     @Test
