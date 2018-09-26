@@ -245,7 +245,7 @@ class DeleteConditionTest {
         }
 
         @Test
-        void nameShouldBeConvertedToWithBName() {
+        void nameShouldBeConvertedToWithName() {
             assertThat(DeleteCondition.from(ManageableMailQueue.Type.Name, VALUE))
                 .isEqualTo(DeleteCondition.withName(VALUE));
         }
