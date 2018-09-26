@@ -24,7 +24,6 @@ import static org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlice
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.Stream;
 
@@ -50,7 +49,7 @@ class EnqueuedMailsDaoTest {
     private static int BUCKET_ID_VALUE = 10;
     private static final BucketId BUCKET_ID = BucketId.of(BUCKET_ID_VALUE);
     private static final Instant NOW = Instant.now();
-    private static final Slice SLICE_OF_NOW = Slice.of(NOW, Duration.ofSeconds(100));
+    private static final Slice SLICE_OF_NOW = Slice.of(NOW);
 
     private static final BlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
     private static final BlobId HEADER_BLOB_ID = BLOB_ID_FACTORY.from("header blob id");
