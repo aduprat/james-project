@@ -36,8 +36,6 @@ import com.datastax.driver.core.Session;
 
 public class CassandraMailQueueViewTestFactory {
 
-    private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
-
     public static CassandraMailQueueView.Factory factory(Clock clock, ThreadLocalRandom random, Session session,
                                                          CassandraTypesProvider typesProvider,
                                                          CassandraMailQueueViewConfiguration configuration,
