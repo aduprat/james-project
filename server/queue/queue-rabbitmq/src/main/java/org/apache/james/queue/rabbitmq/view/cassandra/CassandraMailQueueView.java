@@ -81,11 +81,6 @@ public class CassandraMailQueueView implements MailQueueView {
     }
 
     @Override
-    public CompletableFuture<Void> deleteMail(Mail mail) {
-        return cassandraMailQueueMailDelete.considerDeleted(mail, mailQueueName);
-    }
-
-    @Override
     public ManageableMailQueue.MailQueueIterator browse() {
         return new CassandraMailQueueBrowser.CassandraMailQueueIterator(
             cassandraMailQueueBrowser.browse(mailQueueName)
@@ -111,6 +106,7 @@ public class CassandraMailQueueView implements MailQueueView {
 
         return result;
     }
+
 
     @Override
     public CompletableFuture<Boolean> isDeleted(Mail mail) {
