@@ -107,9 +107,9 @@ public class CassandraMailQueueView implements MailQueueView {
         return result;
     }
 
-
     @Override
-    public CompletableFuture<Boolean> isDeleted(Mail mail) {
-        return cassandraMailQueueMailDelete.isDeleted(mail, mailQueueName);
+    public CompletableFuture<Boolean> isPresent(Mail mail) {
+        return cassandraMailQueueMailDelete.isDeleted(mail, mailQueueName)
+                .thenApply(bool -> !bool);
     }
 }
