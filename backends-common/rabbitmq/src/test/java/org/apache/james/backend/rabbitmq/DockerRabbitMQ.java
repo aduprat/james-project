@@ -183,7 +183,7 @@ public class DockerRabbitMQ {
 
     public URI managementUri() throws URISyntaxException {
         return new URIBuilder()
-                .setScheme("amqp")
+                .setScheme("http")
                 .setHost(getHostIp())
                 .setPort(getAdminPort())
                 .build();
