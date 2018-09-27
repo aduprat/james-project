@@ -38,6 +38,8 @@ import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlice;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.MailReference;
+import org.apache.james.util.FluentFutureStream;
 import org.apache.mailet.base.test.FakeMail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,7 +92,7 @@ class EnqueuedMailsDaoTest {
                 .build())
             .join();
 
-        Stream<EnqueuedItemWithSlicingContext> selectedEnqueuedMails = testee
+        Stream<MailReference> selectedEnqueuedMails = testee
             .selectEnqueuedMails(OUT_GOING_1, BUCKETED_SLICE)
             .join();
 
@@ -126,6 +128,7 @@ class EnqueuedMailsDaoTest {
             .join();
 
         Stream<EnqueuedItemWithSlicingContext> selectedEnqueuedMails = testee.selectEnqueuedMails(OUT_GOING_1, BUCKETED_SLICE)
+            .map(testee::toMail, FluentFutureStream::unboxFutureOptional)
             .join();
 
         assertThat(selectedEnqueuedMails)

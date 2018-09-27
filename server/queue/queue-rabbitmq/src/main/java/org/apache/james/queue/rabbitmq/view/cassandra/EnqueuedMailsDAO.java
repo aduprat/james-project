@@ -47,7 +47,6 @@ import static org.apache.james.queue.rabbitmq.view.cassandra.EnqueuedMailsDaoUti
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -61,15 +60,20 @@ import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlice;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.MailKey;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.MailReference;
+import org.apache.james.util.FluentFutureStream;
 import org.apache.mailet.Mail;
 
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
 class EnqueuedMailsDAO {
 
     private final CassandraAsyncExecutor executor;
-    private final PreparedStatement selectFrom;
+    private final PreparedStatement selectBucket;
+    private final PreparedStatement selectMail;
     private final PreparedStatement insert;
     private final CassandraUtils cassandraUtils;
     private final CassandraTypesProvider cassandraTypesProvider;
@@ -82,17 +86,27 @@ class EnqueuedMailsDAO {
         this.cassandraUtils = cassandraUtils;
         this.cassandraTypesProvider = cassandraTypesProvider;
 
-        this.selectFrom = prepareSelectFrom(session);
+        this.selectBucket = prepareSelectBucket(session);
+        this.selectMail = prepareSelectMail(session);
         this.insert = prepareInsert(session);
         this.blobFactory = blobIdFactory;
     }
 
-    private PreparedStatement prepareSelectFrom(Session session) {
-        return session.prepare(select()
+    private PreparedStatement prepareSelectBucket(Session session) {
+        return session.prepare(select(TIME_RANGE_START, BUCKET_ID, MAIL_KEY, ENQUEUED_TIME)
             .from(TABLE_NAME)
             .where(eq(QUEUE_NAME, bindMarker(QUEUE_NAME)))
             .and(eq(TIME_RANGE_START, bindMarker(TIME_RANGE_START)))
             .and(eq(BUCKET_ID, bindMarker(BUCKET_ID))));
+    }
+
+    private PreparedStatement prepareSelectMail(Session session) {
+        return session.prepare(select()
+            .from(TABLE_NAME)
+            .where(eq(QUEUE_NAME, bindMarker(QUEUE_NAME)))
+            .and(eq(TIME_RANGE_START, bindMarker(TIME_RANGE_START)))
+            .and(eq(BUCKET_ID, bindMarker(BUCKET_ID)))
+            .and(eq(MAIL_KEY, bindMarker(MAIL_KEY))));
     }
 
     private PreparedStatement prepareInsert(Session session) {
@@ -142,16 +156,31 @@ class EnqueuedMailsDAO {
             .setMap(PER_RECIPIENT_SPECIFIC_HEADERS, toHeaderMap(cassandraTypesProvider, mail.getPerRecipientSpecificHeaders())));
     }
 
-    CompletableFuture<Stream<EnqueuedItemWithSlicingContext>> selectEnqueuedMails(
-        MailQueueName queueName, BucketedSlice bucketedSlices) {
-
-        return executor.execute(
-            selectFrom.bind()
+    FluentFutureStream<MailReference> selectEnqueuedMails(MailQueueName queueName, BucketedSlice bucketedSlices) {
+        return FluentFutureStream.of(executor.execute(
+            selectBucket.bind()
                 .setString(QUEUE_NAME, queueName.asString())
                 .setTimestamp(TIME_RANGE_START, Date.from(bucketedSlices.getSlice().getStartSliceInstant()))
                 .setInt(BUCKET_ID, bucketedSlices.getBucketId().getValue()))
             .thenApply(resultSet -> cassandraUtils.convertToStream(resultSet)
-                .map(row -> EnqueuedMailsDaoUtil.toEnqueuedMail(row, blobFactory)));
+                .map(row -> toMailReference(queueName, bucketedSlices, row))));
+    }
+
+    CompletableFuture<Optional<EnqueuedItemWithSlicingContext>> toMail(MailReference mailReference) {
+        return executor.executeSingleRow(
+            selectMail.bind()
+            .setString(QUEUE_NAME, mailReference.getQueueName().asString())
+            .setTimestamp(TIME_RANGE_START, Date.from(mailReference.getBucketedSlice().getSlice().getStartSliceInstant()))
+            .setInt(BUCKET_ID, mailReference.getBucketedSlice().getBucketId().getValue())
+            .setString(MAIL_KEY, mailReference.getMailKey().getMailKey()))
+            .thenApply(maybeRow -> maybeRow.map(row -> EnqueuedMailsDaoUtil.toEnqueuedMail(row, blobFactory)));
+    }
+
+    private MailReference toMailReference(MailQueueName queueName, BucketedSlice bucketedSlices, Row row) {
+        return new MailReference(
+            queueName, bucketedSlices,
+            MailKey.of(row.getString(MAIL_KEY)),
+            row.getTimestamp(ENQUEUED_TIME).toInstant());
     }
 
 }

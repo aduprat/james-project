@@ -22,7 +22,6 @@ package org.apache.james.queue.rabbitmq;
 import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -56,7 +55,6 @@ import org.apache.james.blob.cassandra.CassandraBlobModule;
 import org.apache.james.blob.cassandra.CassandraBlobsDAO;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.blob.mail.MimeMessageStore;
-import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.queue.api.MailQueue;
 import org.apache.james.queue.api.MailQueueMetricContract;
 import org.apache.james.queue.api.MailQueueMetricExtension;

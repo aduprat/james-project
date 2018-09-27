@@ -33,20 +33,13 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
-import org.apache.james.blob.api.Store;
-import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.api.ManageableMailQueue;
-import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.BucketedSlice;
-import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
+import org.apache.james.queue.rabbitmq.view.cassandra.model.MailReference;
 import org.apache.james.util.FluentFutureStream;
 import org.apache.mailet.Mail;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
@@ -76,12 +69,10 @@ class CassandraMailQueueBrowser {
         }
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraMailQueueBrowser.class);
-
     private final BrowseStartDAO browseStartDao;
     private final DeletedMailsDAO deletedMailsDao;
     private final EnqueuedMailsDAO enqueuedMailsDao;
-    private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
+    private final MailLoader mailLoader;
     private final CassandraMailQueueViewConfiguration configuration;
     private final Clock clock;
 
@@ -89,61 +80,44 @@ class CassandraMailQueueBrowser {
     CassandraMailQueueBrowser(BrowseStartDAO browseStartDao,
                               DeletedMailsDAO deletedMailsDao,
                               EnqueuedMailsDAO enqueuedMailsDao,
-                              Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
-                              CassandraMailQueueViewConfiguration configuration,
+                              MailLoader mailLoader, CassandraMailQueueViewConfiguration configuration,
                               Clock clock) {
         this.browseStartDao = browseStartDao;
         this.deletedMailsDao = deletedMailsDao;
         this.enqueuedMailsDao = enqueuedMailsDao;
-        this.mimeMessageStore = mimeMessageStore;
+        this.mailLoader = mailLoader;
         this.configuration = configuration;
         this.clock = clock;
     }
 
     CompletableFuture<Stream<ManageableMailQueue.MailQueueItemView>> browse(MailQueueName queueName) {
-        return browseReferences(queueName)
-            .map(this::toMailFuture, FluentFutureStream::unboxFuture)
+        return browseMails(queueName)
             .map(ManageableMailQueue.MailQueueItemView::new)
             .completableFuture();
     }
 
-    FluentFutureStream<EnqueuedItemWithSlicingContext> browseReferences(MailQueueName queueName) {
+    FluentFutureStream<Mail> browseMails(MailQueueName queueName) {
+        return mailLoader.load(browseReferences(queueName));
+    }
+
+    FluentFutureStream<MailReference> browseReferences(MailQueueName queueName) {
         return FluentFutureStream.of(browseStartDao.findBrowseStart(queueName)
             .thenApply(this::allSlicesStartingAt))
             .map(slice -> browseSlice(queueName, slice), FluentFutureStream::unboxFluentFuture);
     }
 
-    private CompletableFuture<Mail> toMailFuture(EnqueuedItemWithSlicingContext enqueuedItemWithSlicingContext) {
-        EnqueuedItem enqueuedItem = enqueuedItemWithSlicingContext.getEnqueuedItem();
-        return mimeMessageStore.read(enqueuedItem.getPartsId())
-            .thenApply(mimeMessage -> toMail(enqueuedItem, mimeMessage));
-    }
-
-    private Mail toMail(EnqueuedItem enqueuedItem, MimeMessage mimeMessage) {
-        Mail mail = enqueuedItem.getMail();
-
-        try {
-            mail.setMessage(mimeMessage);
-        } catch (MessagingException e) {
-            LOGGER.error("error while setting mime message to mail {}", mail.getName(), e);
-        }
-
-        return mail;
-    }
-
-    private FluentFutureStream<EnqueuedItemWithSlicingContext> browseSlice(MailQueueName queueName, Slice slice) {
+    private FluentFutureStream<MailReference> browseSlice(MailQueueName queueName, Slice slice) {
         return FluentFutureStream.of(
             allBucketIds()
                 .map(bucketId ->
                     browseBucket(queueName, BucketedSlice.of(slice, bucketId)).completableFuture()),
             FluentFutureStream::unboxStream)
-            .sorted(Comparator.comparing(enqueuedMail -> enqueuedMail.getEnqueuedItem().getEnqueuedTime()));
+            .sorted(Comparator.comparing(MailReference::getEnqueueTime));
     }
 
-    private FluentFutureStream<EnqueuedItemWithSlicingContext> browseBucket(MailQueueName queueName, BucketedSlice bucketedSlices) {
-        return FluentFutureStream.of(
-            enqueuedMailsDao.selectEnqueuedMails(queueName, bucketedSlices))
-                .thenFilter(mailReference -> deletedMailsDao.isStillEnqueued(queueName, mailReference.getEnqueuedItem().getMailKey()));
+    private FluentFutureStream<MailReference> browseBucket(MailQueueName queueName, BucketedSlice bucketedSlices) {
+        return enqueuedMailsDao.selectEnqueuedMails(queueName, bucketedSlices)
+                .thenFilter(mailReference -> deletedMailsDao.isStillEnqueued(queueName, mailReference.getMailKey()));
     }
 
     private Stream<Slice> allSlicesStartingAt(Optional<Instant> maybeBrowseStart) {
