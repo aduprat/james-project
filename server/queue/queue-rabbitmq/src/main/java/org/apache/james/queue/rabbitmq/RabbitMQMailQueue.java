@@ -29,6 +29,7 @@ import javax.mail.internet.MimeMessage;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
+import org.apache.james.blob.mail.MimeMessageStore;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.rabbitmq.view.api.DeleteCondition;
@@ -44,31 +45,28 @@ public class RabbitMQMailQueue implements ManageableMailQueue {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQMailQueue.class);
 
-    static class Factory {
+    public static class Factory {
         private final MetricFactory metricFactory;
         private final RabbitClient rabbitClient;
         private final Store<MimeMessage, MimeMessagePartsId> mimeMessageStore;
         private final MailReferenceSerializer mailReferenceSerializer;
         private final Function<MailReferenceDTO, Mail> mailLoader;
-        private final MailQueueView mailQueueView;
         private final Clock clock;
 
         @Inject
         @VisibleForTesting Factory(MetricFactory metricFactory, RabbitClient rabbitClient,
-                                   Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
+                                   MimeMessageStore.Factory mimeMessageStoreFactory,
                                    BlobId.Factory blobIdFactory,
-                                   MailQueueView mailQueueView,
                                    Clock clock) {
             this.metricFactory = metricFactory;
             this.rabbitClient = rabbitClient;
-            this.mimeMessageStore = mimeMessageStore;
-            this.mailQueueView = mailQueueView;
+            this.mimeMessageStore = mimeMessageStoreFactory.mimeMessageStore();
             this.clock = clock;
             this.mailReferenceSerializer = new MailReferenceSerializer();
             this.mailLoader = Throwing.function(new MailLoader(mimeMessageStore, blobIdFactory)::load).sneakyThrow();
         }
 
-        RabbitMQMailQueue create(MailQueueName mailQueueName) {
+        RabbitMQMailQueue create(MailQueueView mailQueueView, MailQueueName mailQueueName) {
             mailQueueView.initialize(mailQueueName);
 
             return new RabbitMQMailQueue(metricFactory, mailQueueName,

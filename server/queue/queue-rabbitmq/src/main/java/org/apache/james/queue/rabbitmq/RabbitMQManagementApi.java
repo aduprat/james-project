@@ -22,6 +22,8 @@ package org.apache.james.queue.rabbitmq;
 import java.util.List;
 import java.util.stream.Stream;
 
+import javax.inject.Inject;
+
 import org.apache.james.backend.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.util.OptionalUtils;
 
@@ -51,7 +53,8 @@ class RabbitMQManagementApi {
 
     private final Api api;
 
-    RabbitMQManagementApi(RabbitMQConfiguration configuration) {
+    @Inject
+    public RabbitMQManagementApi(RabbitMQConfiguration configuration) {
         RabbitMQConfiguration.ManagementCredentials credentials = configuration.getManagementCredentials();
         api = Feign.builder()
             .requestInterceptor(new BasicAuthRequestInterceptor(credentials.getUser(), new String(credentials.getPassword())))

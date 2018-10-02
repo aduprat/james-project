@@ -19,18 +19,25 @@
 package org.apache.james.modules.rabbitmq;
 
 import java.io.FileNotFoundException;
+import java.time.Clock;
 
 import javax.inject.Singleton;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.james.backend.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.queue.api.MailQueueFactory;
+import org.apache.james.queue.rabbitmq.RabbitMQMailQueue;
+import org.apache.james.queue.rabbitmq.RabbitMQMailQueueFactory;
+import org.apache.james.queue.rabbitmq.view.api.MailQueueView;
+import org.apache.james.queue.rabbitmq.view.cassandra.CassandraMailQueueView;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 
 public class RabbitMQModule extends AbstractModule {
 
@@ -40,6 +47,18 @@ public class RabbitMQModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        bind(RabbitMQMailQueueFactory.class).in(Scopes.SINGLETON);
+        bind(RabbitMQMailQueue.Factory.class).in(Scopes.SINGLETON);
+
+        bind(Clock.class).toInstance(Clock.systemDefaultZone());
+        
+        bind(CassandraMailQueueView.Factory.class).in(Scopes.SINGLETON);
+    }
+
+    @Provides
+    @Singleton
+    public MailQueueFactory<?> bindRabbitMQQueueFactory(RabbitMQMailQueueFactory queueFactory) {
+        return queueFactory;
     }
 
     @Provides
@@ -52,5 +71,11 @@ public class RabbitMQModule extends AbstractModule {
             LOGGER.error("Could not find " + RABBITMQ_CONFIGURATION_NAME + " configuration file.");
             throw new RuntimeException(e);
         }
+    }
+
+    @Provides
+    @Singleton
+    public MailQueueView bindMailQueueView(CassandraMailQueueView.Factory factory) {
+        return factory.create();
     }
 }
