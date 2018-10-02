@@ -101,7 +101,7 @@ public class FileMailQueueTest implements DelayedManageableMailQueueContract {
     @Test
     @Override
     @Disabled("JAMES-2544 Not supported yet")
-    public void browseShouldReturnMailsWithMimeMessage() {
+    public void browseShouldReturnMailsWithoutMimeMessage() {
 
     }
 }
