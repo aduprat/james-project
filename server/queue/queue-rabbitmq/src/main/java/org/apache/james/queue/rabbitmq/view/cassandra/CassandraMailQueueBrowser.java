@@ -33,13 +33,11 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
-import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.queue.api.ManageableMailQueue;
-import org.apache.james.queue.rabbitmq.EnqueuedItem;
 import org.apache.james.queue.rabbitmq.MailQueueName;
 import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMailQueueViewConfiguration;
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
@@ -102,7 +100,7 @@ class CassandraMailQueueBrowser {
 
     CompletableFuture<Stream<ManageableMailQueue.MailQueueItemView>> browse(MailQueueName queueName) {
         return browseReferences(queueName)
-            .map(this::toMailFuture, FluentFutureStream::unboxFuture)
+            .map(this::toMail)
             .map(ManageableMailQueue.MailQueueItemView::new)
             .completableFuture();
     }
@@ -113,22 +111,10 @@ class CassandraMailQueueBrowser {
             .map(slice -> browseSlice(queueName, slice), FluentFutureStream::unboxFluentFuture);
     }
 
-    private CompletableFuture<Mail> toMailFuture(EnqueuedItemWithSlicingContext enqueuedItemWithSlicingContext) {
-        EnqueuedItem enqueuedItem = enqueuedItemWithSlicingContext.getEnqueuedItem();
-        return mimeMessageStore.read(enqueuedItem.getPartsId())
-            .thenApply(mimeMessage -> toMail(enqueuedItem, mimeMessage));
-    }
-
-    private Mail toMail(EnqueuedItem enqueuedItem, MimeMessage mimeMessage) {
-        Mail mail = enqueuedItem.getMail();
-
-        try {
-            mail.setMessage(mimeMessage);
-        } catch (MessagingException e) {
-            LOGGER.error("error while setting mime message to mail {}", mail.getName(), e);
-        }
-
-        return mail;
+    private Mail toMail(EnqueuedItemWithSlicingContext enqueuedItemWithSlicingContext) {
+        return enqueuedItemWithSlicingContext
+                .getEnqueuedItem()
+                .getMail();
     }
 
     private FluentFutureStream<EnqueuedItemWithSlicingContext> browseSlice(MailQueueName queueName, Slice slice) {

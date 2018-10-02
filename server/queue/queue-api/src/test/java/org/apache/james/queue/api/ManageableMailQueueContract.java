@@ -28,7 +28,6 @@ import static org.apache.mailet.base.MailAddressFixture.RECIPIENT3;
 import static org.apache.mailet.base.MailAddressFixture.SENDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import javax.mail.internet.MimeMessage;
 
@@ -425,7 +424,7 @@ public interface ManageableMailQueueContract extends MailQueueContract {
     }
 
     @Test
-    default void browseShouldReturnMailsWithMimeMessage() throws Exception {
+    default void browseShouldReturnMailsWithoutMimeMessage() throws Exception {
         ManageableMailQueue mailQueue = getManageableMailQueue();
         mailQueue.enQueue(defaultMail()
             .name("mail with blob")
@@ -436,14 +435,9 @@ public interface ManageableMailQueueContract extends MailQueueContract {
             .build());
 
         MimeMessage mimeMessage = mailQueue.browse().next().getMail().getMessage();
-        String subject = mimeMessage.getSubject();
-        Object content = mimeMessage.getContent();
-
-        assertSoftly(softly ->  {
-            softly.assertThat(subject).isEqualTo("mail subject");
-            softly.assertThat(content).isEqualTo("mail body");
-        });
+        assertThat(mimeMessage).isNull();
     }
+
     @Test
     default void browsingShouldNotAffectDequeue() throws Exception {
         enQueue(defaultMail()
