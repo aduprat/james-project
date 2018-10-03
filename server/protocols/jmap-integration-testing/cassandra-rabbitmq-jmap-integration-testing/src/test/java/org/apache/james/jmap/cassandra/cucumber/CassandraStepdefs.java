@@ -19,7 +19,7 @@
 
 package org.apache.james.jmap.cassandra.cucumber;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
+import static org.apache.james.CassandraRabbitMQJamesServerMain.ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE;
 
 import java.util.Arrays;
 
@@ -39,6 +39,7 @@ import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.modules.TestESMetricReporterModule;
 import org.apache.james.modules.TestElasticSearchModule;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.modules.TestRabbitMQModule;
 import org.apache.james.server.CassandraTruncateTableTask;
 import org.apache.james.server.core.configuration.Configuration;
 import org.junit.rules.TemporaryFolder;
@@ -58,6 +59,7 @@ public class CassandraStepdefs {
     private TemporaryFolder temporaryFolder = new TemporaryFolder();
     private EmbeddedElasticSearch embeddedElasticSearch = new EmbeddedElasticSearch(temporaryFolder);
     private DockerCassandraRule cassandraServer = CucumberCassandraSingleton.cassandraServer;
+    private DockerRabbitMQResource rabbitMQ = new DockerRabbitMQResource();
 
     @Inject
     private CassandraStepdefs(MainStepdefs mainStepdefs, ImapStepdefs imapStepdefs) {
@@ -69,6 +71,7 @@ public class CassandraStepdefs {
     public void init() throws Exception {
         temporaryFolder.create();
         embeddedElasticSearch.before();
+        rabbitMQ.before();
         mainStepdefs.messageIdFactory = new CassandraMessageId.Factory();
         Configuration configuration = Configuration.builder()
             .workingDirectory(temporaryFolder.newFolder())
@@ -76,10 +79,11 @@ public class CassandraStepdefs {
             .build();
 
         mainStepdefs.jmapServer = GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
+            .combineWith(ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE)
             .overrideWith(new TestJMAPServerModule(10))
             .overrideWith(new TestESMetricReporterModule())
             .overrideWith(new TestElasticSearchModule(embeddedElasticSearch))
+            .overrideWith(new TestRabbitMQModule(rabbitMQ.getRabbitMQ()))
             .overrideWith(cassandraServer.getModule())
             .overrideWith(binder -> binder.bind(TextExtractor.class).to(DefaultTextExtractor.class))
             .overrideWith((binder) -> binder.bind(PersistenceAdapter.class).to(MemoryPersistenceAdapter.class))
@@ -93,6 +97,7 @@ public class CassandraStepdefs {
         ignoreFailures(imapStepdefs::closeConnections,
                 mainStepdefs::tearDown,
                 () -> embeddedElasticSearch.after(),
+                () -> rabbitMQ.after(),
                 () -> temporaryFolder.delete());
     }
 

@@ -21,9 +21,10 @@ package org.apache.james.jmap.cassandra;
 
 import java.io.IOException;
 
-import org.apache.james.CassandraJmapTestRule;
+import org.apache.james.CassandraRabbitMQJmapTestRule;
 import org.apache.james.DockerCassandraRule;
 import org.apache.james.GuiceJamesServer;
+import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.apache.james.jmap.methods.integration.GetMessageListMethodTest;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.ClassRule;
@@ -34,13 +35,17 @@ public class CassandraGetMessageListMethodTest extends GetMessageListMethodTest 
     @ClassRule
     public static DockerCassandraRule cassandra = new DockerCassandraRule();
 
-    @Rule 
-    public CassandraJmapTestRule rule = CassandraJmapTestRule.defaultTestRule();
+    @ClassRule
+    public static DockerRabbitMQTestRule rabbitMQTestRule = new DockerRabbitMQTestRule();
+
+    @Rule
+    public CassandraRabbitMQJmapTestRule rule = CassandraRabbitMQJmapTestRule.defaultTestRule();
 
     @Override
     protected GuiceJamesServer createJmapServer() throws IOException {
-        return rule.jmapServer(cassandra.getModule(),
-            new TestJMAPServerModule(LIMIT_TO_3_MESSAGES));
+        return rule.jmapServer(rabbitMQTestRule.getDockerRabbitMQ(),
+                cassandra.getModule(),
+                new TestJMAPServerModule(LIMIT_TO_3_MESSAGES));
     }
 
     @Override

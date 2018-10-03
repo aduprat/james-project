@@ -35,9 +35,10 @@ import java.util.Date;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.apache.james.CassandraJmapTestRule;
+import org.apache.james.CassandraRabbitMQJmapTestRule;
 import org.apache.james.DockerCassandraRule;
 import org.apache.james.GuiceJamesServer;
+import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.jmap.HttpJmapAuthentication;
 import org.apache.james.jmap.api.access.AccessToken;
@@ -62,10 +63,13 @@ public class CassandraBulkOperationTest {
     private static final Integer NUMBER_OF_MAIL_TO_CREATE = 250;
 
     @ClassRule
-    public static DockerCassandraRule cassandra =  new DockerCassandraRule();
+    public static DockerCassandraRule cassandra = new DockerCassandraRule();
+
+    @ClassRule
+    public static DockerRabbitMQTestRule rabbitMQTestRule = new DockerRabbitMQTestRule();
 
     @Rule
-    public CassandraJmapTestRule rule = CassandraJmapTestRule.defaultTestRule();
+    public CassandraRabbitMQJmapTestRule rule = CassandraRabbitMQJmapTestRule.defaultTestRule();
 
     private static final String USERNAME = "username@" + DOMAIN;
     private static final MailboxPath TRASH_PATH = MailboxPath.forUser(USERNAME, DefaultMailboxes.TRASH);
@@ -127,12 +131,13 @@ public class CassandraBulkOperationTest {
     }
 
     private GuiceJamesServer createServerWithExpungeChunkSize(int expungeChunkSize) throws Exception {
-        GuiceJamesServer jmapServer = rule.jmapServer(cassandra.getModule(),
-            binder -> binder.bind(CassandraConfiguration.class)
-                .toInstance(
-                    CassandraConfiguration.builder()
-                        .expungeChunkSize(expungeChunkSize)
-                        .build()));
+        GuiceJamesServer jmapServer = rule.jmapServer(rabbitMQTestRule.getDockerRabbitMQ(),
+                cassandra.getModule(),
+                binder -> binder.bind(CassandraConfiguration.class)
+                    .toInstance(
+                        CassandraConfiguration.builder()
+                            .expungeChunkSize(expungeChunkSize)
+                            .build()));
         jmapServer.start();
         RestAssured.requestSpecification = jmapRequestSpecBuilder
             .setPort(jmapServer.getProbe(JmapGuiceProbe.class).getJmapPort())
