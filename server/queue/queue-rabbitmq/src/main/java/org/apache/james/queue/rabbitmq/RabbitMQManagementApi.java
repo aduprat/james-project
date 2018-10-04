@@ -53,7 +53,7 @@ public class RabbitMQManagementApi {
         @RequestLine("GET /api/queues")
         List<MessageQueue> listQueues();
 
-        @RequestLine(value= "DELETE /api/queues/{vhost}/{name}", decodeSlash = false)
+        @RequestLine(value = "DELETE /api/queues/{vhost}/{name}", decodeSlash = false)
         void deleteQueue(@Param("vhost") String vhost, @Param("name") String name);
     }
 
