@@ -22,9 +22,7 @@ package org.apache.james.modules;
 import static org.apache.james.backend.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 
 import java.net.URISyntaxException;
-import java.time.Clock;
 import java.time.Duration;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javax.inject.Singleton;
 
@@ -45,8 +43,6 @@ public class TestRabbitMQModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(Clock.class).toInstance(Clock.systemUTC());
-        bind(ThreadLocalRandom.class).toInstance(ThreadLocalRandom.current());
         bind(CassandraMailQueueViewConfiguration.class).toInstance(CassandraMailQueueViewConfiguration
             .builder()
             .bucketCount(1)
