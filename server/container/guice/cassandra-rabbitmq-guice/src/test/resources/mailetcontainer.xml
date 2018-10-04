@@ -70,6 +70,7 @@
             <mailet match="RecipientIsLocal" class="SpamAssassin">
                 <spamdHost>localhost</spamdHost>
                 <spamdPort>783</spamdPort>
+                <onMailetException>ignore</onMailetException>
             </mailet>
             <mailet match="IsMarkedAsSpam" class="WithStorageDirective">
                 <targetFolderName>Spam</targetFolderName>
