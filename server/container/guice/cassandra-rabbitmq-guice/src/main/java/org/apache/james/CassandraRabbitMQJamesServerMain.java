@@ -19,100 +19,18 @@
 
 package org.apache.james;
 
-import org.apache.james.modules.MailboxModule;
-import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
-import org.apache.james.modules.data.CassandraDomainListModule;
-import org.apache.james.modules.data.CassandraJmapModule;
-import org.apache.james.modules.data.CassandraMailRepositoryModule;
-import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
-import org.apache.james.modules.data.CassandraSieveRepositoryModule;
-import org.apache.james.modules.data.CassandraUsersRepositoryModule;
-import org.apache.james.modules.eventstore.CassandraEventStoreModule;
-import org.apache.james.modules.mailbox.CassandraMailboxModule;
-import org.apache.james.modules.mailbox.CassandraObjectStoreModule;
-import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
-import org.apache.james.modules.mailbox.CassandraSessionModule;
-import org.apache.james.modules.mailbox.ElasticSearchMailboxModule;
-import org.apache.james.modules.mailbox.TikaMailboxModule;
-import org.apache.james.modules.metrics.CassandraMetricsModule;
-import org.apache.james.modules.protocols.IMAPServerModule;
-import org.apache.james.modules.protocols.JMAPServerModule;
-import org.apache.james.modules.protocols.LMTPServerModule;
-import org.apache.james.modules.protocols.ManageSieveServerModule;
-import org.apache.james.modules.protocols.POP3ServerModule;
-import org.apache.james.modules.protocols.ProtocolHandlerModule;
-import org.apache.james.modules.protocols.SMTPServerModule;
+import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
+
 import org.apache.james.modules.rabbitmq.RabbitMQModule;
-import org.apache.james.modules.server.CassandraRoutesModule;
-import org.apache.james.modules.server.DLPRoutesModule;
-import org.apache.james.modules.server.DataRoutesModules;
-import org.apache.james.modules.server.ElasticSearchMetricReporterModule;
 import org.apache.james.modules.server.JMXServerModule;
-import org.apache.james.modules.server.MailQueueRoutesModule;
-import org.apache.james.modules.server.MailRepositoriesRoutesModule;
-import org.apache.james.modules.server.MailboxRoutesModule;
-import org.apache.james.modules.server.SieveQuotaRoutesModule;
-import org.apache.james.modules.server.SwaggerRoutesModule;
-import org.apache.james.modules.server.WebAdminServerModule;
-import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
 import org.apache.james.server.core.configuration.Configuration;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
 public class CassandraRabbitMQJamesServerMain {
-
-    public static final Module WEBADMIN = Modules.combine(
-        new CassandraRoutesModule(),
-        new DataRoutesModules(),
-        new MailboxRoutesModule(),
-        new MailQueueRoutesModule(),
-        new MailRepositoriesRoutesModule(),
-        new SwaggerRoutesModule(),
-        new WebAdminServerModule(),
-        new DLPRoutesModule(),
-        new SieveQuotaRoutesModule());
-
-    public static final Module PROTOCOLS = Modules.combine(
-        new CassandraJmapModule(),
-        new IMAPServerModule(),
-        new LMTPServerModule(),
-        new ManageSieveServerModule(),
-        new POP3ServerModule(),
-        new ProtocolHandlerModule(),
-        new SMTPServerModule(),
-        new JMAPServerModule(),
-        WEBADMIN);
-
-    public static final Module PLUGINS = Modules.combine(
-        new CassandraQuotaMailingModule());
-
-    public static final Module CASSANDRA_SERVER_CORE_MODULE = Modules.combine(
-        new RabbitMQModule(),
-        new CassandraDomainListModule(),
-        new CassandraDLPConfigurationStoreModule(),
-        new CassandraEventStoreModule(),
-        new CassandraMailRepositoryModule(),
-        new CassandraMetricsModule(),
-        new CassandraObjectStoreModule(),
-        new CassandraRecipientRewriteTableModule(),
-        new CassandraSessionModule(),
-        new CassandraSieveRepositoryModule(),
-        new CassandraUsersRepositoryModule());
-
-    public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
-        new CassandraMailboxModule(),
-        new ElasticSearchMailboxModule(),
-        new ElasticSearchMetricReporterModule(),
-        new MailboxModule(),
-        new TikaMailboxModule(),
-        new SpamAssassinListenerModule());
-
-    public static final Module ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE = Modules.combine(
-        CASSANDRA_SERVER_CORE_MODULE,
-        CASSANDRA_MAILBOX_MODULE,
-        PROTOCOLS,
-        PLUGINS);
+    public static final Module ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE = Modules.override(ALL_BUT_JMX_CASSANDRA_MODULE)
+        .with(new RabbitMQModule());
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = Configuration.builder()
@@ -123,5 +41,4 @@ public class CassandraRabbitMQJamesServerMain {
                     .combineWith(ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE, new JMXServerModule());
         server.start();
     }
-
 }
