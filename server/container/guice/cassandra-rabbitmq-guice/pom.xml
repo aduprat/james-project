@@ -32,7 +32,7 @@
     <packaging>jar</packaging>
 
     <name>Apache James :: Server :: Cassandra with RabbitMQ - guice injection</name>
-    <description>An advanced email server - Cassandra backend with guice injection</description>
+    <description>An advanced email server - Cassandra backend and RabbitMQ messaging with guice injection</description>
 
     <properties>
         <cassandra.includes>empty</cassandra.includes>
