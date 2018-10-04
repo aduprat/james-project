@@ -22,9 +22,13 @@ package org.apache.james;
 import java.io.IOException;
 
 import org.apache.james.backend.rabbitmq.DockerRabbitMQ;
+import org.apache.james.mailbox.extractor.TextExtractor;
+import org.apache.james.mailbox.store.search.PDFTextExtractor;
+import org.apache.james.modules.TestESMetricReporterModule;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.TestRabbitMQModule;
 import org.apache.james.server.core.configuration.Configuration;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -32,41 +36,45 @@ import org.junit.runners.model.Statement;
 
 import com.google.inject.Module;
 
+import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
+
 public class CassandraRabbitMQJmapTestRule implements TestRule {
-    private static final int LIMIT_TO_3_MESSAGES = 3;
+
+    private static final int LIMIT_TO_10_MESSAGES = 10;
+    private final TemporaryFolder temporaryFolder;
 
     public static CassandraRabbitMQJmapTestRule defaultTestRule() {
-        return new CassandraRabbitMQJmapTestRule(
-            AggregateGuiceModuleTestRule.of(new EmbeddedElasticSearchRule()));
+        return new CassandraRabbitMQJmapTestRule(new EmbeddedElasticSearchRule());
     }
 
-    private final TemporaryFolder temporaryFolder;
     private final GuiceModuleTestRule guiceModuleTestRule;
+    private final DockerRabbitMQ rabbitMQ;
 
     public CassandraRabbitMQJmapTestRule(GuiceModuleTestRule... guiceModuleTestRule) {
         TempFilesystemTestRule tempFilesystemTestRule = new TempFilesystemTestRule();
-        temporaryFolder = tempFilesystemTestRule.getTemporaryFolder();
+        rabbitMQ = DockerRabbitMQ.withoutCookie();
+        this.temporaryFolder = tempFilesystemTestRule.getTemporaryFolder();
         this.guiceModuleTestRule =
-            AggregateGuiceModuleTestRule
-                .of(guiceModuleTestRule)
-                .aggregate(tempFilesystemTestRule);
+                AggregateGuiceModuleTestRule
+                        .of(guiceModuleTestRule)
+                        .aggregate(tempFilesystemTestRule);
     }
 
-    public GuiceJamesServer jmapServer(DockerRabbitMQ rabbitMQ, Module... additionals) throws IOException {
+    public GuiceJamesServer jmapServer(Module... additionals) throws IOException {
         Configuration configuration = Configuration.builder()
-            .workingDirectory(temporaryFolder.newFolder())
-            .configurationFromClasspath()
-            .build();
+                .workingDirectory(temporaryFolder.newFolder())
+                .configurationFromClasspath()
+                .build();
 
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraRabbitMQJamesServerMain.ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE)
-            .overrideWith(new TestJMAPServerModule(LIMIT_TO_3_MESSAGES))
-            .overrideWith(guiceModuleTestRule.getModule())
-            .overrideWith(additionals)
-            .overrideWith(new TestRabbitMQModule(rabbitMQ));
+                .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
+                .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
+                .overrideWith(new TestJMAPServerModule(LIMIT_TO_10_MESSAGES))
+                .overrideWith(new TestESMetricReporterModule())
+                .overrideWith(new TestRabbitMQModule(rabbitMQ))
+                .overrideWith(guiceModuleTestRule.getModule())
+                .overrideWith(additionals);
     }
-
-
 
     @Override
     public Statement apply(Statement base, Description description) {

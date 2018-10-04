@@ -19,12 +19,10 @@
 
 package org.apache.james.jmap.cassandra;
 
-import java.io.IOException;
-
 import org.apache.james.CassandraRabbitMQJmapTestRule;
 import org.apache.james.DockerCassandraRule;
+import org.apache.james.DockerRabbitMQRule;
 import org.apache.james.GuiceJamesServer;
-import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.apache.james.jmap.methods.integration.SetMessagesMethodTest;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MessageId;
@@ -33,20 +31,22 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class CassandraSetMessagesMethodTest extends SetMessagesMethodTest {
 
     @ClassRule
     public static DockerCassandraRule cassandra = new DockerCassandraRule();
 
     @ClassRule
-    public static DockerRabbitMQTestRule rabbitMQTestRule = new DockerRabbitMQTestRule();
+    public static DockerRabbitMQRule rabbitMQTestRule = new DockerRabbitMQRule();
 
     @Rule
     public CassandraRabbitMQJmapTestRule rule = CassandraRabbitMQJmapTestRule.defaultTestRule();
 
     @Override
     protected GuiceJamesServer createJmapServer() throws IOException {
-        return rule.jmapServer(rabbitMQTestRule.getDockerRabbitMQ(), cassandra.getModule());
+        return rule.jmapServer(rabbitMQTestRule.getModule(), cassandra.getModule());
     }
 
     @Override

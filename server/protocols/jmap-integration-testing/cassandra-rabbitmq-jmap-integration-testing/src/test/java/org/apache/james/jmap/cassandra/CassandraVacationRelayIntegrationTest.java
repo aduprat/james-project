@@ -19,17 +19,17 @@
 
 package org.apache.james.jmap.cassandra;
 
-import java.io.IOException;
-
 import org.apache.james.CassandraRabbitMQJmapTestRule;
 import org.apache.james.DockerCassandraRule;
+import org.apache.james.DockerRabbitMQRule;
 import org.apache.james.GuiceJamesServer;
-import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.apache.james.jmap.VacationRelayIntegrationTest;
 import org.junit.ClassRule;
 import org.junit.Rule;
+
+import java.io.IOException;
 
 public class CassandraVacationRelayIntegrationTest extends VacationRelayIntegrationTest {
 
@@ -39,7 +39,7 @@ public class CassandraVacationRelayIntegrationTest extends VacationRelayIntegrat
     public static DockerCassandraRule cassandra = new DockerCassandraRule();
 
     @ClassRule
-    public static DockerRabbitMQTestRule rabbitMQTestRule = new DockerRabbitMQTestRule();
+    public static DockerRabbitMQRule rabbitMQTestRule = new DockerRabbitMQRule();
 
     @Rule
     public CassandraRabbitMQJmapTestRule rule = CassandraRabbitMQJmapTestRule.defaultTestRule();
@@ -47,7 +47,7 @@ public class CassandraVacationRelayIntegrationTest extends VacationRelayIntegrat
     @Override
     protected GuiceJamesServer getJmapServer() throws IOException {
         return rule.jmapServer(
-                rabbitMQTestRule.getDockerRabbitMQ(),
+                rabbitMQTestRule.getModule(),
                 cassandra.getModule(),
                 (binder) -> binder.bind(DNSService.class).toInstance(inMemoryDNSService));
     }
