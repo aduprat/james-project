@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
+
 package org.apache.james.backend.rabbitmq;
 
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+public class RabbitMQSingleton {
+    public static final DockerRabbitMQ singleton = DockerRabbitMQ.withoutCookie();
 
-public class DockerRabbitMQTestRule implements TestRule {
-    @Override
-    public Statement apply(Statement base, Description description) {
-        return base;
-    }
-
-    public DockerRabbitMQ getDockerRabbitMQ() {
-        return RabbitMQSingleton.singleton;
+    static {
+        singleton.start();
     }
 }
