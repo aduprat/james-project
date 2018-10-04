@@ -24,14 +24,18 @@ import static org.apache.james.backend.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEME
 import java.net.URISyntaxException;
 import java.time.Duration;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.apache.james.CleanupTasksPerformer;
 import org.apache.james.backend.rabbitmq.DockerRabbitMQ;
 import org.apache.james.backend.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.queue.rabbitmq.RabbitMQManagementApi;
 import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMailQueueViewConfiguration;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.multibindings.Multibinder;
 
 public class TestRabbitMQModule extends AbstractModule {
 
@@ -49,6 +53,10 @@ public class TestRabbitMQModule extends AbstractModule {
             .updateBrowseStartPace(1000)
             .sliceWindow(Duration.ofHours(1))
             .build());
+
+        Multibinder.newSetBinder(binder(), CleanupTasksPerformer.CleanupTask.class)
+            .addBinding()
+            .to(QueueCleanUp.class);
     }
 
     @Provides
@@ -59,5 +67,21 @@ public class TestRabbitMQModule extends AbstractModule {
                 .managementUri(rabbitMQ.managementUri())
                 .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
                 .build();
+    }
+
+    public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {
+        private final RabbitMQManagementApi api;
+
+        @Inject
+        public QueueCleanUp(RabbitMQManagementApi api) {
+            this.api = api;
+        }
+
+        @Override
+        public Result run() {
+            api.deleteAllQueues();
+
+            return Result.COMPLETED;
+        }
     }
 }

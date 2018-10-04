@@ -22,20 +22,22 @@ package org.apache.james;
 import java.io.IOException;
 
 import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
-import org.junit.rules.RuleChain;
 
 public class CassandraRabbitMQJmapJamesServerTest extends AbstractJmapJamesServerTest {
 
-    private DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
-    private CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();
+    @ClassRule
+    public static DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
+    @ClassRule
+    public static DockerCassandraRule cassandra = new DockerCassandraRule();
 
     @Rule
-    public RuleChain ruleChain = RuleChain.outerRule(rabbitMQ).around(cassandraRabbitMQJmap);
+    public CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();
 
     @Override
     protected GuiceJamesServer createJamesServer() throws IOException {
-        return cassandraRabbitMQJmap.jmapServer(rabbitMQ.getDockerRabbitMQ());
+        return cassandraRabbitMQJmap.jmapServer(rabbitMQ.getDockerRabbitMQ(), cassandra.getModule());
     }
 
     @Override

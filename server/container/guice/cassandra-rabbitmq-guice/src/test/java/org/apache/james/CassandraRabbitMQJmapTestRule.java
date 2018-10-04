@@ -19,26 +19,25 @@
 
 package org.apache.james;
 
-import com.google.inject.Module;
+import java.io.IOException;
+
 import org.apache.james.backend.rabbitmq.DockerRabbitMQ;
-import org.apache.james.backend.rabbitmq.RabbitMQConfiguration;
-import org.apache.james.backend.rabbitmq.RabbitMQFixture;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.modules.TestRabbitMQModule;
 import org.apache.james.server.core.configuration.Configuration;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
+import com.google.inject.Module;
 
 public class CassandraRabbitMQJmapTestRule implements TestRule {
     private static final int LIMIT_TO_3_MESSAGES = 3;
 
     public static CassandraRabbitMQJmapTestRule defaultTestRule() {
         return new CassandraRabbitMQJmapTestRule(
-            AggregateGuiceModuleTestRule.of(new EmbeddedElasticSearchRule(), new DockerCassandraRule()));
+            AggregateGuiceModuleTestRule.of(new EmbeddedElasticSearchRule()));
     }
 
     private final TemporaryFolder temporaryFolder;
@@ -64,21 +63,10 @@ public class CassandraRabbitMQJmapTestRule implements TestRule {
             .overrideWith(new TestJMAPServerModule(LIMIT_TO_3_MESSAGES))
             .overrideWith(guiceModuleTestRule.getModule())
             .overrideWith(additionals)
-            .overrideWith(binder -> binder.bind(RabbitMQConfiguration.class)
-                .toInstance(computeConfiguration(rabbitMQ)));
+            .overrideWith(new TestRabbitMQModule(rabbitMQ));
     }
 
-    private RabbitMQConfiguration computeConfiguration(DockerRabbitMQ rabbitMQ) {
-        try {
-            return RabbitMQConfiguration.builder()
-                .amqpUri(rabbitMQ.amqpUri())
-                .managementUri(rabbitMQ.managementUri())
-                .managementCredentials(RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL)
-                .build();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
+
 
     @Override
     public Statement apply(Statement base, Description description) {

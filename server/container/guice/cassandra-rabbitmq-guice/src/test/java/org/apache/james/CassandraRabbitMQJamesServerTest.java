@@ -34,9 +34,9 @@ import org.apache.james.utils.SpoolerProbe;
 import org.awaitility.Awaitility;
 import org.awaitility.Duration;
 import org.awaitility.core.ConditionFactory;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.RuleChain;
 
 public class CassandraRabbitMQJamesServerTest extends AbstractJmapJamesServerTest {
     private static final String DOMAIN = "domain";
@@ -50,21 +50,23 @@ public class CassandraRabbitMQJamesServerTest extends AbstractJmapJamesServerTes
         .pollDelay(slowPacedPollInterval)
         .await();
 
-    private DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
-    private CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();
+    @ClassRule
+    public static DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
+    @ClassRule
+    public static DockerCassandraRule cassandra = new DockerCassandraRule();
 
     @Rule
-    public RuleChain ruleChain = RuleChain.outerRule(rabbitMQ).around(cassandraRabbitMQJmap);
+    public CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();
+
+    @Override
+    protected GuiceJamesServer createJamesServer() throws IOException {
+        return cassandraRabbitMQJmap.jmapServer(rabbitMQ.getDockerRabbitMQ(), cassandra.getModule(), DOMAIN_LIST_CONFIGURATION_MODULE);
+    }
 
     @Rule
     public IMAPMessageReader imapMessageReader = new IMAPMessageReader();
     @Rule
     public SMTPMessageSender messageSender = new SMTPMessageSender(Domain.LOCALHOST.asString());
-
-    @Override
-    protected GuiceJamesServer createJamesServer() throws IOException {
-        return cassandraRabbitMQJmap.jmapServer(rabbitMQ.getDockerRabbitMQ(), DOMAIN_LIST_CONFIGURATION_MODULE);
-    }
 
     @Override
     protected void clean() {

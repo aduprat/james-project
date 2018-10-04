@@ -31,23 +31,30 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import feign.Feign;
 import feign.Logger;
+import feign.Param;
 import feign.RequestLine;
 import feign.auth.BasicAuthRequestInterceptor;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.slf4j.Slf4jLogger;
 
-class RabbitMQManagementApi {
+public class RabbitMQManagementApi {
 
     public interface Api {
 
         class MessageQueue {
             @JsonProperty("name")
             String name;
+
+            @JsonProperty("vhost")
+            String vhost;
         }
 
         @RequestLine("GET /api/queues")
         List<MessageQueue> listQueues();
+
+        @RequestLine(value= "DELETE /api/queues/{vhost}/{name}", decodeSlash = false)
+        void deleteQueue(@Param("vhost") String vhost, @Param("name") String name);
     }
 
     private final Api api;
@@ -62,7 +69,6 @@ class RabbitMQManagementApi {
             .encoder(new JacksonEncoder())
             .decoder(new JacksonDecoder())
             .target(Api.class, configuration.getManagementUri().toString());
-
     }
 
     Stream<MailQueueName> listCreatedMailQueueNames() {
@@ -74,4 +80,8 @@ class RabbitMQManagementApi {
             .distinct();
     }
 
+    public void deleteAllQueues() {
+        api.listQueues()
+            .forEach(queue -> api.deleteQueue("/", queue.name));
+    }
 }
