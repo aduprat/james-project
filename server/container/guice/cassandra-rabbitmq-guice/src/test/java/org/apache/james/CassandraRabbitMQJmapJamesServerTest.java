@@ -19,15 +19,13 @@
 
 package org.apache.james;
 
+import java.io.IOException;
+
 import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.junit.Rule;
 import org.junit.rules.RuleChain;
 
-import java.io.IOException;
-
 public class CassandraRabbitMQJmapJamesServerTest extends AbstractJmapJamesServerTest {
-    private static final String DOMAIN = "james.org";
-    private static final String ADMIN_PASSWORD = "mysecretpassword";
 
     private DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
     private CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();

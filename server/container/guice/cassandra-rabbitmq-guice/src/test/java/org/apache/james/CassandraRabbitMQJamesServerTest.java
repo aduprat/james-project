@@ -19,11 +19,15 @@
 
 package org.apache.james;
 
-import org.apache.commons.net.imap.IMAPClient;
+import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
+
+import java.io.IOException;
+
 import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
 import org.apache.james.core.Domain;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
+import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.IMAPMessageReader;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.SpoolerProbe;
@@ -34,16 +38,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.RuleChain;
 
-import java.io.IOException;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
-
 public class CassandraRabbitMQJamesServerTest extends AbstractJmapJamesServerTest {
-    private static final String JAMES_USER = "james-user";
+    private static final String DOMAIN = "domain";
+    private static final String JAMES_USER = "james-user@" + DOMAIN;
     private static final String PASSWORD = "secret";
-    private static final String DOMAIN = "james.org";
-    private static final String ADMIN_PASSWORD = "mysecretpassword";
     private static Duration slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS;
     private static ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(slowPacedPollInterval)
@@ -54,7 +52,6 @@ public class CassandraRabbitMQJamesServerTest extends AbstractJmapJamesServerTes
 
     private DockerRabbitMQTestRule rabbitMQ = new DockerRabbitMQTestRule();
     private CassandraRabbitMQJmapTestRule cassandraRabbitMQJmap = CassandraRabbitMQJmapTestRule.defaultTestRule();
-    private IMAPClient imapClient = new IMAPClient();
 
     @Rule
     public RuleChain ruleChain = RuleChain.outerRule(rabbitMQ).around(cassandraRabbitMQJmap);
@@ -71,24 +68,17 @@ public class CassandraRabbitMQJamesServerTest extends AbstractJmapJamesServerTes
 
     @Override
     protected void clean() {
-        try {
-            imapClient.disconnect();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
     }
 
     @Test
-    public void userFromLdapShouldLoginViaImapProtocol() throws Exception {
-        imapClient.connect(JAMES_SERVER_HOST, server.getProbe(ImapGuiceProbe.class).getImapPort());
+    public void mailsShouldBeWellReceived() throws Exception {
+        server.getProbe(DataProbeImpl.class).fluent()
+            .addDomain(DOMAIN)
+            .addUser(JAMES_USER, PASSWORD);
 
-        assertThat(imapClient.login(JAMES_USER, PASSWORD)).isTrue();
-    }
-
-    @Test
-    public void mailsShouldBeWellReceivedBeforeFirstUserConnectionWithLdap() throws Exception {
         messageSender.connect(JAMES_SERVER_HOST, server.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .sendMessage("bob@any.com", JAMES_USER + "@localhost");
+            .sendMessage("bob@any.com", JAMES_USER);
 
         calmlyAwait.until(() -> server.getProbe(SpoolerProbe.class).processingFinished());
 
