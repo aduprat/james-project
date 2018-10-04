@@ -18,17 +18,8 @@
  */
 package org.apache.james.jmap.cassandra.cucumber;
 
-import com.google.inject.Module;
-import org.apache.james.GuiceModuleTestRule;
 import org.apache.james.backend.rabbitmq.DockerRabbitMQ;
-import org.apache.james.backend.rabbitmq.DockerRabbitMQTestRule;
-import org.elasticsearch.common.settings.Settings;
 import org.junit.rules.ExternalResource;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
-
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 public class DockerRabbitMQResource extends ExternalResource {
 
