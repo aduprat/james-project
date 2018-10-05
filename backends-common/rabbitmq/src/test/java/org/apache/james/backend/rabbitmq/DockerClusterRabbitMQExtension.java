@@ -18,8 +18,10 @@
  ****************************************************************/
 package org.apache.james.backend.rabbitmq;
 
-import java.nio.charset.StandardCharsets;
-
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
+import com.google.common.hash.Hashing;
+import com.rabbitmq.client.Address;
 import org.apache.james.util.Runnables;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -29,10 +31,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.testcontainers.containers.Network;
 
-import com.github.fge.lambdas.Throwing;
-import com.google.common.collect.ImmutableList;
-import com.google.common.hash.Hashing;
-import com.rabbitmq.client.Address;
+import java.nio.charset.StandardCharsets;
 
 public class DockerClusterRabbitMQExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
@@ -43,7 +42,7 @@ public class DockerClusterRabbitMQExtension implements BeforeEachCallback, After
     private Network network;
 
     @Override
-    public void beforeEach(ExtensionContext context) {
+    public void beforeEach(ExtensionContext context) throws Exception {
         String cookie = Hashing.sha256().hashString("secret cookie here", StandardCharsets.UTF_8).toString();
 
         network = Network.NetworkImpl.builder()
@@ -64,10 +63,9 @@ public class DockerClusterRabbitMQExtension implements BeforeEachCallback, After
             Throwing.runnable(() -> rabbitMQ2.join(rabbitMQ1)),
             Throwing.runnable(() -> rabbitMQ3.join(rabbitMQ1)));
 
-        Runnables.runParallel(
-            Throwing.runnable(rabbitMQ1::startApp),
-            Throwing.runnable(rabbitMQ2::startApp),
-            Throwing.runnable(rabbitMQ3::startApp));
+        rabbitMQ1.startApp();
+        rabbitMQ2.startApp();
+        rabbitMQ3.startApp();
 
         cluster = new DockerRabbitMQCluster(rabbitMQ1, rabbitMQ2, rabbitMQ3);
 
