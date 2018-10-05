@@ -19,25 +19,67 @@
 
 package org.apache.james;
 
+import static org.apache.james.CassandraRabbitMQJamesServerMain.ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE;
+import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
+
+import org.apache.james.core.Domain;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.modules.protocols.ImapGuiceProbe;
+import org.apache.james.modules.protocols.SmtpGuiceProbe;
+import org.apache.james.utils.DataProbeImpl;
+import org.apache.james.utils.IMAPMessageReader;
+import org.apache.james.utils.SMTPMessageSender;
+import org.apache.james.utils.SpoolerProbe;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
+import org.awaitility.core.ConditionFactory;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
-
 class CassandraRabbitMQJamesServerTest implements JamesServerContract {
+    private static final String DOMAIN = "domain";
+    private static final String JAMES_USER = "james-user@" + DOMAIN;
+    private static final String PASSWORD = "secret";
+    private static Duration slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS;
+    private static ConditionFactory calmlyAwait = Awaitility.with()
+        .pollInterval(slowPacedPollInterval)
+        .and()
+        .with()
+        .pollDelay(slowPacedPollInterval)
+        .await();
     private static final int LIMIT_TO_10_MESSAGES = 10;
+
+    private IMAPMessageReader imapMessageReader = new IMAPMessageReader();
+    private SMTPMessageSender messageSender = new SMTPMessageSender(Domain.LOCALHOST.asString());
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerExtensionBuilder()
-            .extension(new EmbeddedElasticSearchExtension())
-            .extension(new CassandraExtension())
-            .extension(new RabbitMQExtension())
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                    .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-                    .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-                    .overrideWith(new TestJMAPServerModule(LIMIT_TO_10_MESSAGES))
-                    .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
-            .build();
+        .extension(new EmbeddedElasticSearchExtension())
+        .extension(new CassandraExtension())
+        .extension(new RabbitMQExtension())
+        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
+            .combineWith(ALL_BUT_JMX_CASSANDRA_RABBITMQ_MODULE)
+            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
+            .overrideWith(new TestJMAPServerModule(LIMIT_TO_10_MESSAGES))
+            .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
+        .build();
+
+    @Test
+    void mailsShouldBeWellReceived(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class).fluent()
+            .addDomain(DOMAIN)
+            .addUser(JAMES_USER, PASSWORD);
+
+        messageSender.connect(JAMES_SERVER_HOST, server.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+            .sendMessage("bob@any.com", JAMES_USER);
+
+        calmlyAwait.until(() -> server.getProbe(SpoolerProbe.class).processingFinished());
+
+        imapMessageReader.connect(JAMES_SERVER_HOST, server.getProbe(ImapGuiceProbe.class).getImapPort())
+            .login(JAMES_USER, PASSWORD)
+            .select("INBOX")
+            .awaitMessage(calmlyAwait);
+    }
 }

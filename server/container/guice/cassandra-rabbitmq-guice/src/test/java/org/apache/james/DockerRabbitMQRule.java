@@ -38,10 +38,19 @@ public class DockerRabbitMQRule implements GuiceModuleTestRule {
     @Override
     public Statement apply(Statement base, Description description) {
         try {
+            start();
             return base;
         } finally {
-            rabbitMQContainer.stop();
+            stop();
         }
+    }
+
+    public void stop() {
+        rabbitMQContainer.stop();
+    }
+
+    public void start() {
+        rabbitMQContainer.start();
     }
 
     @Override
@@ -50,7 +59,6 @@ public class DockerRabbitMQRule implements GuiceModuleTestRule {
 
     @Override
     public Module getModule() {
-        rabbitMQContainer.start();
         return new TestRabbitMQModule(rabbitMQContainer);
     }
 

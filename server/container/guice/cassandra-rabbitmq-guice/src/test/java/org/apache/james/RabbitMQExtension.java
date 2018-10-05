@@ -22,30 +22,30 @@ package org.apache.james;
 import com.google.inject.Module;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-class RabbitMQExtension implements GuiceModuleTestExtension {
+public class RabbitMQExtension implements GuiceModuleTestExtension {
 
-    private final DockerCassandraRule cassandra;
+    private final DockerRabbitMQRule rabbitMQRule;
 
-    RabbitMQExtension() {
-        this(new DockerCassandraRule());
+    public RabbitMQExtension() {
+        this(new DockerRabbitMQRule());
     }
 
-    public RabbitMQExtension(DockerCassandraRule cassandra) {
-        this.cassandra = cassandra;
+    public RabbitMQExtension(DockerRabbitMQRule rabbitMQRule) {
+        this.rabbitMQRule = rabbitMQRule;
     }
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) {
-        cassandra.start();
+        rabbitMQRule.start();
     }
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
-        cassandra.stop();
+        rabbitMQRule.stop();
     }
 
     @Override
     public Module getModule() {
-        return cassandra.getModule();
+        return rabbitMQRule.getModule();
     }
 }
