@@ -44,7 +44,8 @@ import org.apache.mailet.Mail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -55,15 +56,22 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@ExtendWith(CassandraMailRepositoryWithFakeImplementationsTest.MailRepositoryCassandraClusterExtension.class)
 class CassandraMailRepositoryWithFakeImplementationsTest {
     static final MailRepositoryUrl URL = MailRepositoryUrl.from("proto://url");
     static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
 
-    @RegisterExtension
-    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-        CassandraModule.aggregateModules(
-            CassandraMailRepositoryModule.MODULE,
-            CassandraBlobModule.MODULE));
+    static class MailRepositoryCassandraClusterExtension extends CassandraClusterExtension {
+        public MailRepositoryCassandraClusterExtension() {
+            super(CassandraModule.aggregateModules(
+                    CassandraMailRepositoryModule.MODULE,
+                    CassandraBlobModule.MODULE));
+        }
+
+        @Override
+        public void afterAll(ExtensionContext extensionContext) {
+        }
+    }
 
     @Nested
     class FailingStoreTest {
