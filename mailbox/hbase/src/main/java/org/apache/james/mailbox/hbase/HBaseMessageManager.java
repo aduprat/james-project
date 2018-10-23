@@ -37,8 +37,11 @@ import org.apache.james.mailbox.store.search.MessageSearchIndex;
 
 /**
  * HBase implementation of MessageManager.
- * 
+ *
+ * @Depracted: See JAMES-2571
+ *
  */
+@Deprecated
 public class HBaseMessageManager extends StoreMessageManager {
 
     public HBaseMessageManager(MailboxSessionMapperFactory mapperFactory,

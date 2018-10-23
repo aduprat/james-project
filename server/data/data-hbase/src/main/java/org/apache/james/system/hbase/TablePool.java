@@ -36,8 +36,11 @@ import org.apache.james.user.hbase.def.HUsersRepository;
  * Table Pool singleton to get the DomainList, RecipientRewriteTable and UserRepository HBase tables.
  *
  * TODO Two getInstance methods are public, one for the impl, one for the tests. This is not good.
+ *
+ * @Depracted: See JAMES-2571
  */
 @SuppressWarnings("deprecation")
+@Deprecated
 public class TablePool {
 
     private static Configuration configuration;

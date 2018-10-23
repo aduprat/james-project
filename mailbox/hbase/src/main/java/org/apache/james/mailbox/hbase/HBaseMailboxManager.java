@@ -41,8 +41,11 @@ import org.apache.james.mailbox.store.transaction.Mapper;
 
 /**
  * HBase implementation of {@link StoreMailboxManager}
- * 
+ *
+ * @Depracted: See JAMES-2571
+ *
  */
+@Deprecated
 public class HBaseMailboxManager extends StoreMailboxManager {
 
     public static final EnumSet<MailboxCapabilities> MAILBOX_CAPABILITIES = EnumSet.of(MailboxCapabilities.Namespace);
