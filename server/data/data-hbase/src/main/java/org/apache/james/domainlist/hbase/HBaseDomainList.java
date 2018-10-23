@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implementation of the DomainList for a HBase persistence.
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  */
 @Deprecated
 public class HBaseDomainList extends AbstractDomainList {

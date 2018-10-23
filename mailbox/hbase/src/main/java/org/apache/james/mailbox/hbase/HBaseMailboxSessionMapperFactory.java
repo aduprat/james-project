@@ -56,7 +56,7 @@ import org.apache.james.mailbox.store.user.SubscriptionMapper;
 /**
  * HBase implementation of {@link MailboxSessionMapperFactory}
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  *
  */
 @Deprecated

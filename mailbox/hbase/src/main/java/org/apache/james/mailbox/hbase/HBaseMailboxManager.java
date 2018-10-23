@@ -42,7 +42,7 @@ import org.apache.james.mailbox.store.transaction.Mapper;
 /**
  * HBase implementation of {@link StoreMailboxManager}
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  *
  */
 @Deprecated

@@ -37,7 +37,7 @@ import org.apache.james.user.hbase.def.HUsersRepository;
  *
  * TODO Two getInstance methods are public, one for the impl, one for the tests. This is not good.
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  */
 @SuppressWarnings("deprecation")
 @Deprecated

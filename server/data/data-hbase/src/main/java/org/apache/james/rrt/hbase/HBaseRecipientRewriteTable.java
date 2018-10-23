@@ -52,7 +52,7 @@ import com.google.common.base.Splitter;
 /**
  * Implementation of the RecipientRewriteTable for a HBase persistence.
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  */
 @Deprecated
 public class HBaseRecipientRewriteTable extends AbstractRecipientRewriteTable {

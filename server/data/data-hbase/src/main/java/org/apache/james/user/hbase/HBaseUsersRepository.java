@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implementation of the UserRepository for a HBase persistence.
  *
- * @Depracted: See JAMES-2571
+ * @Deprecated: See JAMES-2571
  */
 @Deprecated
 public class HBaseUsersRepository extends AbstractUsersRepository {
