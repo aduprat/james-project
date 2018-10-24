@@ -41,8 +41,8 @@ git checkout $SHA1
 
 export MAVEN_OPTS="-Xmx7168m -Xms2048m -XX:+UseConcMarkSweepGC -XX:-UseGCOverheadLimit"
 
-mvn clean install -DskipTests
-mvn clean site:site -Dmaven.javadoc.skip=true
+mvn clean install -DskipTests -Drat.numUnapprovedLicenses=100
+mvn clean site:site -Dmaven.javadoc.skip=true -Drat.numUnapprovedLicenses=100
 mkdir /tmp/website-generation
 mvn site:stage -DstagingDirectory=/tmp/website-generation
 
