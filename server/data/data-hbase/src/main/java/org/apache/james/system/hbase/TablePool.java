@@ -37,7 +37,8 @@ import org.apache.james.user.hbase.def.HUsersRepository;
  *
  * TODO Two getInstance methods are public, one for the impl, one for the tests. This is not good.
  *
- * @Deprecated: See JAMES-2571
+ * @Deprecated: See JAMES-2571 The HBase implementation is not enough maintained and thus will be removed from James in version 3.3.0. Please prefer using
+ * other MailboxManagers or contribute the HBase mailbox maintenance.
  */
 @SuppressWarnings("deprecation")
 @Deprecated
