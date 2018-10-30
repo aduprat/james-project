@@ -40,7 +40,7 @@
        definitions and requirements but can perfectly be used in any other (non mail server) context. 
     </p>
     <p>The mailbox library supports different persistence 
-       mechanisms: MailDir, SQL Database via Apache OpenJPA, JCR (Java Content Repository based on Apache Jackrabbit) 
+       mechanisms: MailDir, SQL Database via Apache OpenJPA
        and Apache HBase.
     </p>
     <p>You can <a href="http://james.apache.org/download.cgi">download</a> current 0.4 release. 
