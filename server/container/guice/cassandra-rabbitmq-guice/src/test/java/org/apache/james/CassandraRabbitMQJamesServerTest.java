@@ -68,12 +68,15 @@ class CassandraRabbitMQJamesServerTest implements JmapJamesServerContract {
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(JAMES_USER, PASSWORD);
+
         messageSender.connect(JAMES_SERVER_HOST, server.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .sendMessage("bob@any.com", JAMES_USER);
+
         calmlyAwait.until(() -> server.getProbe(SpoolerProbe.class).processingFinished());
+
         imapMessageReader.connect(JAMES_SERVER_HOST, server.getProbe(ImapGuiceProbe.class).getImapPort())
             .login(JAMES_USER, PASSWORD)
-            .select("INBOX")
+            .select(IMAPMessageReader.INBOX)
             .awaitMessage(calmlyAwait);
     }
 }
