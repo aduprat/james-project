@@ -25,10 +25,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.concurrent.Executors;
 
+import org.apache.james.backends.es.ElasticSearchConfiguration;
 import org.apache.james.backends.es.ElasticSearchIndexer;
 import org.apache.james.backends.es.EmbeddedElasticSearch;
-import org.apache.james.backends.es.IndexAttachments;
-import org.apache.james.backends.es.MailboxElasticSearchConstants;
 import org.apache.james.backends.es.utils.TestingClientProvider;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
@@ -94,7 +93,8 @@ public class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest
     @Override
     protected void initializeMailboxManager() throws Exception {
         Client client = MailboxIndexCreationUtil.prepareDefaultClient(
-            new TestingClientProvider(embeddedElasticSearch.getNode()).get());
+            new TestingClientProvider(embeddedElasticSearch.getNode()).get(),
+                ElasticSearchConfiguration.DEFAULT_CONFIGURATION);
 
         storeMailboxManager = new InMemoryIntegrationResources()
             .createMailboxManager(new SimpleGroupMembershipResolver());

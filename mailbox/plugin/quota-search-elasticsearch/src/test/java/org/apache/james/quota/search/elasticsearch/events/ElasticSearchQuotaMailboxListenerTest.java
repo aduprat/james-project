@@ -27,6 +27,7 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 
 import java.util.concurrent.Executors;
 
+import org.apache.james.backends.es.ElasticSearchConfiguration;
 import org.apache.james.backends.es.ElasticSearchIndexer;
 import org.apache.james.backends.es.EmbeddedElasticSearch;
 import org.apache.james.backends.es.utils.TestingClientProvider;
@@ -35,7 +36,7 @@ import org.apache.james.mailbox.MailboxListener.QuotaUsageUpdatedEvent;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.quota.QuotaFixture.Counts;
 import org.apache.james.mailbox.quota.QuotaFixture.Sizes;
-import org.apache.james.backends.es.QuotaRatioElasticSearchConstants;
+import org.apache.james.quota.search.elasticsearch.QuotaRatioElasticSearchConstants;
 import org.apache.james.quota.search.elasticsearch.QuotaSearchIndexCreationUtil;
 import org.apache.james.quota.search.elasticsearch.json.QuotaRatioToElasticSearchJson;
 import org.elasticsearch.action.search.SearchResponse;
@@ -63,7 +64,7 @@ public class ElasticSearchQuotaMailboxListenerTest {
     @Before
     public void setUp() {
         client = QuotaSearchIndexCreationUtil.prepareDefaultClient(
-            new TestingClientProvider(embeddedElasticSearch.getNode()).get());
+            new TestingClientProvider(embeddedElasticSearch.getNode()).get(), ElasticSearchConfiguration.DEFAULT_CONFIGURATION);
 
         quotaMailboxListener = new ElasticSearchQuotaMailboxListener(
             new ElasticSearchIndexer(client,

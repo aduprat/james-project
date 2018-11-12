@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.concurrent.Executors;
 
+import org.apache.james.backends.es.ElasticSearchConfiguration;
 import org.apache.james.backends.es.ElasticSearchIndexer;
 import org.apache.james.backends.es.EmbeddedElasticSearch;
 import org.apache.james.backends.es.utils.TestingClientProvider;
@@ -33,7 +34,7 @@ import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.mock.MockMailboxSession;
 import org.apache.james.quota.search.QuotaSearchTestSystem;
 import org.apache.james.quota.search.elasticsearch.ElasticSearchQuotaSearcher;
-import org.apache.james.backends.es.QuotaRatioElasticSearchConstants;
+import org.apache.james.quota.search.elasticsearch.QuotaRatioElasticSearchConstants;
 import org.apache.james.quota.search.elasticsearch.QuotaSearchIndexCreationUtil;
 import org.apache.james.quota.search.elasticsearch.events.ElasticSearchQuotaMailboxListener;
 import org.apache.james.quota.search.elasticsearch.json.QuotaRatioToElasticSearchJson;
@@ -60,7 +61,8 @@ public class ElasticSearchQuotaSearchExtension implements ParameterResolver, Bef
             embeddedElasticSearch.before();
 
             Client client = QuotaSearchIndexCreationUtil.prepareDefaultClient(
-                new TestingClientProvider(embeddedElasticSearch.getNode()).get());
+                new TestingClientProvider(embeddedElasticSearch.getNode()).get(),
+                ElasticSearchConfiguration.DEFAULT_CONFIGURATION);
 
             InMemoryIntegrationResources.Resources resources = new InMemoryIntegrationResources().createResources(new SimpleGroupMembershipResolver());
 
