@@ -86,9 +86,8 @@ public class ElasticSearchQuotaConfiguration {
     public static final String ELASTICSEARCH_ALIAS_READ_QUOTA_RATIO_NAME = "elasticsearch.alias.read.quota.ratio.name";
     public static final String ELASTICSEARCH_ALIAS_WRITE_QUOTA_RATIO_NAME = "elasticsearch.alias.write.quota.ratio.name";
 
+    public static final ElasticSearchQuotaConfiguration DEFAULT_CONFIGURATION = builder().build();
 
-    public static final ElasticSearchQuotaConfiguration DEFAULT_CONFIGURATION = builder()
-        .build();
     public static ElasticSearchQuotaConfiguration fromProperties(Configuration configuration) throws ConfigurationException {
         return builder()
             .indexQuotaRatioName(computeQuotaSearchIndexName(configuration))

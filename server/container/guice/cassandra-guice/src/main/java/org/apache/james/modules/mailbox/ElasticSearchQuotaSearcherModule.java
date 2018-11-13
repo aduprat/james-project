@@ -66,7 +66,7 @@ public class ElasticSearchQuotaSearcherModule extends AbstractModule {
 
 
     @Provides
-    @javax.inject.Singleton
+    @Singleton
     private ElasticSearchQuotaConfiguration getElasticSearchQuotaConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
             Configuration configuration = propertiesProvider.getConfiguration(ELASTICSEARCH_CONFIGURATION_NAME);
