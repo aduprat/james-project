@@ -213,7 +213,7 @@ public class ElasticSearchConfigurationTest {
     }
 
     @Test
-    public void clusterNameShouldKeepTheVAlueWhenGiven() throws ConfigurationException {
+    public void clusterNameShouldKeepTheValueWhenGiven() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         String hostname = "myHost";
         configuration.addProperty("elasticsearch.masterHost", hostname);
