@@ -32,7 +32,7 @@ public class FakePropertiesProvider extends PropertiesProvider {
     private ImmutableMap<String, Configuration> configurations;
 
     public FakePropertiesProvider(ImmutableMap<String, Configuration> configurations) {
-        super(null);
+        super(null, null);
         this.configurations = configurations;
     }
 
