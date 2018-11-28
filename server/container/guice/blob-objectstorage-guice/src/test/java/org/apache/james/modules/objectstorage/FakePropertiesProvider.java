@@ -32,7 +32,9 @@ public class FakePropertiesProvider extends PropertiesProvider {
     private ImmutableMap<String, Configuration> configurations;
 
     public FakePropertiesProvider(ImmutableMap<String, Configuration> configurations) {
-        super(null, null);
+        super(null, org.apache.james.server.core.configuration.Configuration.builder()
+            .workingDirectory("fakePath")
+            .build());
         this.configurations = configurations;
     }
 
