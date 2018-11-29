@@ -19,15 +19,14 @@
 
 package org.apache.james.mailbox.store;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MessageRange;
 
 import com.github.fge.lambdas.Throwing;
+import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 
 public class MessageBatcher {
 
@@ -54,7 +53,7 @@ public class MessageBatcher {
                 .stream()
                 .flatMap(Throwing.function(range -> batchedOperation.execute(range)
                                                                     .stream()))
-                .collect(ImmutableList.toImmutableList());
+                .collect(Guavate.toImmutableList());
         } else {
             return batchedOperation.execute(set);
         }
