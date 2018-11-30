@@ -45,6 +45,7 @@ fi
 
 # Sources retrieval
 git clone $ORIGIN/.
+git fetch origin
 git branch
 
 git checkout $SHA1
