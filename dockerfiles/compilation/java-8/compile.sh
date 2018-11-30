@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh -evx
 #
 
 printUsage() {
@@ -45,6 +45,8 @@ fi
 
 # Sources retrieval
 git clone $ORIGIN/.
+git branch
+
 git checkout $SHA1
 
 # Compilation
