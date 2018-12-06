@@ -28,4 +28,4 @@ ADD destination/conf /root/conf
 VOLUME /logs
 VOLUME /root/conf
 
-ENTRYPOINT java -Dlogback.configurationFile=/root/conf/logback.xml -Dworking.directory=/root/ -jar james-server.jar 
+ENTRYPOINT java -Dlogback.configurationFile=/root/conf/logback.xml -Dworking.directory=/root/ "${JVM_OPTIONS}" -jar james-server.jar
