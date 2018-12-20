@@ -19,8 +19,10 @@
 
 package org.apache.james.deployment;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+@Tag("DeploymentTesting")
 @ExtendWith(JamesCassandraElasticSearchExtension.class)
 class CassandraElasticSearchDeploymentTest implements  DeploymentTest {
 }

@@ -2857,6 +2857,7 @@
                         <reuseForks>false</reuseForks>
                         <!-- Fail tests longer than 2 hours, prevent form random locking tests -->
                         <forkedProcessTimeoutInSeconds>7200</forkedProcessTimeoutInSeconds>
+                        <excludedGroups>DeploymentTesting</excludedGroups>
                     </configuration>
                     <dependencies>
                         <dependency>
