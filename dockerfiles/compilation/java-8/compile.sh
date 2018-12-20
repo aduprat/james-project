@@ -56,6 +56,7 @@ if [ "$SKIPTESTS" = "skipTests" ]; then
    mvn package -DskipTests ${MVN_ADDITIONAL_ARG_LINE}
 else
    mvn package ${MVN_ADDITIONAL_ARG_LINE}
+   mvn test -pl server/container/testing -P DeploymentTesting
 fi
 
 # Retrieve result
