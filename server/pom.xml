@@ -53,6 +53,7 @@
         <module>container/mailbox-jmx</module>
         <module>container/metrics/metrics-es-reporter</module>
         <module>container/spring</module>
+        <module>container/testing</module>
         <module>container/util</module>
 
         <module>data/data-api</module>

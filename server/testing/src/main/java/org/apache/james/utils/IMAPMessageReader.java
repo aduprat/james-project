@@ -212,4 +212,9 @@ public class IMAPMessageReader extends ExternalResource implements Closeable, Af
         imapClient.sendCommand("GETQUOTAROOT " + mailbox);
         return imapClient.getReplyString();
     }
+
+    public String searchMessageContaining(String content) throws IOException {
+        imapClient.search("TEXT " + content);
+        return imapClient.getReplyString();
+    }
 }
