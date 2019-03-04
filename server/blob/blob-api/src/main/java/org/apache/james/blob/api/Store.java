@@ -66,7 +66,7 @@ public interface Store<T, I> {
     class Impl<T, I extends BlobPartsId> implements Store<T, I> {
 
         public interface Encoder<T> {
-            Stream<Pair<BlobType, InputStream>> encode(T t);
+            Stream<Pair<BlobType, FixedLengthInputStream>> encode(T t);
         }
 
         public interface Decoder<T> {
@@ -93,9 +93,9 @@ public interface Store<T, I> {
                 .map(idFactory::generate);
         }
 
-        private Mono<Tuple2<BlobType, BlobId>> saveEntry(Pair<BlobType, InputStream> entry) {
+        private Mono<Tuple2<BlobType, BlobId>> saveEntry(Pair<BlobType, FixedLengthInputStream> entry) {
             return Mono.just(entry.getLeft())
-                .zipWith(blobStore.save(entry.getRight()));
+                .zipWith(blobStore.save(entry.getRight().getInputStream(), entry.getRight().getContentLength()));
         }
 
         @Override
@@ -108,6 +108,25 @@ public interface Store<T, I> {
                 .collectList()
                 .map(Collection::stream)
                 .map(decoder::decode);
+        }
+    }
+
+    class FixedLengthInputStream {
+
+        private final InputStream inputStream;
+        private final long contentLength;
+
+        public FixedLengthInputStream(InputStream inputStream, long contentLength) {
+            this.inputStream = inputStream;
+            this.contentLength = contentLength;
+        }
+
+        public InputStream getInputStream() {
+            return inputStream;
+        }
+
+        public long getContentLength() {
+            return contentLength;
         }
     }
 }
