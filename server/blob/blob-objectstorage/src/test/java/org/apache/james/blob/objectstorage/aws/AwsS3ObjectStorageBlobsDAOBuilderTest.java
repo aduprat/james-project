@@ -21,21 +21,13 @@ package org.apache.james.blob.objectstorage.aws;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.net.URI;
 import java.util.UUID;
 
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.objectstorage.ContainerName;
-import org.apache.james.blob.objectstorage.DockerSwift;
-import org.apache.james.blob.objectstorage.DockerSwiftExtension;
 import org.apache.james.blob.objectstorage.ObjectStorageBlobsDAO;
 import org.apache.james.blob.objectstorage.ObjectStorageBlobsDAOBuilder;
 import org.apache.james.blob.objectstorage.ObjectStorageBlobsDAOContract;
-import org.apache.james.blob.objectstorage.swift.Credentials;
-import org.apache.james.blob.objectstorage.swift.Identity;
-import org.apache.james.blob.objectstorage.swift.SwiftKeystone2ObjectStorage;
-import org.apache.james.blob.objectstorage.swift.TenantName;
-import org.apache.james.blob.objectstorage.swift.UserName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,20 +35,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(DockerAwsS3Extension.class)
 class AwsS3ObjectStorageBlobsDAOBuilderTest implements ObjectStorageBlobsDAOContract {
 
-    private static final TenantName TENANT_NAME = TenantName.of("test");
-    private static final UserName USER_NAME = UserName.of("demo");
-    private static final Credentials PASSWORD = Credentials.of("demo");
-    private static final Identity SWIFT_IDENTITY = Identity.of(TENANT_NAME, USER_NAME);
     private ContainerName containerName;
-    private String endpoint;
     private AwsS3AuthConfiguration configuration;
 
     @BeforeEach
     void setUp(DockerAwsS3Container dockerAwsS3Container) {
         containerName = ContainerName.of(UUID.randomUUID().toString());
-        endpoint = dockerAwsS3Container.getEndpoint();
         configuration = AwsS3AuthConfiguration.builder()
-            .endpoint(endpoint)
+            .endpoint(dockerAwsS3Container.getEndpoint())
             .accessKeyId(DockerAwsS3Container.SCALITY_ACCESS_KEY_ID)
             .secretKey(DockerAwsS3Container.SCALITY_SECRET_ACCESS_KEY)
             .build();
