@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.base.Preconditions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -117,6 +118,7 @@ public interface Store<T, I> {
         private final long contentLength;
 
         public FixedLengthInputStream(InputStream inputStream, long contentLength) {
+            Preconditions.checkNotNull(inputStream, "'inputStream' is mandatory");
             this.inputStream = inputStream;
             this.contentLength = contentLength;
         }
