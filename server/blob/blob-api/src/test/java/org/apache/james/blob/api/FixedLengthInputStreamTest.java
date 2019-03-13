@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 class FixedLengthInputStreamTest {
 
     @Test
-    void fixedLengthInputStreamShouldThrowWhenInputStreamISNull() {
+    void fixedLengthInputStreamShouldThrowWhenInputStreamIsNull() {
         assertThatThrownBy(() -> new Store.FixedLengthInputStream(null, 0))
             .isInstanceOf(NullPointerException.class)
             .hasMessage("'inputStream' is mandatory");
