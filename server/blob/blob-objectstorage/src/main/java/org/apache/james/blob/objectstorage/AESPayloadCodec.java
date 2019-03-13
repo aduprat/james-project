@@ -19,51 +19,61 @@
 
 package org.apache.james.blob.objectstorage;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.security.GeneralSecurityException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.james.blob.objectstorage.crypto.CryptoConfig;
-import org.apache.james.blob.objectstorage.crypto.PBKDF2StreamingAeadFactory;
 import org.jclouds.io.Payloads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.crypto.tink.subtle.AesGcmHkdfStreaming;
+import com.google.crypto.tink.Aead;
+import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.subtle.AesGcmJce;
 
 public class AESPayloadCodec implements PayloadCodec {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AESPayloadCodec.class);
-    private final AesGcmHkdfStreaming streamingAead;
+    private static final byte[] EMPTY_ASSOCIATED_DATA = new byte[0];
+    private static final int PBKDF2_ITERATIONS = 65536;
+    private static final int KEY_SIZE = 256;
+    private static final String SECRET_KEY_FACTORY_ALGORITHM = "PBKDF2WithHmacSHA256";
+
+    private final Aead aead;
 
     public AESPayloadCodec(CryptoConfig cryptoConfig) {
-        streamingAead = PBKDF2StreamingAeadFactory.newAesGcmHkdfStreaming(cryptoConfig);
+        try {
+            AeadConfig.register();
+
+            SecretKey secretKey = deriveKey(cryptoConfig);
+            aead = new AesGcmJce(secretKey.getEncoded());
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException("Error while starting AESPayloadCodec", e);
+        }
+    }
+
+    private static SecretKey deriveKey(CryptoConfig cryptoConfig) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        byte[] saltBytes = cryptoConfig.salt();
+        SecretKeyFactory skf = SecretKeyFactory.getInstance(SECRET_KEY_FACTORY_ALGORITHM);
+        PBEKeySpec spec = new PBEKeySpec(cryptoConfig.password(), saltBytes, PBKDF2_ITERATIONS, KEY_SIZE);
+        return skf.generateSecret(spec);
     }
 
     @Override
-    public Payload write(InputStream is) {
-        PipedInputStream snk = new PipedInputStream();
+    public Payload write(InputStream inputStream) {
         try {
-            AtomicLong length = new AtomicLong();
-            PipedOutputStream src = new PipedOutputStream(snk);
-            OutputStream outputStream = streamingAead.newEncryptingStream(src, PBKDF2StreamingAeadFactory.EMPTY_ASSOCIATED_DATA);
-            Thread copyThread = new Thread(() -> {
-                try (OutputStream stream = outputStream) {
-                    length.addAndGet(IOUtils.copy(is, stream));
-                } catch (IOException e) {
-                    throw new RuntimeException("Stream copy failure ", e);
-                }
-            });
-            copyThread.setUncaughtExceptionHandler((Thread t, Throwable e) ->
-                LOGGER.error("Unable to encrypt payload's input stream",e)
-            );
-            copyThread.start();
-            return new Payload(Payloads.newInputStreamPayload(snk), Optional.of(length.get()));
+            byte[] ciphertext = aead.encrypt(IOUtils.toByteArray(inputStream), EMPTY_ASSOCIATED_DATA);
+            return new Payload(Payloads.newByteArrayPayload(ciphertext), Optional.of(Long.valueOf(ciphertext.length)));
         } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException("Unable to build payload for object storage, failed to " +
                 "encrypt", e);
@@ -73,7 +83,9 @@ public class AESPayloadCodec implements PayloadCodec {
     @Override
     public InputStream read(Payload payload) throws IOException {
         try {
-            return streamingAead.newDecryptingStream(payload.getPayload().openStream(), PBKDF2StreamingAeadFactory.EMPTY_ASSOCIATED_DATA);
+            byte[] ciphertext = IOUtils.toByteArray(payload.getPayload().openStream());
+            byte[] decrypt = aead.decrypt(ciphertext, EMPTY_ASSOCIATED_DATA);
+            return new ByteArrayInputStream(decrypt);
         } catch (GeneralSecurityException e) {
             throw new IOException("Incorrect crypto setup", e);
         }
