@@ -22,6 +22,7 @@ package org.apache.james.blob.objectstorage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
@@ -31,12 +32,15 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.james.blob.objectstorage.crypto.CryptoConfig;
 import org.jclouds.io.Payloads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.io.ByteSource;
+import com.google.common.io.FileBackedOutputStream;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
@@ -48,6 +52,7 @@ public class AESPayloadCodec implements PayloadCodec {
     private static final int PBKDF2_ITERATIONS = 65536;
     private static final int KEY_SIZE = 256;
     private static final String SECRET_KEY_FACTORY_ALGORITHM = "PBKDF2WithHmacSHA256";
+    private static final BigInteger MAX_BYTES = FileUtils.ONE_MB_BI;
 
     private final Aead aead;
 
@@ -71,9 +76,10 @@ public class AESPayloadCodec implements PayloadCodec {
 
     @Override
     public Payload write(InputStream inputStream) {
-        try {
-            byte[] ciphertext = aead.encrypt(IOUtils.toByteArray(inputStream), EMPTY_ASSOCIATED_DATA);
-            return new Payload(Payloads.newByteArrayPayload(ciphertext), Optional.of(Long.valueOf(ciphertext.length)));
+        try (FileBackedOutputStream outputStream = new FileBackedOutputStream(MAX_BYTES.intValue())) {
+            outputStream.write(aead.encrypt(IOUtils.toByteArray(inputStream), EMPTY_ASSOCIATED_DATA));
+            ByteSource data = outputStream.asByteSource();
+            return new Payload(Payloads.newByteSourcePayload(data), Optional.of(Long.valueOf(data.size())));
         } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException("Unable to build payload for object storage, failed to " +
                 "encrypt", e);
