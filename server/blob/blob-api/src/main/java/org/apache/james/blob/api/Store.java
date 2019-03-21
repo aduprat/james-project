@@ -119,7 +119,7 @@ public interface Store<T, I> {
 
         public FixedLengthInputStream(InputStream inputStream, long contentLength) {
             Preconditions.checkNotNull(inputStream, "'inputStream' is mandatory");
-            Preconditions.checkArgument(contentLength > 0, "'contentLength' should be greater than 0");
+            Preconditions.checkArgument(contentLength >= 0, "'contentLength' should be greater than or equal to 0");
             this.inputStream = inputStream;
             this.contentLength = contentLength;
         }

@@ -40,14 +40,7 @@ class FixedLengthInputStreamTest {
     void fixedLengthInputStreamShouldThrowWhenContentLengthIsNegative() {
         assertThatThrownBy(() -> new Store.FixedLengthInputStream(new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8)), -1))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("'contentLength' should be greater than 0");
-    }
-
-    @Test
-    void fixedLengthInputStreamShouldThrowWhenContentLengthIsEqualToZero() {
-        assertThatThrownBy(() -> new Store.FixedLengthInputStream(new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8)), 0))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("'contentLength' should be greater than 0");
+            .hasMessage("'contentLength' should be greater than or equal to 0");
     }
 
     @Test
