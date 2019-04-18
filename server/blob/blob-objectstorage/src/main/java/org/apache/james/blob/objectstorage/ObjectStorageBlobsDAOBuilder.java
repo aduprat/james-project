@@ -88,8 +88,8 @@ public class ObjectStorageBlobsDAOBuilder {
                 payloadCodec.orElse(PayloadCodec.DEFAULT_CODEC));
         }
 
-        public PutBlobFunction defaultPutBlob(BlobStore blobStore) {
-            return (blob) -> blobIdFactory.from(blobStore.putBlob(containerName.value(), blob));
+        private PutBlobFunction defaultPutBlob(BlobStore blobStore) {
+            return (blob) -> blobStore.putBlob(containerName.value(), blob);
         }
 
         @VisibleForTesting
