@@ -19,7 +19,6 @@
 
 package org.apache.james.blob.objectstorage;
 
-import org.apache.james.blob.api.BlobId;
 import org.jclouds.blobstore.domain.Blob;
 
 /**
