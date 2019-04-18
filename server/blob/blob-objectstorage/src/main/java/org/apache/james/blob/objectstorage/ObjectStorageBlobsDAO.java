@@ -54,17 +54,17 @@ public class ObjectStorageBlobsDAO implements BlobStore {
 
     private final ContainerName containerName;
     private final org.jclouds.blobstore.BlobStore blobStore;
-    private final PutBlobFunction putBlob;
+    private final PutBlobFunction putBlobFunction;
     private final PayloadCodec payloadCodec;
 
     ObjectStorageBlobsDAO(ContainerName containerName, BlobId.Factory blobIdFactory,
                           org.jclouds.blobstore.BlobStore blobStore,
-                          PutBlobFunction putBlob,
+                          PutBlobFunction putBlobFunction,
                           PayloadCodec payloadCodec) {
         this.blobIdFactory = blobIdFactory;
         this.containerName = containerName;
         this.blobStore = blobStore;
-        this.putBlob = putBlob;
+        this.putBlobFunction = putBlobFunction;
         this.payloadCodec = payloadCodec;
     }
 
@@ -121,7 +121,7 @@ public class ObjectStorageBlobsDAO implements BlobStore {
                             .payload(payload.getPayload())
                             .build();
 
-        return Mono.fromCallable(() -> putBlob.apply(blob))
+        return Mono.fromCallable(() -> putBlobFunction.putBlob(blob))
             .then(Mono.fromCallable(() -> blobIdFactory.from(hashingInputStream.hash().toString())));
     }
 

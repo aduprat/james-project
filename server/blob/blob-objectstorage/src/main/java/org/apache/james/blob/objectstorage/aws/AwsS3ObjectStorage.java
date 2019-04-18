@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
@@ -33,6 +34,7 @@ import org.apache.james.blob.objectstorage.ContainerName;
 import org.apache.james.blob.objectstorage.ObjectStorageBlobsDAOBuilder;
 import org.apache.james.blob.objectstorage.PutBlobFunction;
 import org.apache.james.util.Size;
+import org.apache.james.util.concurrent.NamedThreadFactory;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -55,7 +57,7 @@ public class AwsS3ObjectStorage {
 
     private static final Iterable<Module> JCLOUDS_MODULES =
         ImmutableSet.of(new SLF4JLoggingModule());
-    public static final int MAX_UPLOAD_THREADS = 5;
+    public static final ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadExecutor(NamedThreadFactory.withClassName(AwsS3ObjectStorage.class));
     public static Size MULTIPART_UPLOAD_THRESHOLD;
 
     static {
@@ -114,7 +116,7 @@ public class AwsS3ObjectStorage {
             .standard()
             .withS3Client(amazonS3)
             .withMultipartUploadThreshold(MULTIPART_UPLOAD_THRESHOLD.getValue())
-            .withExecutorFactory(() -> Executors.newFixedThreadPool(MAX_UPLOAD_THREADS))
+            .withExecutorFactory(() -> EXECUTOR_SERVICE)
             .build();
     }
 
