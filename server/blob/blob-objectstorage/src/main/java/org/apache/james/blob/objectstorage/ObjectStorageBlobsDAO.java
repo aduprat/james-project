@@ -121,7 +121,7 @@ public class ObjectStorageBlobsDAO implements BlobStore {
                             .payload(payload.getPayload())
                             .build();
 
-        return Mono.fromCallable(() -> putBlobFunction.putBlob(blob))
+        return Mono.fromRunnable(() -> putBlobFunction.putBlob(blob))
             .then(Mono.fromCallable(() -> blobIdFactory.from(hashingInputStream.hash().toString())));
     }
 

@@ -55,10 +55,9 @@ import com.google.inject.Module;
 
 public class AwsS3ObjectStorage {
 
-    private static final Iterable<Module> JCLOUDS_MODULES =
-        ImmutableSet.of(new SLF4JLoggingModule());
-    public static final ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadExecutor(NamedThreadFactory.withClassName(AwsS3ObjectStorage.class));
-    public static Size MULTIPART_UPLOAD_THRESHOLD;
+    private static final Iterable<Module> JCLOUDS_MODULES = ImmutableSet.of(new SLF4JLoggingModule());
+    private static final ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadExecutor(NamedThreadFactory.withClassName(AwsS3ObjectStorage.class));
+    private static Size MULTIPART_UPLOAD_THRESHOLD;
 
     static {
         try {
@@ -79,7 +78,7 @@ public class AwsS3ObjectStorage {
                 file = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
                 FileUtils.copyToFile(blob.getPayload().openStream(), file);
 
-                return put(blobIdFactory, containerName, configuration, blob, file);
+                put(blobIdFactory, containerName, configuration, blob, file);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -90,16 +89,15 @@ public class AwsS3ObjectStorage {
         });
     }
 
-    private static BlobId put(BlobId.Factory blobIdFactory, ContainerName containerName, AwsS3AuthConfiguration configuration, Blob blob, File file) {
+    private static void put(BlobId.Factory blobIdFactory, ContainerName containerName, AwsS3AuthConfiguration configuration, Blob blob, File file) {
         try {
             PutObjectRequest request = new PutObjectRequest(containerName.value(),
                 blob.getMetadata().getName(),
                 file);
 
-            return blobIdFactory.from(getTransferManager(configuration)
+            getTransferManager(configuration)
                 .upload(request)
-                .waitForUploadResult()
-                .getETag());
+                .waitForUploadResult();
         } catch (AmazonClientException | InterruptedException e) {
             throw new RuntimeException(e);
         }

@@ -34,5 +34,5 @@ import org.jclouds.blobstore.domain.Blob;
 @FunctionalInterface
 public interface PutBlobFunction {
 
-    BlobId putBlob(Blob blob);
+    void putBlob(Blob blob);
 }
