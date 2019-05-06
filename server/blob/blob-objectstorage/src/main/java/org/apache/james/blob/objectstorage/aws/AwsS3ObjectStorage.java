@@ -90,6 +90,7 @@ public class AwsS3ObjectStorage {
     }
 
     private static void put(BlobId.Factory blobIdFactory, ContainerName containerName, AwsS3AuthConfiguration configuration, Blob blob, File file) {
+        System.out.println("AwsS3.put:start");
         try {
             PutObjectRequest request = new PutObjectRequest(containerName.value(),
                 blob.getMetadata().getName(),
@@ -99,8 +100,10 @@ public class AwsS3ObjectStorage {
                 .upload(request)
                 .waitForUploadResult();
         } catch (AmazonClientException | InterruptedException e) {
+            System.out.println("AwsS3.put:fail");
             throw new RuntimeException(e);
         }
+        System.out.println("AwsS3.put:end");
     }
 
     private static TransferManager getTransferManager(AwsS3AuthConfiguration configuration) {
