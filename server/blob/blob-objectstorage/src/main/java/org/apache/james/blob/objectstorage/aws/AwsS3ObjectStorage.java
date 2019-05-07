@@ -40,6 +40,8 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -55,6 +57,7 @@ import com.google.inject.Module;
 
 public class AwsS3ObjectStorage {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AwsS3ObjectStorage.class);
     private static final Iterable<Module> JCLOUDS_MODULES = ImmutableSet.of(new SLF4JLoggingModule());
     private static final ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadExecutor(NamedThreadFactory.withClassName(AwsS3ObjectStorage.class));
     private static Size MULTIPART_UPLOAD_THRESHOLD;
@@ -90,7 +93,7 @@ public class AwsS3ObjectStorage {
     }
 
     private static void put(BlobId.Factory blobIdFactory, ContainerName containerName, AwsS3AuthConfiguration configuration, Blob blob, File file) {
-        System.out.println("AwsS3.put:start");
+        LOGGER.warn("AwsS3.put:start");
         try {
             PutObjectRequest request = new PutObjectRequest(containerName.value(),
                 blob.getMetadata().getName(),
@@ -100,10 +103,10 @@ public class AwsS3ObjectStorage {
                 .upload(request)
                 .waitForUploadResult();
         } catch (AmazonClientException | InterruptedException e) {
-            System.out.println("AwsS3.put:fail");
+            LOGGER.warn("AwsS3.put:fail");
             throw new RuntimeException(e);
         }
-        System.out.println("AwsS3.put:end");
+        LOGGER.warn("AwsS3.put:end");
     }
 
     private static TransferManager getTransferManager(AwsS3AuthConfiguration configuration) {
