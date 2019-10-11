@@ -80,6 +80,19 @@ public class ElasticSearchConfigurationTest {
     }
 
     @Test
+    public void getWaitForActiveShardsShouldReturnConfiguredValueWhenZero() throws ConfigurationException {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        int value = 0;
+        configuration.addProperty("elasticsearch.index.waitForActiveShards", value);
+        configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
+
+        ElasticSearchConfiguration elasticSearchConfiguration = ElasticSearchConfiguration.fromProperties(configuration);
+
+        assertThat(elasticSearchConfiguration.getWaitForActiveShards())
+            .isEqualTo(value);
+    }
+
+    @Test
     public void getWaitForActiveShardsShouldReturnDefaultValueWhenMissing() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
