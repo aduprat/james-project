@@ -97,10 +97,11 @@ public class ElasticSearchConfigurationTest {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
+        int expectedValue = 1;
         ElasticSearchConfiguration elasticSearchConfiguration = ElasticSearchConfiguration.fromProperties(configuration);
 
         assertThat(elasticSearchConfiguration.getWaitForActiveShards())
-            .isEqualTo(ElasticSearchConfiguration.DEFAULT_WAIT_FOR_ACTIVE_SHARDS);
+            .isEqualTo(expectedValue);
     }
 
     @Test
