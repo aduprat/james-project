@@ -46,6 +46,9 @@ public class ElasticSearchConfiguration {
         private Optional<Integer> minDelay;
         private Optional<Integer> maxRetries;
         private Optional<Duration> requestTimeout;
+        private Optional<HostScheme> hostScheme;
+        private Optional<String> user;
+        private Optional<String> password;
 
         public Builder() {
             hosts = ImmutableList.builder();
@@ -55,6 +58,9 @@ public class ElasticSearchConfiguration {
             minDelay = Optional.empty();
             maxRetries = Optional.empty();
             requestTimeout = Optional.empty();
+            hostScheme = Optional.empty();
+            user = Optional.empty();
+            password = Optional.empty();
         }
 
         public Builder addHost(Host host) {
@@ -100,6 +106,21 @@ public class ElasticSearchConfiguration {
             return this;
         }
 
+        public Builder hostScheme(HostScheme hostScheme) {
+            this.hostScheme = Optional.of(hostScheme);
+            return this;
+        }
+
+        public Builder user(String user) {
+            this.user = Optional.ofNullable(user);
+            return this;
+        }
+
+        public Builder password(String password) {
+            this.password = Optional.ofNullable(password);
+            return this;
+        }
+
         public ElasticSearchConfiguration build() {
             ImmutableList<Host> hosts = this.hosts.build();
             Preconditions.checkState(!hosts.isEmpty(), "You need to specify ElasticSearch host");
@@ -110,7 +131,10 @@ public class ElasticSearchConfiguration {
                 waitForActiveShards.orElse(DEFAULT_WAIT_FOR_ACTIVE_SHARDS),
                 minDelay.orElse(DEFAULT_CONNECTION_MIN_DELAY),
                 maxRetries.orElse(DEFAULT_CONNECTION_MAX_RETRIES),
-                requestTimeout.orElse(DEFAULT_REQUEST_TIMEOUT));
+                requestTimeout.orElse(DEFAULT_REQUEST_TIMEOUT),
+                hostScheme.orElse(HostScheme.DEFAULT),
+                user,
+                password);
         }
     }
 
@@ -121,6 +145,9 @@ public class ElasticSearchConfiguration {
     public static final String ELASTICSEARCH_HOSTS = "elasticsearch.hosts";
     public static final String ELASTICSEARCH_MASTER_HOST = "elasticsearch.masterHost";
     public static final String ELASTICSEARCH_PORT = "elasticsearch.port";
+    public static final String ELASTICSEARCH_HOST_SCHEME = "elasticsearch.hostScheme";
+    public static final String ELASTICSEARCH_USER = "elasticsearch.user";
+    public static final String ELASTICSEARCH_PASSWORD = "elasticsearch.password";
     public static final String ELASTICSEARCH_NB_REPLICA = "elasticsearch.nb.replica";
     public static final String WAIT_FOR_ACTIVE_SHARDS = "elasticsearch.index.waitForActiveShards";
     public static final String ELASTICSEARCH_NB_SHARDS = "elasticsearch.nb.shards";
@@ -137,6 +164,29 @@ public class ElasticSearchConfiguration {
     public static final String LOCALHOST = "127.0.0.1";
     public static final Optional<Integer> DEFAULT_PORT_AS_OPTIONAL = Optional.of(DEFAULT_PORT);
 
+    public enum HostScheme {
+        HTTP("http"),
+        HTTPS("https");
+        public static final HostScheme DEFAULT = HTTP;
+
+        private final String scheme;
+
+        HostScheme(String scheme) {
+            this.scheme = scheme;
+        }
+
+        public static HostScheme from(String scheme) {
+            for (HostScheme hostScheme : values()) {
+                if (hostScheme.scheme.equalsIgnoreCase(scheme)) {
+                    return hostScheme;
+                }
+            }
+            throw new RuntimeException("Unkown host scheme");
+        }
+    }
+
+    public static final String HTTPS_HOST_SCHEME = "https";
+
     public static final ElasticSearchConfiguration DEFAULT_CONFIGURATION = builder()
         .addHost(Host.from(LOCALHOST, DEFAULT_PORT))
         .build();
@@ -144,6 +194,9 @@ public class ElasticSearchConfiguration {
     public static ElasticSearchConfiguration fromProperties(Configuration configuration) throws ConfigurationException {
         return builder()
             .addHosts(getHosts(configuration))
+            .hostScheme(HostScheme.from(configuration.getString(ELASTICSEARCH_HOST_SCHEME, HostScheme.DEFAULT.scheme)))
+            .user(configuration.getString(ELASTICSEARCH_USER, null))
+            .password(configuration.getString(ELASTICSEARCH_PASSWORD, null))
             .nbShards(configuration.getInteger(ELASTICSEARCH_NB_SHARDS, DEFAULT_NB_SHARDS))
             .nbReplica(configuration.getInteger(ELASTICSEARCH_NB_REPLICA, DEFAULT_NB_REPLICA))
             .waitForActiveShards(configuration.getInteger(WAIT_FOR_ACTIVE_SHARDS, DEFAULT_WAIT_FOR_ACTIVE_SHARDS))
@@ -194,8 +247,12 @@ public class ElasticSearchConfiguration {
     private final int minDelay;
     private final int maxRetries;
     private final Duration requestTimeout;
+    private final HostScheme hostScheme;
+    private final Optional<String> user;
+    private final Optional<String> password;
 
-    private ElasticSearchConfiguration(ImmutableList<Host> hosts, int nbShards, int nbReplica, int waitForActiveShards, int minDelay, int maxRetries, Duration requestTimeout) {
+    private ElasticSearchConfiguration(ImmutableList<Host> hosts, int nbShards, int nbReplica, int waitForActiveShards, int minDelay, int maxRetries, Duration requestTimeout,
+                                       HostScheme hostScheme, Optional<String> user, Optional<String> password) {
         this.hosts = hosts;
         this.nbShards = nbShards;
         this.nbReplica = nbReplica;
@@ -203,6 +260,9 @@ public class ElasticSearchConfiguration {
         this.minDelay = minDelay;
         this.maxRetries = maxRetries;
         this.requestTimeout = requestTimeout;
+        this.hostScheme = hostScheme;
+        this.user = user;
+        this.password = password;
     }
 
     public ImmutableList<Host> getHosts() {
@@ -233,6 +293,18 @@ public class ElasticSearchConfiguration {
         return requestTimeout;
     }
 
+    public HostScheme getHostScheme() {
+        return hostScheme;
+    }
+
+    public Optional<String> getUser() {
+        return user;
+    }
+
+    public Optional<String> getPassword() {
+        return password;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof ElasticSearchConfiguration) {
@@ -244,13 +316,16 @@ public class ElasticSearchConfiguration {
                 && Objects.equals(this.minDelay, that.minDelay)
                 && Objects.equals(this.maxRetries, that.maxRetries)
                 && Objects.equals(this.hosts, that.hosts)
-                && Objects.equals(this.requestTimeout, that.requestTimeout);
+                && Objects.equals(this.requestTimeout, that.requestTimeout)
+                && Objects.equals(this.hostScheme, that.hostScheme)
+                && Objects.equals(this.user, that.user)
+                && Objects.equals(this.password, that.password);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(hosts, nbShards, nbReplica, waitForActiveShards, minDelay, maxRetries, requestTimeout);
+        return Objects.hash(hosts, nbShards, nbReplica, waitForActiveShards, minDelay, maxRetries, requestTimeout, hostScheme, user, password);
     }
 }
