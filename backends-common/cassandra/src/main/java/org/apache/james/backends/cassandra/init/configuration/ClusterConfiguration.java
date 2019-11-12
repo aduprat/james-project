@@ -37,6 +37,7 @@ public class ClusterConfiguration {
 
     public static class Builder {
         private ImmutableList.Builder<Host> hosts;
+        private boolean createKeyspace;
         private Optional<String> keyspace;
         private Optional<Integer> replicationFactor;
         private Optional<Integer> minDelay;
@@ -52,6 +53,7 @@ public class ClusterConfiguration {
 
         public Builder() {
             hosts = ImmutableList.builder();
+            createKeyspace = true;
             keyspace = Optional.empty();
             replicationFactor = Optional.empty();
             minDelay = Optional.empty();
@@ -78,6 +80,11 @@ public class ClusterConfiguration {
 
         public Builder hosts(Host... hosts) {
             this.hosts.addAll(Arrays.asList(hosts));
+            return this;
+        }
+
+        public Builder createKeyspace(boolean createKeyspace) {
+            this.createKeyspace = createKeyspace;
             return this;
         }
 
@@ -189,6 +196,7 @@ public class ClusterConfiguration {
         public ClusterConfiguration build() {
             return new ClusterConfiguration(
                 hosts.build(),
+                createKeyspace,
                 keyspace.orElse(DEFAULT_KEYSPACE),
                 replicationFactor.orElse(DEFAULT_REPLICATION_FACTOR),
                 minDelay.orElse(DEFAULT_CONNECTION_MIN_DELAY),
@@ -205,6 +213,7 @@ public class ClusterConfiguration {
     }
 
     private static final String CASSANDRA_NODES = "cassandra.nodes";
+    public static final String CASSANDRA_CREATE_KEYSPACE = "cassandra.create.keyspace";
     public static final String CASSANDRA_KEYSPACE = "cassandra.keyspace";
     public static final String CASSANDRA_USER = "cassandra.user";
     public static final String CASSANDRA_PASSWORD = "cassandra.password";
@@ -232,6 +241,7 @@ public class ClusterConfiguration {
     public static ClusterConfiguration from(Configuration configuration) {
         return ClusterConfiguration.builder()
             .hosts(listCassandraServers(configuration))
+            .createKeyspace(configuration.getBoolean(CASSANDRA_CREATE_KEYSPACE, true))
             .keyspace(Optional.ofNullable(configuration.getString(CASSANDRA_KEYSPACE, null)))
             .replicationFactor(Optional.ofNullable(configuration.getInteger(REPLICATION_FACTOR, null)))
             .minDelay(Optional.ofNullable(configuration.getInteger(CONNECTION_RETRY_MIN_DELAY, null)))
@@ -286,6 +296,7 @@ public class ClusterConfiguration {
     }
 
     private final List<Host> hosts;
+    private final boolean createKeyspace;
     private final String keyspace;
     private final int replicationFactor;
     private final int minDelay;
@@ -299,11 +310,12 @@ public class ClusterConfiguration {
     private final Optional<String> password;
     private final boolean durableWrites;
 
-    public ClusterConfiguration(List<Host> hosts, String keyspace, int replicationFactor, int minDelay, int maxRetry,
+    public ClusterConfiguration(List<Host> hosts, boolean createKeyspace, String keyspace, int replicationFactor, int minDelay, int maxRetry,
                                 Optional<QueryLoggerConfiguration> queryLoggerConfiguration, Optional<PoolingOptions> poolingOptions,
                                 int readTimeoutMillis, int connectTimeoutMillis, boolean useSsl, Optional<String> username,
                                 Optional<String> password, boolean durableWrites) {
         this.hosts = hosts;
+        this.createKeyspace = createKeyspace;
         this.keyspace = keyspace;
         this.replicationFactor = replicationFactor;
         this.minDelay = minDelay;
@@ -324,6 +336,10 @@ public class ClusterConfiguration {
 
     public List<Host> getHosts() {
         return hosts;
+    }
+
+    public boolean isCreateKeyspace() {
+        return createKeyspace;
     }
 
     public String getKeyspace() {
@@ -378,6 +394,7 @@ public class ClusterConfiguration {
             return Objects.equals(this.minDelay, that.minDelay)
                 && Objects.equals(this.maxRetry, that.maxRetry)
                 && Objects.equals(this.hosts, that.hosts)
+                && Objects.equals(this.createKeyspace, that.createKeyspace)
                 && Objects.equals(this.keyspace, that.keyspace)
                 && Objects.equals(this.replicationFactor, that.replicationFactor)
                 && Objects.equals(this.queryLoggerConfiguration, that.queryLoggerConfiguration)
@@ -393,7 +410,7 @@ public class ClusterConfiguration {
 
     @Override
     public final int hashCode() {
-        return Objects.hash(hosts, keyspace, replicationFactor, minDelay, maxRetry, queryLoggerConfiguration, poolingOptions,
+        return Objects.hash(hosts, createKeyspace, keyspace, replicationFactor, minDelay, maxRetry, queryLoggerConfiguration, poolingOptions,
             readTimeoutMillis, connectTimeoutMillis, username, useSsl, password);
     }
 }

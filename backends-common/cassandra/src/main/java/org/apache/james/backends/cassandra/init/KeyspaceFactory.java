@@ -26,11 +26,13 @@ import com.datastax.driver.core.Session;
 
 public class KeyspaceFactory {
     public static void createKeyspace(ClusterConfiguration clusterConfiguration, Cluster cluster) {
-        try (Session session = cluster.connect()) {
-            session.execute("CREATE KEYSPACE IF NOT EXISTS " + clusterConfiguration.getKeyspace()
-                + " WITH replication = {'class':'SimpleStrategy', 'replication_factor':" + clusterConfiguration.getReplicationFactor() + "}"
-                + " AND durable_writes = " + clusterConfiguration.isDurableWrites()
-                + ";");
+        if (clusterConfiguration.isCreateKeyspace()) {
+            try (Session session = cluster.connect()) {
+                session.execute("CREATE KEYSPACE IF NOT EXISTS " + clusterConfiguration.getKeyspace()
+                    + " WITH replication = {'class':'SimpleStrategy', 'replication_factor':" + clusterConfiguration.getReplicationFactor() + "}"
+                    + " AND durable_writes = " + clusterConfiguration.isDurableWrites()
+                    + ";");
+            }
         }
     }
 }
