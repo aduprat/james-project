@@ -53,7 +53,7 @@ public class ClusterConfiguration {
 
         public Builder() {
             hosts = ImmutableList.builder();
-            createKeyspace = true;
+            createKeyspace = false;
             keyspace = Optional.empty();
             replicationFactor = Optional.empty();
             minDelay = Optional.empty();
@@ -83,8 +83,8 @@ public class ClusterConfiguration {
             return this;
         }
 
-        public Builder createKeyspace(boolean createKeyspace) {
-            this.createKeyspace = createKeyspace;
+        public Builder createKeyspace() {
+            this.createKeyspace = true;
             return this;
         }
 
@@ -213,7 +213,7 @@ public class ClusterConfiguration {
     }
 
     private static final String CASSANDRA_NODES = "cassandra.nodes";
-    public static final String CASSANDRA_CREATE_KEYSPACE = "cassandra.create.keyspace";
+    public static final String CASSANDRA_CREATE_KEYSPACE = "cassandra.keyspace.create";
     public static final String CASSANDRA_KEYSPACE = "cassandra.keyspace";
     public static final String CASSANDRA_USER = "cassandra.user";
     public static final String CASSANDRA_PASSWORD = "cassandra.password";
@@ -239,9 +239,12 @@ public class ClusterConfiguration {
     }
 
     public static ClusterConfiguration from(Configuration configuration) {
-        return ClusterConfiguration.builder()
+        boolean createKeySpace = Optional.ofNullable(configuration.getBoolean(CASSANDRA_CREATE_KEYSPACE, null))
+            .filter(Boolean::booleanValue)
+            .isPresent();
+
+        ClusterConfiguration.Builder builder = ClusterConfiguration.builder()
             .hosts(listCassandraServers(configuration))
-            .createKeyspace(configuration.getBoolean(CASSANDRA_CREATE_KEYSPACE, true))
             .keyspace(Optional.ofNullable(configuration.getString(CASSANDRA_KEYSPACE, null)))
             .replicationFactor(Optional.ofNullable(configuration.getInteger(REPLICATION_FACTOR, null)))
             .minDelay(Optional.ofNullable(configuration.getInteger(CONNECTION_RETRY_MIN_DELAY, null)))
@@ -252,8 +255,11 @@ public class ClusterConfiguration {
             .connectTimeoutMillis(Optional.ofNullable(configuration.getInteger(CONNECT_TIMEOUT_MILLIS, null)))
             .useSsl(Optional.ofNullable(configuration.getBoolean(CASSANDRA_SSL, null)))
             .username(Optional.ofNullable(configuration.getString(CASSANDRA_USER, null)))
-            .password(Optional.ofNullable(configuration.getString(CASSANDRA_PASSWORD, null)))
-            .build();
+            .password(Optional.ofNullable(configuration.getString(CASSANDRA_PASSWORD, null)));
+        if (createKeySpace) {
+            builder = builder.createKeyspace();
+        }
+        return builder.build();
     }
 
     private static List<Host> listCassandraServers(Configuration configuration) {
@@ -338,7 +344,7 @@ public class ClusterConfiguration {
         return hosts;
     }
 
-    public boolean isCreateKeyspace() {
+    public boolean shouldCreateKeyspace() {
         return createKeyspace;
     }
 
