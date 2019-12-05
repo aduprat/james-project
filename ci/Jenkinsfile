@@ -1,0 +1,19 @@
+pipeline {
+  agent {
+    docker {
+      image 'maven:3.6.3-jdk-11'
+    }
+  }
+  stages {
+    stage('Compilation') {
+      steps {
+        sh 'mvn package verify'
+      }
+    }
+  }
+  post {
+    always {
+      junit '**/target/surefire-reports/*.xml'
+    }
+  }
+}
