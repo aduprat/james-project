@@ -18,7 +18,6 @@ GLOW_ROOT_ZIP=glowroot.zip
 GLOW_ROOT_JAR=${GLOW_ROOT_DIR}/glowroot.jar
 GLOW_ROOT_LIB=${GLOW_ROOT_DIR}/lib
 
-ORIGIN=/origin
 CASSANDRA_DESTINATION=/cassandra/destination
 CASSANDRA_RABBITMQ_DESTINATION=/cassandra-rabbitmq/destination
 CASSANDRA_RABBITMQ_LDAP_DESTINATION=/cassandra-rabbitmq-ldap/destination
@@ -54,7 +53,7 @@ if [ -z "$SHA1" ]; then
 fi
 
 # Sources retrieval
-git clone $ORIGIN/.
+git clone .
 git checkout $SHA1
 
 # Compilation
