@@ -7,7 +7,7 @@ pipeline {
   stages {
     stage('Compilation') {
       steps {
-        sh 'mvn package verify -DskipTests'
+        sh 'mvn package verify'
       }
     }
   }
