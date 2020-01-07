@@ -8,12 +8,8 @@ pipeline {
     stage('Compilation') {
       steps {
         sh 'mvn package verify'
+        junit '**/reports/junit/*.xml'
       }
-    }
-  }
-  post {
-    always {
-      junit '**/reports/junit/*.xml'
     }
   }
 }
