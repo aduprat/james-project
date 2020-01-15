@@ -23,6 +23,7 @@ pipelineJob('James-PR') {
         }
       }
       lightweight(false)
+      scriptPath('ci/JenkinsfileGithubPR')
     }
   }
 }
