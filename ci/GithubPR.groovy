@@ -1,4 +1,4 @@
-pipelineJob('James-PR') {
+pipelineJob('GitHub-PR') {
   properties {
     githubProjectUrl('https://github.com/aduprat/james-project')
   }
