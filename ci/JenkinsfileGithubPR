@@ -13,7 +13,7 @@ pipeline {
     }
     stage('Unit & integration tests') {
       steps {
-        sh 'mvn package verify'
+        sh 'mvn package verify -X'
       }
     }
   }
