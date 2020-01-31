@@ -2983,7 +2983,6 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>2.22.2</version>
                     <configuration>
-                        <forkCount>3</forkCount>
                         <argLine>-Xms512m -Xmx2024m</argLine>
                         <reuseForks>true</reuseForks>
                         <forkCount>3</forkCount>
