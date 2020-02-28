@@ -17,14 +17,6 @@ pipeline {
       }
     }
   }
-  post {
-    always {
-      sh "find -name '*.dump'"
-      sh "find -name '*.dumpstream'"
-      sh 'cat ./mailbox/event/event-rabbitmq/target/surefire-reports/*'
-      sh 'cat ./mailbox/event/event-rabbitmq/target/surefire/*'
-    }
-  }
 //  post {
 //    always {
 //      junit '**/target/surefire-reports/*.xml'
