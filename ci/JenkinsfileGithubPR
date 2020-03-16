@@ -1,30 +1,19 @@
 pipeline {
   agent {
-    kubernetes {
-      yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-  - name: maven
-    image: maven:3.6.3-jdk-11
-    tty: true
-"""
+    docker {
+      image 'maven:3.6.3-jdk-11'
+      args  '-e DOCKER_HOST=${DOCKER_HOST} -u root --tmpfs /tmp:rw,exec,size=1g --tmpfs /root/.m2:rw,exec,size=1g --tmpfs ${WORKSPACE},size=4g'
     }
   }
   stages {
     stage('Check compilation') {
       steps {
-        container('maven') {
-          sh 'mvn clean package -DskipTests -T1C'
-        }
+        sh 'mvn clean package -DskipTests -T1C'
       }
     }
     stage('Unit & integration tests') {
       steps {
-        container('maven') {
-          sh 'mvn package verify'
-        }
+        sh 'mvn package verify'
       }
     }
   }
