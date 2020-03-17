@@ -16,14 +16,14 @@ pipeline {
         sh 'mvn clean package -DskipTests -T1C'
       }
     }
-    stage('Unit & integration tests') {
-      steps {
-        sh 'mvn package verify'
-      }
-    }
+//    stage('Unit & integration tests') {
+//      steps {
+//        sh 'mvn package verify'
+//      }
+//    }
   }
   post {
-    always {
+    success {
 //      junit '**/target/surefire-reports/*.xml'
       mail to: 'aduprat@linagora.com',
         subject: "Succedded Pipeline: ${currentBuild.fullDisplayName}",
