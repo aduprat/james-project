@@ -26,11 +26,13 @@ pipeline {
     success {
 //      junit '**/target/surefire-reports/*.xml'
       mail to: 'aduprat@linagora.com',
+        from: 'jenkins@ci-james.linagora.com',
         subject: "Succedded Pipeline: ${currentBuild.fullDisplayName}",
         body: "The following job has succedded ${env.BUILD_URL}"
     }
     failure {
       mail to: 'aduprat@linagora.com',
+        from: 'jenkins@ci-james.linagora.com',
         subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
         body: "Something is wrong with ${env.BUILD_URL}"
     }
