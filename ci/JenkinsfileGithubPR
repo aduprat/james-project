@@ -5,6 +5,11 @@ pipeline {
       args  '-e DOCKER_HOST=${DOCKER_HOST} -u root --tmpfs /tmp:rw,exec,size=1g --tmpfs /root/.m2:rw,exec,size=1g --tmpfs ${WORKSPACE},size=4g'
     }
   }
+
+  options {
+    timeout(time: 4, unit: 'HOURS')
+  }
+
   stages {
     stage('Check compilation') {
       steps {
@@ -17,9 +22,17 @@ pipeline {
       }
     }
   }
-//  post {
-//    always {
+  post {
+    always {
 //      junit '**/target/surefire-reports/*.xml'
-//    }
-//  }
+      mail to: 'aduprat@linagora.com',
+        subject: "Succedded Pipeline: ${currentBuild.fullDisplayName}",
+        body: "The following job has succedded ${env.BUILD_URL}"
+    }
+    failure {
+      mail to: 'aduprat@linagora.com',
+        subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+        body: "Something is wrong with ${env.BUILD_URL}"
+    }
+  }
 }
