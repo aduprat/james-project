@@ -13,7 +13,9 @@ pipeline {
   stages {
     stage('Check compilation') {
       steps {
+        sh 'ls -l $M2_HOME'
         sh 'mvn clean package -DskipTests -T1C'
+        sh 'ls -l $M2_HOME'
       }
     }
 //    stage('Unit & integration tests') {
