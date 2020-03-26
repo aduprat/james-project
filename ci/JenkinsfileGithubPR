@@ -13,9 +13,6 @@ pipeline {
   stages {
     stage('Check compilation') {
       steps {
-        sh 'env'
-        sh 'echo $M2_HOME'
-        sh "echo ${env.WORKSPACE}"
         sh 'mvn clean package -DskipTests -T1C'
       }
     }
