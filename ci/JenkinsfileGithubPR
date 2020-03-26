@@ -2,7 +2,7 @@ pipeline {
   agent {
     docker {
       image 'maven:3.6.3-jdk-11'
-      args  '-e DOCKER_HOST=${DOCKER_HOST} -u root --tmpfs /tmp:rw,exec,size=1g --tmpfs /root/.m2:rw,exec,size=1g --tmpfs ${WORKSPACE},size=4g'
+      args  '-e M2_HOME=${WORKSPACE}-${BUILD_NUMBER} -e DOCKER_HOST=${DOCKER_HOST} -u root --tmpfs /tmp:rw,exec,size=1g --tmpfs /root/.m2:rw,exec,size=1g --tmpfs ${WORKSPACE},size=4g'
     }
   }
 
