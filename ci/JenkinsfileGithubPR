@@ -17,11 +17,13 @@ pipeline {
         sh 'ls -l $WORKSPACE-$BUILD_NUMBER'
       }
     }
-//    stage('Unit & integration tests') {
-//      steps {
-//        sh 'mvn package verify'
-//      }
-//    }
+    stage('Unit & integration tests') {
+      steps {
+        sh 'ls -l $WORKSPACE-$BUILD_NUMBER'
+        sh 'mvn package verify -Dmaven.repo.local=${WORKSPACE}-${BUILD_NUMBER}'
+        sh 'ls -l $WORKSPACE-$BUILD_NUMBER'
+      }
+    }
   }
   post {
     success {
