@@ -25,11 +25,10 @@ import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -41,6 +40,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class SerialTaskManagerWorkerTest {
@@ -56,11 +56,18 @@ class SerialTaskManagerWorkerTest {
     @BeforeEach
     void beforeEach() {
         listener = mock(TaskManagerWorker.Listener.class);
+        when(listener.started(any())).thenReturn(Mono.empty());
+        when(listener.cancelled(any(), any())).thenReturn(Mono.empty());
+        when(listener.completed(any(), any(), any())).thenReturn(Mono.empty());
+        when(listener.updated(any(), any())).thenReturn(Mono.empty());
+        when(listener.failed(any(), any())).thenReturn(Mono.empty());
+        when(listener.failed(any(), any(), any())).thenReturn(Mono.empty());
+        when(listener.failed(any(), any(), any(), any())).thenReturn(Mono.empty());
         worker = new SerialTaskManagerWorker(listener, UPDATE_INFORMATION_POLLING_DURATION);
     }
 
     @AfterEach
-    void tearDown() throws IOException {
+    void tearDown() {
         worker.close();
     }
 
@@ -92,7 +99,7 @@ class SerialTaskManagerWorkerTest {
     }
 
     @Test
-    void aRunningTaskShouldHaveAFiniteNumberOfInformation() throws InterruptedException {
+    void aRunningTaskShouldHaveAFiniteNumberOfInformation() {
         TaskWithId taskWithId = new TaskWithId(TaskId.generateTaskId(), new MemoryReferenceWithCounterTask((counter) ->
             Mono.fromCallable(counter::incrementAndGet)
                 .delayElement(Duration.ofSeconds(1))
@@ -162,6 +169,39 @@ class SerialTaskManagerWorkerTest {
     }
 
     @Test
+    void taskExecutingReactivelyShouldStopExecutionUponCancel() throws InterruptedException {
+        // Provide a task ticking every 100ms in a separate reactor thread
+        AtomicInteger tickCount = new AtomicInteger();
+        int tikIntervalInMs = 100;
+        MemoryReferenceTask tickTask = new MemoryReferenceTask(() -> Flux.interval(Duration.ofMillis(tikIntervalInMs))
+            .flatMap(any -> Mono.fromCallable(() -> {
+                tickCount.incrementAndGet();
+                return Task.Result.COMPLETED;
+            }))
+            .reduce(Task::combine)
+            .thenReturn(Task.Result.COMPLETED)
+            .block());
+
+        // Execute the task
+        TaskId id = TaskId.generateTaskId();
+        TaskWithId taskWithId = new TaskWithId(id, tickTask);
+        Mono<Task.Result> resultMono = worker.executeTask(taskWithId).cache();
+        resultMono.subscribe();
+        Awaitility.waitAtMost(org.awaitility.Duration.TEN_SECONDS)
+            .untilAsserted(() -> verify(listener, atLeastOnce()).started(id));
+
+        worker.cancelTask(id);
+
+        Thread.sleep(tikIntervalInMs);
+
+        int tikCountSnapshot1 = tickCount.get();
+        Thread.sleep(2 * tikIntervalInMs);
+        int tikCountSnapshot2 = tickCount.get();
+        // If the task had effectively been canceled tikCount should no longer be incremented
+        assertThat(tikCountSnapshot1).isEqualTo(tikCountSnapshot2);
+    }
+
+    @Test
     void theWorkerShouldCancelAnInProgressTask() throws InterruptedException {
         TaskId id = TaskId.generateTaskId();
         AtomicInteger counter = new AtomicInteger(0);
@@ -184,6 +224,10 @@ class SerialTaskManagerWorkerTest {
         worker.cancelTask(id);
 
         resultMono.block(Duration.ofSeconds(10));
+
+        // Due to the use of signals, cancellation cannot be instantaneous
+        // Let a grace period for the cancellation to complete to increase test stability
+        Thread.sleep(50);
 
         verify(listener, atLeastOnce()).cancelled(id, Optional.empty());
         verifyNoMoreInteractions(listener);

@@ -21,6 +21,7 @@ package org.apache.james.mailbox.store.extractor;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,8 @@ import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.extractor.ParsedContent;
 import org.apache.james.mailbox.extractor.TextExtractor;
+import org.apache.james.mailbox.model.ContentType;
+import org.apache.james.mailbox.model.ContentType.MimeType;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -38,27 +41,30 @@ public class JsoupTextExtractor implements TextExtractor {
     private static final String TITLE_HTML_TAG = "title";
     private static final String NO_BASE_URI = "";
     private static final Map<String, List<String>> EMPTY_METADATA = ImmutableMap.of();
+    private static final MimeType TEXT_HTML = MimeType.of("text/html");
+    private static final MimeType TEXT_PLAIN = MimeType.of("text/plain");
 
     @Override
-    public ParsedContent extractContent(InputStream inputStream, String contentType) throws Exception {
+    public ParsedContent extractContent(InputStream inputStream, ContentType contentType) throws Exception {
         if (inputStream == null || contentType == null) {
             return ParsedContent.empty();
         }
-        if (contentType.equals("text/html")) {
-            return parseHtmlContent(inputStream);
+        Charset charset = contentType.charset().orElse(StandardCharsets.UTF_8);
+        if (contentType.mimeType().equals(TEXT_HTML)) {
+            return parseHtmlContent(inputStream, charset);
         }
-        if (contentType.equals("text/plain")) {
-            return parsePlainTextContent(inputStream);
+        if (contentType.mimeType().equals(TEXT_PLAIN)) {
+            return parsePlainTextContent(inputStream, charset);
         }
         return ParsedContent.empty();
     }
 
-    private ParsedContent parsePlainTextContent(InputStream inputStream) throws IOException {
-        return new ParsedContent(Optional.ofNullable(IOUtils.toString(inputStream, StandardCharsets.UTF_8)), EMPTY_METADATA);
+    private ParsedContent parsePlainTextContent(InputStream inputStream, Charset charset) throws IOException {
+        return new ParsedContent(Optional.ofNullable(IOUtils.toString(inputStream, charset)), EMPTY_METADATA);
     }
 
-    private ParsedContent parseHtmlContent(InputStream inputStream) throws IOException {
-        Document doc = Jsoup.parse(inputStream, StandardCharsets.UTF_8.name(), NO_BASE_URI);
+    private ParsedContent parseHtmlContent(InputStream inputStream, Charset charset) throws IOException {
+        Document doc = Jsoup.parse(inputStream, charset.name(), NO_BASE_URI);
         doc.select(TITLE_HTML_TAG).remove();
         return new ParsedContent(Optional.ofNullable(doc.text()), EMPTY_METADATA);
     }

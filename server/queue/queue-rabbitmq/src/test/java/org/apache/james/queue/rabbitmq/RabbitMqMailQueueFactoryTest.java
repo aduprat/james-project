@@ -69,7 +69,8 @@ class RabbitMqMailQueueFactoryTest implements MailQueueFactoryContract<RabbitMQM
         RabbitMQMailQueueFactory.PrivateFactory privateFactory = new RabbitMQMailQueueFactory.PrivateFactory(
             new RecordingMetricFactory(),
             new NoopGaugeRegistry(),
-            rabbitMQExtension.getRabbitChannelPool(),
+            rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(),
             mimeMessageStoreFactory,
             BLOB_ID_FACTORY,
             mailQueueViewFactory,
@@ -77,7 +78,7 @@ class RabbitMqMailQueueFactoryTest implements MailQueueFactoryContract<RabbitMQM
             new RawMailQueueItemDecoratorFactory(),
             configuration);
         mqManagementApi = new RabbitMQMailQueueManagement(rabbitMQExtension.managementAPI());
-        mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getRabbitChannelPool(), mqManagementApi, privateFactory);
+        mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getSender(), mqManagementApi, privateFactory);
     }
 
     @AfterEach
@@ -90,21 +91,4 @@ class RabbitMqMailQueueFactoryTest implements MailQueueFactoryContract<RabbitMQM
         return mailQueueFactory;
     }
 
-    @Test
-    void createQueueShouldReturnTheSameInstanceWhenParallelCreateSameQueueName() throws Exception {
-        Set<RabbitMQMailQueue> createdRabbitMQMailQueues =  ConcurrentHashMap.newKeySet();
-
-        ConcurrentTestRunner.builder()
-            .operation((threadNumber, operationNumber) ->
-                createdRabbitMQMailQueues.add(mailQueueFactory.createQueue("spool")))
-            .threadCount(100)
-            .operationCount(10)
-            .runSuccessfullyWithin(Duration.ofMinutes(10));
-
-        assertThat(mailQueueFactory.listCreatedMailQueues())
-            .hasSize(1)
-            .isEqualTo(createdRabbitMQMailQueues)
-            .extracting(RabbitMQMailQueue::getName)
-            .hasOnlyOneElementSatisfying(queueName -> assertThat(queueName).isEqualTo("spool"));
-    }
 }

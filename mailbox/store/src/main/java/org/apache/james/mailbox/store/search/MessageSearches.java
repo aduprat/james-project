@@ -39,21 +39,22 @@ import java.util.stream.Stream;
 
 import javax.mail.Flags;
 
+import org.apache.james.mailbox.AttachmentContentLoader;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedSearchException;
 import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.model.Attachment;
+import org.apache.james.mailbox.model.AttachmentMetadata;
 import org.apache.james.mailbox.model.Header;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.SearchQuery.AddressType;
 import org.apache.james.mailbox.model.SearchQuery.DateResolution;
 import org.apache.james.mailbox.model.SearchQuery.UidRange;
 import org.apache.james.mailbox.store.ResultUtils;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
-import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.search.comparator.CombinedComparator;
 import org.apache.james.mime4j.MimeException;
 import org.apache.james.mime4j.MimeIOException;
@@ -75,7 +76,6 @@ import org.apache.james.mime4j.message.HeaderImpl;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.james.mime4j.utils.search.MessageMatcher;
-import org.apache.james.util.OptionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,11 +92,15 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
     private final Iterator<MailboxMessage> messages;
     private final SearchQuery query;
     private final TextExtractor textExtractor;
+    private final AttachmentContentLoader attachmentContentLoader;
+    private final MailboxSession mailboxSession;
 
-    public MessageSearches(Iterator<MailboxMessage> messages, SearchQuery query, TextExtractor textExtractor) {
+    public MessageSearches(Iterator<MailboxMessage> messages, SearchQuery query, TextExtractor textExtractor, AttachmentContentLoader attachmentContentLoader, MailboxSession mailboxSession) {
         this.messages = messages;
         this.query = query;
         this.textExtractor = textExtractor;
+        this.attachmentContentLoader = attachmentContentLoader;
+        this.mailboxSession = mailboxSession;
     }
 
     @Override
@@ -131,7 +135,7 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
      *         <code>false</code> otherwise
      */
     private boolean isMatch(MailboxMessage message) throws MailboxException {
-        final List<SearchQuery.Criterion> criteria = query.getCriterias();
+        final List<SearchQuery.Criterion> criteria = query.getCriteria();
         final Collection<MessageUid> recentMessageUids = query.getRecentMessageUids();
         if (criteria != null) {
             for (SearchQuery.Criterion criterion : criteria) {
@@ -240,33 +244,33 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
     }
 
     private boolean attachmentsContain(String value, MailboxMessage message) throws IOException, MimeException {
-        List<MessageAttachment> attachments = message.getAttachments();
+        List<MessageAttachmentMetadata> attachments = message.getAttachments();
         return isInAttachments(value, attachments);
     }
 
     private boolean hasFileName(String value, MailboxMessage message) throws IOException, MimeException {
         return message.getAttachments()
             .stream()
-            .map(MessageAttachment::getName)
+            .map(MessageAttachmentMetadata::getName)
             .anyMatch(nameOptional -> nameOptional.map(value::equals).orElse(false));
     }
 
-    private boolean isInAttachments(String value, List<MessageAttachment> attachments) {
+    private boolean isInAttachments(String value, List<MessageAttachmentMetadata> attachments) {
         return attachments.stream()
-            .map(MessageAttachment::getAttachment)
-            .flatMap(this::toAttachmentContent)
+            .map(MessageAttachmentMetadata::getAttachment)
+            .flatMap(attachment -> toAttachmentContent(attachment, mailboxSession))
             .anyMatch(string -> string.contains(value));
     }
 
-    private Stream<String> toAttachmentContent(Attachment attachment) {
-        try {
-            return OptionalUtils.toStream(
-                    textExtractor
-                         .extractContent(
-                             attachment.getStream(),
-                             attachment.getType())
-                        .getTextualContent());
-            } catch (Exception e) {
+    private Stream<String> toAttachmentContent(AttachmentMetadata attachment, MailboxSession mailboxSession) {
+        try (InputStream rawData = attachmentContentLoader.load(attachment, mailboxSession)) {
+            return textExtractor
+                    .extractContent(
+                        rawData,
+                        attachment.getType())
+                    .getTextualContent()
+                    .stream();
+        } catch (Exception e) {
             LOGGER.error("Error while parsing attachment content", e);
             return Stream.of();
         }
@@ -542,9 +546,7 @@ public class MessageSearches implements Iterable<SimpleMessageSearchIndex.Search
 
 
     private boolean matches(SearchQuery.AttachmentCriterion criterion, MailboxMessage message) throws UnsupportedSearchException {
-        boolean mailHasAttachments = message.getProperties()
-            .stream()
-            .anyMatch(PropertyBuilder.isHasAttachmentProperty());
+        boolean mailHasAttachments = MessageAttachmentMetadata.hasNonInlinedAttachment(message.getAttachments());
         return mailHasAttachments == criterion.getOperator().isSet();
     }
 

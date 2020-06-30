@@ -23,7 +23,7 @@ import org.apache.james.mailbox.events.Group;
 import org.apache.james.mailbox.events.MailboxListener;
 
 public interface MailboxListenersLoader {
-    Pair<Group, MailboxListener> createListener(ListenerConfiguration configuration);
+    Pair<Group, MailboxListener.ReactiveMailboxListener> createListener(ListenerConfiguration configuration);
 
-    void register(Pair<Group, MailboxListener> listener);
+    void register(Pair<Group, MailboxListener.ReactiveMailboxListener> listener);
 }

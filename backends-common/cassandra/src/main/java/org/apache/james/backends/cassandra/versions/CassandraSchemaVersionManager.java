@@ -32,8 +32,10 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
+import reactor.core.publisher.Mono;
+
 public class CassandraSchemaVersionManager {
-    public static final SchemaVersion MIN_VERSION = new SchemaVersion(2);
+    public static final SchemaVersion MIN_VERSION = new SchemaVersion(5);
     public static final SchemaVersion MAX_VERSION = new SchemaVersion(7);
     public static final SchemaVersion DEFAULT_VERSION = MIN_VERSION;
 
@@ -41,6 +43,7 @@ public class CassandraSchemaVersionManager {
 
     private final SchemaVersion minVersion;
     private final SchemaVersion maxVersion;
+    private final SchemaVersion initialSchemaVersion;
     private final CassandraSchemaVersionDAO schemaVersionDAO;
 
     public enum SchemaState {
@@ -63,17 +66,27 @@ public class CassandraSchemaVersionManager {
         this.schemaVersionDAO = schemaVersionDAO;
         this.minVersion = minVersion;
         this.maxVersion = maxVersion;
+
+        this.initialSchemaVersion = computeVersion().block();
     }
 
-    public SchemaVersion computeVersion() {
+    public Mono<Boolean> isBefore(SchemaVersion minimum) {
+        if (initialSchemaVersion.isBefore(minimum)) {
+            // If we started with a legacy james then maybe schema version had been updated since then
+            return computeVersion()
+                .map(computedVersion -> computedVersion.isBefore(minimum));
+        }
+        return Mono.just(false);
+    }
+
+    public Mono<SchemaVersion> computeVersion() {
         return schemaVersionDAO
             .getCurrentSchemaVersion()
-            .block()
-            .orElseGet(() -> {
+            .map(maybeVersion -> maybeVersion.orElseGet(() -> {
                 LOGGER.warn("No schema version information found on Cassandra, we assume schema is at version {}",
                     CassandraSchemaVersionManager.DEFAULT_VERSION);
                 return DEFAULT_VERSION;
-            });
+            }));
     }
 
     public SchemaVersion getMinimumSupportedVersion() {
@@ -85,7 +98,7 @@ public class CassandraSchemaVersionManager {
     }
 
     public SchemaState computeSchemaState() {
-        SchemaVersion version = computeVersion();
+        SchemaVersion version = computeVersion().block();
         if (version.isBefore(minVersion)) {
             return TOO_OLD;
         } else if (version.isBefore(maxVersion)) {

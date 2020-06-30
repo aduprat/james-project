@@ -59,7 +59,7 @@ public class SetMailboxesMethod implements Method {
     }
 
     @Override
-    public Stream<JmapResponse> process(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
+    public Stream<JmapResponse> processToStream(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
         Preconditions.checkNotNull(request);
         Preconditions.checkNotNull(methodCallId);
         Preconditions.checkNotNull(mailboxSession);
@@ -67,18 +67,20 @@ public class SetMailboxesMethod implements Method {
 
         SetMailboxesRequest setMailboxesRequest = (SetMailboxesRequest) request;
 
-        return metricFactory.runPublishingTimerMetric(JMAP_PREFIX + METHOD_NAME.getName(),
-            MDCBuilder.create()
-                .addContext(MDCBuilder.ACTION, "SET_MAILBOXES")
-                .addContext("create", setMailboxesRequest.getCreate())
-                .addContext("update", setMailboxesRequest.getUpdate())
-                .addContext("destroy", setMailboxesRequest.getDestroy())
-                .wrapArround(
+
+        return MDCBuilder.create()
+            .addContext(MDCBuilder.ACTION, "SET_MAILBOXES")
+            .addContext("create", setMailboxesRequest.getCreate())
+            .addContext("update", setMailboxesRequest.getUpdate())
+            .addContext("destroy", setMailboxesRequest.getDestroy())
+            .wrapArround(
+                () -> metricFactory.decorateSupplierWithTimerMetricLogP99(JMAP_PREFIX + METHOD_NAME.getName(),
                     () -> Stream.of(
                         JmapResponse.builder().methodCallId(methodCallId)
                             .response(setMailboxesResponse(setMailboxesRequest, mailboxSession))
                             .responseName(RESPONSE_NAME)
-                            .build())));
+                            .build())))
+            .get();
     }
 
     private SetMailboxesResponse setMailboxesResponse(SetMailboxesRequest request, MailboxSession mailboxSession) {

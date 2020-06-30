@@ -28,6 +28,7 @@ import org.apache.james.jmap.draft.model.Property;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 public class JmapResponse {
@@ -81,12 +82,6 @@ public class JmapResponse {
             this.responseName = ErrorResponse.ERROR_METHOD;
             return this;
         }
-
-        public Builder error(String message) {
-            this.response = ErrorResponse.builder().type(message).build();
-            this.responseName = ErrorResponse.ERROR_METHOD;
-            return this;
-        }
         
         public Builder error(ErrorResponse error) {
             this.response = error;
@@ -96,6 +91,9 @@ public class JmapResponse {
 
         
         public JmapResponse build() {
+            Preconditions.checkState(methodCallId != null, "'methodCallId' needs to be specified");
+            Preconditions.checkState(responseName != null, "'responseName' needs to be specified");
+
             return new JmapResponse(responseName, methodCallId, response, properties, filterProvider);
         }
     }

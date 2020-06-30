@@ -19,24 +19,27 @@
 
 package org.apache.james.mailbox.store;
 
+import static org.apache.james.mailbox.store.MailboxReactorUtils.block;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import javax.inject.Inject;
 import javax.mail.Flags;
 
-import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.MetadataWithMailboxId;
 import org.apache.james.mailbox.ModSeq;
+import org.apache.james.mailbox.RightManager;
 import org.apache.james.mailbox.events.EventBus;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -44,7 +47,7 @@ import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.extension.PreDeletionHook;
 import org.apache.james.mailbox.model.DeleteResult;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.Mailbox;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
@@ -74,10 +77,12 @@ import com.github.fge.lambdas.functions.ThrowingFunction;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class StoreMessageIdManager implements MessageIdManager {
 
@@ -90,22 +95,20 @@ public class StoreMessageIdManager implements MessageIdManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StoreMessageIdManager.class);
 
-    private final MailboxManager mailboxManager;
+    private final RightManager rightManager;
     private final MailboxSessionMapperFactory mailboxSessionMapperFactory;
     private final EventBus eventBus;
-    private final MessageId.Factory messageIdFactory;
     private final QuotaManager quotaManager;
     private final QuotaRootResolver quotaRootResolver;
     private final PreDeletionHooks preDeletionHooks;
 
     @Inject
-    public StoreMessageIdManager(MailboxManager mailboxManager, MailboxSessionMapperFactory mailboxSessionMapperFactory,
-                                 EventBus eventBus, MessageId.Factory messageIdFactory,
-                                 QuotaManager quotaManager, QuotaRootResolver quotaRootResolver, PreDeletionHooks preDeletionHooks) {
-        this.mailboxManager = mailboxManager;
+    public StoreMessageIdManager(RightManager rightManager, MailboxSessionMapperFactory mailboxSessionMapperFactory,
+                                 EventBus eventBus, QuotaManager quotaManager, QuotaRootResolver quotaRootResolver,
+                                 PreDeletionHooks preDeletionHooks) {
+        this.rightManager = rightManager;
         this.mailboxSessionMapperFactory = mailboxSessionMapperFactory;
         this.eventBus = eventBus;
-        this.messageIdFactory = messageIdFactory;
         this.quotaManager = quotaManager;
         this.quotaRootResolver = quotaRootResolver;
         this.preDeletionHooks = preDeletionHooks;
@@ -115,11 +118,11 @@ public class StoreMessageIdManager implements MessageIdManager {
     public void setFlags(Flags newState, MessageManager.FlagsUpdateMode replace, MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write);
+        MailboxReactorUtils.block(assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.Write));
 
-        Map<MailboxId, UpdatedFlags> updatedFlags = messageIdMapper.setFlags(messageId, mailboxIds, newState, replace);
-        for (Map.Entry<MailboxId, UpdatedFlags> entry : updatedFlags.entrySet()) {
-            dispatchFlagsChange(mailboxSession, entry.getKey(), entry.getValue());
+        Multimap<MailboxId, UpdatedFlags> updatedFlags = messageIdMapper.setFlags(messageId, mailboxIds, newState, replace);
+        for (Map.Entry<MailboxId, Collection<UpdatedFlags>> entry : updatedFlags.asMap().entrySet()) {
+            dispatchFlagsChange(mailboxSession, entry.getKey(), ImmutableList.copyOf(entry.getValue()));
         }
     }
 
@@ -137,33 +140,37 @@ public class StoreMessageIdManager implements MessageIdManager {
     }
 
     @Override
-    public List<MessageResult> getMessages(Collection<MessageId> messageIds, FetchGroup fetchGroup, MailboxSession mailboxSession) throws MailboxException {
+    public List<MessageResult> getMessages(Collection<MessageId> messageIds, FetchGroup fetchGroup, MailboxSession mailboxSession) {
+        return getMessagesReactive(messageIds, fetchGroup, mailboxSession)
+            .collectList()
+            .block();
+    }
+
+    @Override
+    public Flux<MessageResult> getMessagesReactive(Collection<MessageId> messageIds, FetchGroup fetchGroup, MailboxSession mailboxSession) {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
         MessageMapper.FetchType fetchType = FetchGroupConverter.getFetchType(fetchGroup);
-        List<MailboxMessage> messageList = messageIdMapper.find(messageIds, fetchType);
-
-        ImmutableSet<MailboxId> allowedMailboxIds = getAllowedMailboxIds(mailboxSession, messageList, Right.Read);
-
-        return messageList.stream()
-            .filter(inMailboxes(allowedMailboxIds))
-            .map(Throwing.function(messageResultConverter(fetchGroup)).sneakyThrow())
-            .collect(Guavate.toImmutableList());
+        return messageIdMapper.findReactive(messageIds, fetchType)
+            .groupBy(MailboxMessage::getMailboxId)
+            .filterWhen(groupedFlux -> hasRightsOnMailboxReactive(mailboxSession, Right.Read).apply(groupedFlux.key()))
+            .flatMap(Function.identity())
+            .map(Throwing.function(messageResultConverter(fetchGroup)).sneakyThrow());
     }
 
-    private ImmutableSet<MailboxId> getAllowedMailboxIds(MailboxSession mailboxSession, List<MailboxMessage> messageList, Right... rights) {
-        return messageList.stream()
-                .map(MailboxMessage::getMailboxId)
-                .distinct()
-                .filter(hasRightsOnMailbox(mailboxSession, rights))
-                .collect(Guavate.toImmutableSet());
+    private ImmutableSet<MailboxId> getAllowedMailboxIds(MailboxSession mailboxSession, List<MailboxMessage> messageList, Right... rights) throws MailboxException {
+        return MailboxReactorUtils.block(Flux.fromIterable(messageList)
+            .map(MailboxMessage::getMailboxId)
+            .distinct()
+            .filterWhen(hasRightsOnMailboxReactive(mailboxSession, rights))
+            .collect(Guavate.toImmutableSet()));
     }
 
     @Override
     public DeleteResult delete(MessageId messageId, List<MailboxId> mailboxIds, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages);
+        MailboxReactorUtils.block(assertRightsOnMailboxes(mailboxIds, mailboxSession, Right.DeleteMessages));
 
         List<MailboxMessage> messageList = messageIdMapper
             .find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
@@ -221,22 +228,22 @@ public class StoreMessageIdManager implements MessageIdManager {
 
         MailboxMapper mailboxMapper = mailboxSessionMapperFactory.getMailboxMapper(mailboxSession);
         Flux.fromIterable(metadataWithMailbox)
-            .flatMap(Throwing.<MetadataWithMailboxId, Mono<Void>>function(
-                metadataWithMailboxId -> eventBus.dispatch(EventFactory.expunged()
-                    .randomEventId()
-                    .mailboxSession(mailboxSession)
-                    .mailbox(mailboxMapper.findMailboxById(metadataWithMailboxId.getMailboxId()))
-                    .addMetaData(metadataWithMailboxId.getMessageMetaData())
-                    .build(),
-                new MailboxIdRegistrationKey(metadataWithMailboxId.getMailboxId())))
-                .sneakyThrow())
+            .flatMap(metadataWithMailboxId -> mailboxMapper.findMailboxById(metadataWithMailboxId.getMailboxId())
+                .flatMap(mailbox -> eventBus.dispatch(EventFactory.expunged()
+                        .randomEventId()
+                        .mailboxSession(mailboxSession)
+                        .mailbox(mailbox)
+                        .addMetaData(metadataWithMailboxId.getMessageMetaData())
+                        .build(),
+                    new MailboxIdRegistrationKey(metadataWithMailboxId.getMailboxId()))))
             .then()
+            .subscribeOn(Schedulers.elastic())
             .block();
     }
 
     @Override
     public void setInMailboxes(MessageId messageId, Collection<MailboxId> targetMailboxIds, MailboxSession mailboxSession) throws MailboxException {
-        assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read);
+        MailboxReactorUtils.block(assertRightsOnMailboxes(targetMailboxIds, mailboxSession, Right.Read));
 
         List<MailboxMessage> currentMailboxMessages = findRelatedMailboxMessages(messageId, mailboxSession);
 
@@ -272,15 +279,14 @@ public class StoreMessageIdManager implements MessageIdManager {
     private List<MailboxMessage> findRelatedMailboxMessages(MessageId messageId, MailboxSession mailboxSession) throws MailboxException {
         MessageIdMapper messageIdMapper = mailboxSessionMapperFactory.getMessageIdMapper(mailboxSession);
 
-        return messageIdMapper.find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
-            .stream()
-            .filter(hasRightsOn(mailboxSession, Right.Read))
-            .collect(Guavate.toImmutableList());
+        return MailboxReactorUtils.block(messageIdMapper.findReactive(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
+            .filterWhen(hasRightsOn(mailboxSession, Right.Read))
+            .collect(Guavate.toImmutableList()));
     }
 
     private void applyMessageMoves(MailboxSession mailboxSession, List<MailboxMessage> currentMailboxMessages, MessageMoves messageMoves) throws MailboxException {
-        assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert);
-        assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages);
+        MailboxReactorUtils.block(assertRightsOnMailboxes(messageMoves.addedMailboxIds(), mailboxSession, Right.Insert));
+        MailboxReactorUtils.block(assertRightsOnMailboxes(messageMoves.removedMailboxIds(), mailboxSession, Right.DeleteMessages));
 
         applyMessageMoveNoMailboxChecks(mailboxSession, currentMailboxMessages, messageMoves);
     }
@@ -301,6 +307,7 @@ public class StoreMessageIdManager implements MessageIdManager {
             messageMoves.impactedMailboxIds()
                 .map(MailboxIdRegistrationKey::new)
                 .collect(Guavate.toImmutableSet()))
+            .subscribeOn(Schedulers.elastic())
             .block();
     }
 
@@ -311,28 +318,30 @@ public class StoreMessageIdManager implements MessageIdManager {
 
         for (MailboxId mailboxId: mailboxesToRemove) {
             messageIdMapper.delete(message.getMessageId(), mailboxesToRemove);
-            eventBus.dispatch(EventFactory.expunged()
-                .randomEventId()
-                .mailboxSession(mailboxSession)
-                .mailbox(mailboxMapper.findMailboxById(mailboxId))
-                .addMetaData(eventPayload)
-                .build(),
-                new MailboxIdRegistrationKey(mailboxId))
+            mailboxMapper.findMailboxById(mailboxId)
+                .flatMap(mailbox -> eventBus.dispatch(EventFactory.expunged()
+                        .randomEventId()
+                        .mailboxSession(mailboxSession)
+                        .mailbox(mailbox)
+                        .addMetaData(eventPayload)
+                        .build(),
+                    new MailboxIdRegistrationKey(mailboxId)))
+            .subscribeOn(Schedulers.elastic())
             .block();
         }
     }
     
-    private void dispatchFlagsChange(MailboxSession mailboxSession, MailboxId mailboxId, UpdatedFlags updatedFlags) throws MailboxException {
-        if (updatedFlags.flagsChanged()) {
-            Mailbox mailbox = mailboxSessionMapperFactory.getMailboxMapper(mailboxSession).findMailboxById(mailboxId);
-
-            eventBus.dispatch(EventFactory.flagsUpdated()
-                .randomEventId()
-                .mailboxSession(mailboxSession)
-                .mailbox(mailbox)
-                .updatedFlag(updatedFlags)
-                .build(),
-                new MailboxIdRegistrationKey(mailboxId))
+    private void dispatchFlagsChange(MailboxSession mailboxSession, MailboxId mailboxId, ImmutableList<UpdatedFlags> updatedFlags) throws MailboxException {
+        if (updatedFlags.stream().anyMatch(UpdatedFlags::flagsChanged)) {
+            mailboxSessionMapperFactory.getMailboxMapper(mailboxSession).findMailboxById(mailboxId)
+                .flatMap(mailbox -> eventBus.dispatch(EventFactory.flagsUpdated()
+                        .randomEventId()
+                        .mailboxSession(mailboxSession)
+                        .mailbox(mailbox)
+                        .updatedFlags(updatedFlags)
+                        .build(),
+                    new MailboxIdRegistrationKey(mailboxId)))
+                .subscribeOn(Schedulers.elastic())
                 .block();
         }
     }
@@ -371,7 +380,8 @@ public class StoreMessageIdManager implements MessageIdManager {
         MailboxMapper mailboxMapper = mailboxSessionMapperFactory.getMailboxMapper(mailboxSession);
 
         for (MailboxId mailboxId : mailboxIds) {
-            boolean shouldPreserveFlags = mailboxManager.myRights(mailboxId, mailboxSession).contains(Right.Write);
+            MailboxACL.Rfc4314Rights myRights = block(Mono.from(rightManager.myRights(mailboxId, mailboxSession)));
+            boolean shouldPreserveFlags = myRights.contains(Right.Write);
             SimpleMailboxMessage copy =
                 SimpleMailboxMessage.from(mailboxMessage)
                     .mailboxId(mailboxId)
@@ -388,13 +398,14 @@ public class StoreMessageIdManager implements MessageIdManager {
                     .build();
             save(messageIdMapper, copy);
 
-            eventBus.dispatch(EventFactory.added()
-                .randomEventId()
-                .mailboxSession(mailboxSession)
-                .mailbox(mailboxMapper.findMailboxById(mailboxId))
-                .addMetaData(copy.metaData())
-                .build(),
-                new MailboxIdRegistrationKey(mailboxId))
+            mailboxMapper.findMailboxById(mailboxId)
+                .flatMap(mailbox -> eventBus.dispatch(EventFactory.added()
+                    .randomEventId()
+                    .mailboxSession(mailboxSession)
+                    .mailbox(mailbox)
+                    .addMetaData(copy.metaData())
+                    .build(),
+                    new MailboxIdRegistrationKey(mailboxId)))
                 .block();
         }
     }
@@ -415,24 +426,24 @@ public class StoreMessageIdManager implements MessageIdManager {
         return mailboxMessage -> mailboxIds.contains(mailboxMessage.getMailboxId());
     }
 
-    private Predicate<MailboxMessage> hasRightsOn(MailboxSession session, Right... rights) {
-        return message -> hasRightsOnMailbox(session, rights).test(message.getMailboxId());
+    private Function<MailboxMessage, Mono<Boolean>> hasRightsOn(MailboxSession session, Right... rights) {
+        return hasRightsOnMailboxReactive(session, rights).compose(MailboxMessage::getMailboxId);
     }
 
-
-    private Predicate<MailboxId> hasRightsOnMailbox(MailboxSession session, Right... rights) {
-        return Throwing.predicate((MailboxId mailboxId) -> mailboxManager.myRights(mailboxId, session).contains(rights))
-            .fallbackTo(any -> false);
+    private Function<MailboxId, Mono<Boolean>> hasRightsOnMailboxReactive(MailboxSession session, Right... rights) {
+        return mailboxId -> Mono.from(rightManager.myRights(mailboxId, session))
+            .map(myRights -> myRights.contains(rights))
+            .onErrorResume(any -> Mono.just(false));
     }
 
-    private void assertRightsOnMailboxes(Collection<MailboxId> mailboxIds, MailboxSession mailboxSession, Right... rights) throws MailboxNotFoundException {
-        Optional<MailboxId> mailboxForbidden = mailboxIds.stream()
-            .filter(hasRightsOnMailbox(mailboxSession, rights).negate())
-            .findFirst();
-
-        if (mailboxForbidden.isPresent()) {
-            LOGGER.info("Mailbox with Id {} does not belong to {}", mailboxForbidden.get(), mailboxSession.getUser().asString());
-            throw new MailboxNotFoundException(mailboxForbidden.get());
-        }
+    private Mono<Void> assertRightsOnMailboxes(Collection<MailboxId> mailboxIds, MailboxSession mailboxSession, Right... rights) throws MailboxNotFoundException {
+        return Flux.fromIterable(mailboxIds)
+            .filterWhen(hasRightsOnMailboxReactive(mailboxSession, rights).andThen(result -> result.map(b -> !b)))
+            .next()
+            .flatMap(mailboxForbidden -> {
+                LOGGER.info("Mailbox with Id {} does not belong to {}", mailboxForbidden, mailboxSession.getUser().asString());
+                return Mono.error(new MailboxNotFoundException(mailboxForbidden));
+            })
+            .then();
     }
 }

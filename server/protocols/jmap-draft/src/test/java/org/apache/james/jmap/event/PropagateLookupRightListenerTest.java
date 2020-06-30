@@ -112,7 +112,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -121,9 +121,9 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldDoNothingWhenNewACLIsTheSameAsTheOldOne() throws Exception {
-        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId);
+        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(grandChildMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Lookup))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Lookup)))).block();
 
         storeRightManager.applyRightsCommand(
             GRAND_CHILD_MAILBOX,
@@ -134,7 +134,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -152,7 +152,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -162,9 +162,9 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldUpdateParentWhenMailboxACLUpdateLookupRight() throws Exception {
-        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId);
+        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(grandChildMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write)))).block();
 
         storeRightManager.setRights(
             GRAND_CHILD_MAILBOX,
@@ -173,7 +173,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -183,9 +183,9 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldUpdateAllParentWhenMailboxACLUpdateLookupRight() throws Exception {
-        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId);
+        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(grandChildMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write)))).block();
 
         storeRightManager.setRights(
             GRAND_CHILD_MAILBOX,
@@ -194,11 +194,11 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualParentACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         MailboxACL actualChildACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualParentACL.getEntries())
@@ -209,9 +209,9 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldDoNothingWhenMailboxACLRemoveLookupRight() throws Exception {
-        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId);
+        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(grandChildMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup)))).block();
 
         storeRightManager.applyRightsCommand(
             GRAND_CHILD_MAILBOX,
@@ -222,7 +222,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -240,7 +240,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -258,7 +258,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -267,14 +267,14 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldUpdateNewParentWhenRenameMailboxWhichContainLookupRight() throws Exception {
-        Mailbox childMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(childMailboxId);
+        Mailbox childMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(childMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(childMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup)))).block();
 
         storeMailboxManager.renameMailbox(CHILD_MAILBOX, MailboxPath.forUser(OWNER_USER, "shared1.sub1New"), mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId1, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -283,14 +283,14 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldNotUpdateNewParentWhenRenameMailboxWhichDoesContainLookupRight() throws Exception {
-        Mailbox childMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(childMailboxId);
+        Mailbox childMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(childMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(childMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write)))).block();
 
         storeMailboxManager.renameMailbox(CHILD_MAILBOX, MailboxPath.forUser(OWNER_USER, "shared1.sub1New"), mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId1, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())
@@ -299,17 +299,17 @@ public class PropagateLookupRightListenerTest {
 
     @Test
     public void eventShouldUpdateAllNewParentWhenRenameMailboxWhichContainLookupRight() throws Exception {
-        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId);
+        Mailbox grandChildMailbox = mailboxMapper.getMailboxMapper(mailboxSession).findMailboxById(grandChildMailboxId).block();
         mailboxMapper.getMailboxMapper(mailboxSession).setACL(grandChildMailbox, new MailboxACL(
-            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup))));
+            new Entry(SHARED_USER_KEY, new Rfc4314Rights(Right.Write, Right.Lookup)))).block();
 
         storeMailboxManager.renameMailbox(GRAND_CHILD_MAILBOX, MailboxPath.forUser(OWNER_USER, "shared1.sub1.sub2"), mailboxSession);
 
         MailboxACL parentActualACL = storeMailboxManager.getMailbox(parentMailboxId1, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
         MailboxACL childActualACL = storeMailboxManager.getMailbox(childMailboxId1, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(parentActualACL.getEntries())
@@ -330,7 +330,7 @@ public class PropagateLookupRightListenerTest {
             mailboxSession);
 
         MailboxACL actualACL = storeMailboxManager.getMailbox(parentMailboxId, mailboxSession)
-            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MetaData.FetchGroup.NO_COUNT)
+            .getMetaData(RESET_RECENT, mailboxSession, MessageManager.MailboxMetaData.FetchGroup.NO_COUNT)
             .getACL();
 
         assertThat(actualACL.getEntries())

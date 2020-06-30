@@ -23,7 +23,6 @@ import static org.apache.james.mailbox.store.mail.AbstractMessageMapper.UNLIMITE
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import javax.mail.Flags;
@@ -37,6 +36,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.FlagsUpdateCalculator;
+import org.apache.james.mailbox.store.MailboxReactorUtils;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageIdMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
@@ -45,9 +45,11 @@ import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimap;
+
+import reactor.core.publisher.Flux;
 
 public class InMemoryMessageIdMapper implements MessageIdMapper {
-
     private final MailboxMapper mailboxMapper;
     private final InMemoryMessageMapper messageMapper;
 
@@ -58,19 +60,16 @@ public class InMemoryMessageIdMapper implements MessageIdMapper {
 
     @Override
     public List<MailboxMessage> find(Collection<MessageId> messageIds, MessageMapper.FetchType fetchType) {
-        try {
-            return mailboxMapper.list()
-                .stream()
-                .flatMap(Throwing.function(mailbox ->
-                    ImmutableList.copyOf(
-                        messageMapper.findInMailbox(mailbox, MessageRange.all(), fetchType, UNLIMITED))
-                        .stream()))
-                .filter(message -> messageIds.contains(message.getMessageId()))
-                .collect(Guavate.toImmutableList());
-        } catch (MailboxException e) {
-            throw new RuntimeException(e);
-        }
+        return findReactive(messageIds, fetchType)
+            .collect(Guavate.toImmutableList())
+            .block();
+    }
 
+    @Override
+    public Flux<MailboxMessage> findReactive(Collection<MessageId> messageIds, MessageMapper.FetchType fetchType) {
+        return mailboxMapper.list()
+            .flatMap(mailbox -> messageMapper.findInMailboxReactive(mailbox, MessageRange.all(), fetchType, UNLIMITED))
+            .filter(message -> messageIds.contains(message.getMessageId()));
     }
 
     @Override
@@ -83,7 +82,7 @@ public class InMemoryMessageIdMapper implements MessageIdMapper {
 
     @Override
     public void save(MailboxMessage mailboxMessage) throws MailboxException {
-        Mailbox mailbox = mailboxMapper.findMailboxById(mailboxMessage.getMailboxId());
+        Mailbox mailbox = MailboxReactorUtils.block(mailboxMapper.findMailboxById(mailboxMessage.getMailboxId()));
         messageMapper.save(mailbox, mailboxMessage);
     }
 
@@ -100,7 +99,7 @@ public class InMemoryMessageIdMapper implements MessageIdMapper {
         find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
             .forEach(Throwing.consumer(
                 message -> messageMapper.delete(
-                    mailboxMapper.findMailboxById(message.getMailboxId()),
+                    MailboxReactorUtils.block(mailboxMapper.findMailboxById(message.getMailboxId())),
                     message)));
     }
 
@@ -111,18 +110,21 @@ public class InMemoryMessageIdMapper implements MessageIdMapper {
             .filter(message -> mailboxIds.contains(message.getMailboxId()))
             .forEach(Throwing.consumer(
                 message -> messageMapper.delete(
-                    mailboxMapper.findMailboxById(message.getMailboxId()),
+                    MailboxReactorUtils.block(mailboxMapper.findMailboxById(message.getMailboxId())),
                     message)));
     }
 
     @Override
-    public Map<MailboxId, UpdatedFlags> setFlags(MessageId messageId, List<MailboxId> mailboxIds,
-                                                 Flags newState, FlagsUpdateMode updateMode) throws MailboxException {
+    public Multimap<MailboxId, UpdatedFlags> setFlags(MessageId messageId, List<MailboxId> mailboxIds,
+                                                      Flags newState, FlagsUpdateMode updateMode) {
         return find(ImmutableList.of(messageId), MessageMapper.FetchType.Metadata)
             .stream()
             .filter(message -> mailboxIds.contains(message.getMailboxId()))
             .map(updateMessage(newState, updateMode))
-            .collect(Guavate.entriesToMap());
+            .distinct()
+            .collect(Guavate.toImmutableListMultimap(
+                Pair::getKey,
+                Pair::getValue));
     }
 
     private Function<MailboxMessage, Pair<MailboxId, UpdatedFlags>> updateMessage(Flags newState, FlagsUpdateMode updateMode) {
@@ -139,7 +141,7 @@ public class InMemoryMessageIdMapper implements MessageIdMapper {
             }
             return Pair.of(message.getMailboxId(),
                 messageMapper.updateFlags(
-                    mailboxMapper.findMailboxById(message.getMailboxId()),
+                    MailboxReactorUtils.block(mailboxMapper.findMailboxById(message.getMailboxId())),
                     flagsUpdateCalculator,
                     message.getUid().toRange())
                     .next());

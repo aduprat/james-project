@@ -24,23 +24,22 @@ import java.util.Optional;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailrepository.api.MailKey;
 import org.apache.james.mailrepository.api.MailRepositoryPath;
+import org.apache.james.queue.api.MailQueueName;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReprocessingOneMailTaskAdditionalInformationDTO implements AdditionalInformationDTO {
-
-    public static final AdditionalInformationDTOModule<ReprocessingOneMailTask.AdditionalInformation, ReprocessingOneMailTaskAdditionalInformationDTO> SERIALIZATION_MODULE =
-        DTOModule.forDomainObject(ReprocessingOneMailTask.AdditionalInformation.class)
+    public static AdditionalInformationDTOModule<ReprocessingOneMailTask.AdditionalInformation, ReprocessingOneMailTaskAdditionalInformationDTO> module() {
+        return DTOModule.forDomainObject(ReprocessingOneMailTask.AdditionalInformation.class)
             .convertToDTO(ReprocessingOneMailTaskAdditionalInformationDTO.class)
             .toDomainObjectConverter(dto -> new ReprocessingOneMailTask.AdditionalInformation(
                 MailRepositoryPath.from(dto.repositoryPath),
-                dto.targetQueue,
+                MailQueueName.of(dto.targetQueue),
                 new MailKey(dto.mailKey),
                 dto.targetProcessor,
-                dto.timestamp
-            ))
+                dto.timestamp))
             .toDTOConverter((details, type) -> new ReprocessingOneMailTaskAdditionalInformationDTO(
                 type,
                 details.getRepositoryPath(),
@@ -50,6 +49,7 @@ public class ReprocessingOneMailTaskAdditionalInformationDTO implements Addition
                 details.timestamp()))
             .typeName(ReprocessingOneMailTask.TYPE.asString())
             .withFactory(AdditionalInformationDTOModule::new);
+    }
 
     private final String type;
     private final String repositoryPath;

@@ -34,6 +34,9 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.model.search.MailboxQuery;
+import org.reactivestreams.Publisher;
+
+import reactor.core.publisher.Flux;
 
 /**
  * <p>
@@ -240,7 +243,7 @@ public interface MailboxManager extends RequestAware, RightManager, MailboxAnnot
      * @param session
      *            the context for this call, not null
      */
-    List<MailboxMetaData> search(MailboxQuery expression, MailboxSession session) throws MailboxException;
+    Flux<MailboxMetaData> search(MailboxQuery expression, MailboxSession session);
 
     /**
      * Searches for messages matching the given query.
@@ -250,7 +253,7 @@ public interface MailboxManager extends RequestAware, RightManager, MailboxAnnot
      * @param session
      *            the context for this call, not null
      */
-    List<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException;
+    Publisher<MessageId> search(MultimailboxesSearchQuery expression, MailboxSession session, long limit) throws MailboxException;
 
     /**
      * Does the given mailbox exist?
@@ -259,10 +262,10 @@ public interface MailboxManager extends RequestAware, RightManager, MailboxAnnot
      *            not null
      * @param session
      *            the context for this call, not null
-     * @return true when the mailbox exists and is accessible for the given
+     * @return A publisher holding true when the mailbox exists and is accessible for the given
      *            user, false otherwise
      */
-    boolean mailboxExists(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
+    Publisher<Boolean> mailboxExists(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
 
     /**
      * Does the user INBOX exist?
@@ -272,7 +275,7 @@ public interface MailboxManager extends RequestAware, RightManager, MailboxAnnot
      * @return true when the INBOX exists and is accessible for the given
      *            user, false otherwise
      */
-    default boolean hasInbox(MailboxSession session) throws MailboxException {
+    default Publisher<Boolean> hasInbox(MailboxSession session) throws MailboxException {
         return mailboxExists(MailboxPath.inbox(session), session);
     }
 

@@ -28,6 +28,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -44,12 +45,17 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.MessageResultIterator;
 import org.apache.james.mailbox.model.SearchQuery;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Interface which represent a Mailbox
@@ -77,7 +83,7 @@ public interface MessageManager {
     /**
      * Return if the Mailbox is writable
      * @deprecated use
-     *             {@link #getMetaData(boolean, MailboxSession, org.apache.james.mailbox.MessageManager.MetaData.FetchGroup)}
+     *             {@link #getMetaData(boolean, MailboxSession, MailboxMetaData.FetchGroup)}
      */
     @Deprecated
     boolean isWriteable(MailboxSession session) throws MailboxException;
@@ -87,7 +93,7 @@ public interface MessageManager {
      * way.
      *
      * @deprecated use
-     *             {@link #getMetaData(boolean, MailboxSession, org.apache.james.mailbox.MessageManager.MetaData.FetchGroup)}
+     *             {@link #getMetaData(boolean, MailboxSession, MailboxMetaData.FetchGroup)}
      */
     boolean isModSeqPermanent(MailboxSession session);
 
@@ -137,6 +143,41 @@ public interface MessageManager {
      */
     Map<MessageUid, Flags> setFlags(Flags flags, FlagsUpdateMode flagsUpdateMode, MessageRange set, MailboxSession mailboxSession) throws MailboxException;
 
+    class AppendResult {
+        private final ComposedMessageId id;
+        private final Optional<List<MessageAttachmentMetadata>> messageAttachments;
+
+        public AppendResult(ComposedMessageId id, Optional<List<MessageAttachmentMetadata>> messageAttachments) {
+            this.id = id;
+            this.messageAttachments = messageAttachments;
+        }
+
+        public ComposedMessageId getId() {
+            return id;
+        }
+
+        public List<MessageAttachmentMetadata> getMessageAttachments() {
+            Preconditions.checkState(messageAttachments.isPresent(), "'attachment storage' not supported by the implementation");
+            return messageAttachments.get();
+        }
+
+        @Override
+        public final boolean equals(Object o) {
+            if (o instanceof AppendResult) {
+                AppendResult that = (AppendResult) o;
+
+                return Objects.equals(this.id, that.id)
+                    && Objects.equals(this.messageAttachments, that.messageAttachments);
+            }
+            return false;
+        }
+
+        @Override
+        public final int hashCode() {
+            return Objects.hash(id, messageAttachments);
+        }
+    }
+
     /**
      * Appends a message to this mailbox. This method must return a higher UID
      * as the last call in every case which also needs to be unique for the
@@ -156,7 +197,7 @@ public interface MessageManager {
      * @throws MailboxException
      *             when message cannot be appended
      */
-    ComposedMessageId appendMessage(InputStream msgIn, Date internalDate, MailboxSession mailboxSession, boolean isRecent, Flags flags) throws MailboxException;
+    AppendResult appendMessage(InputStream msgIn, Date internalDate, MailboxSession mailboxSession, boolean isRecent, Flags flags) throws MailboxException;
 
     class AppendCommand {
 
@@ -264,7 +305,7 @@ public interface MessageManager {
         }
     }
 
-    ComposedMessageId appendMessage(AppendCommand appendCommand, MailboxSession session) throws MailboxException;
+    AppendResult appendMessage(AppendCommand appendCommand, MailboxSession session) throws MailboxException;
 
     /**
      * Gets messages in the given range. The messages may get fetched under
@@ -313,21 +354,21 @@ public interface MessageManager {
      *            describes which optional data should be returned
      * @return metadata view filtered for the session's user, not null
      */
-    MetaData getMetaData(boolean resetRecent, MailboxSession mailboxSession, MessageManager.MetaData.FetchGroup fetchGroup) throws MailboxException;
+    MailboxMetaData getMetaData(boolean resetRecent, MailboxSession mailboxSession, MailboxMetaData.FetchGroup fetchGroup) throws MailboxException;
 
     /**
      * Meta data about the current state of the mailbox.
      */
-    interface MetaData {
+    class MailboxMetaData {
 
         /**
          * Describes the optional data types which will get set in the
-         * {@link MetaData}.
+         * {@link MailboxMetaData}.
          * 
          * These are always set: - HIGHESTMODSEQ - PERMANENTFLAGS - UIDNEXT -
          * UIDVALIDITY - MODSEQPERMANET - WRITABLE
          */
-        enum FetchGroup {
+        public enum FetchGroup {
 
             /**
              * Only include the message and recent count
@@ -351,103 +392,184 @@ public interface MessageManager {
         }
 
         /**
-         * Gets the UIDs of recent messages if requested or an empty
-         * {@link List} otherwise.
-         * 
-         * @return the uids flagged RECENT in this mailbox,
+         * Neutral MailboxMetaData to be safely displayed for mailboxes a user can Lookup without Read write.
+         *
+         * @return MailboxMetaData with default values for all fields
          */
-        List<MessageUid> getRecent();
+        public static MailboxMetaData sensibleInformationFree(MailboxACL resolvedAcl, UidValidity uidValidity, boolean writeable, boolean modSeqPermanent) throws MailboxException {
+            ImmutableList<MessageUid> recents = ImmutableList.of();
+            MessageUid uidNext = MessageUid.MIN_VALUE;
+            ModSeq highestModSeq = ModSeq.first();
+            long messageCount = 0L;
+            long unseenCount = 0L;
+            MessageUid firstUnseen = null;
+            return new MailboxMetaData(
+                recents,
+                new Flags(),
+                uidValidity,
+                uidNext,
+                highestModSeq,
+                messageCount,
+                unseenCount,
+                firstUnseen,
+                writeable,
+                modSeqPermanent,
+                resolvedAcl);
+        }
+
+        private final long recentCount;
+        private final ImmutableList<MessageUid> recent;
+        private final Flags permanentFlags;
+        private final UidValidity uidValidity;
+        private final MessageUid nextUid;
+        private final long messageCount;
+        private final long unseenCount;
+        private final MessageUid firstUnseen;
+        private final boolean writeable;
+        private final ModSeq highestModSeq;
+        private final boolean modSeqPermanent;
+        private final MailboxACL acl;
+
+        public MailboxMetaData(List<MessageUid> recent, Flags permanentFlags, UidValidity uidValidity, MessageUid uidNext, ModSeq highestModSeq, long messageCount, long unseenCount, MessageUid firstUnseen, boolean writeable, boolean modSeqPermanent, MailboxACL acl) {
+            this.recent = Optional.ofNullable(recent).map(ImmutableList::copyOf).orElseGet(ImmutableList::of);
+            this.highestModSeq = highestModSeq;
+            this.recentCount = this.recent.size();
+
+            this.permanentFlags = permanentFlags;
+            this.uidValidity = uidValidity;
+            this.nextUid = uidNext;
+            this.messageCount = messageCount;
+            this.unseenCount = unseenCount;
+            this.firstUnseen = firstUnseen;
+            this.writeable = writeable;
+            this.modSeqPermanent = modSeqPermanent;
+            this.acl = acl;
+        }
 
         /**
          * Gets the number of recent messages.
-         * 
+         *
          * @return the number of messages flagged RECENT in this mailbox
          */
-        long countRecent();
+        public long countRecent() {
+            return recentCount;
+        }
 
         /**
          * Gets the flags which can be stored by this mailbox.
-         * 
+         *
          * @return Flags that can be stored
          */
-        Flags getPermanentFlags();
+        public Flags getPermanentFlags() {
+            return permanentFlags;
+        }
+
+
+        /**
+         * Gets the UIDs of recent messages if requested or an empty
+         * {@link List} otherwise.
+         *
+         * @return the uids flagged RECENT in this mailbox,
+         */
+        public List<MessageUid> getRecent() {
+            return recent;
+        }
 
         /**
          * Gets the UIDVALIDITY.
-         * 
+         *
          * @return UIDVALIDITY
          */
-        long getUidValidity();
+        public UidValidity getUidValidity() {
+            return uidValidity;
+        }
 
         /**
          * Gets the next UID predicted. The returned UID is not guaranteed to be
          * the one that is assigned to the next message. Its only guaranteed
          * that it will be at least equals or bigger then the value
-         * 
+         *
          * @return the uid that will be assigned to the next appended message
          */
-        MessageUid getUidNext();
+        public MessageUid getUidNext() {
+            return nextUid;
+        }
+
+        /**
+         * Gets the number of messages that this mailbox contains. This is an
+         * optional property.<br>
+         *
+         * @return number of messages contained or -1 when this optional data
+         *         has not be requested
+         *
+         */
+        public long getMessageCount() {
+            return messageCount;
+        }
+
+        /**
+         * Gets the number of unseen messages contained in this mailbox. This is
+         * an optional property.<br>
+         *
+         * @return number of unseen messages contained or zero when this
+         *         optional data has not been requested
+         * @see FetchGroup#UNSEEN_COUNT
+         */
+        public long getUnseenCount() {
+            return unseenCount;
+        }
+
+        /**
+         * Gets the UID of the first unseen message. This is an optional
+         * property.<br>
+         *
+         * @return uid of the first unseen message, or null when there are no
+         *         unseen messages
+         * @see FetchGroup#FIRST_UNSEEN
+         */
+        public MessageUid getFirstUnseen() {
+            return firstUnseen;
+        }
+
+        /**
+         * Is this mailbox writable?
+         *
+         * @return true if read-write, false if read only
+         */
+        public boolean isWriteable() {
+            return writeable;
+        }
 
         /**
          * Return the highest mod-sequence for the mailbox. If this value has
          * changed till the last check you can be sure that some changes where
          * happen on the mailbox
-         * 
+         *
          * @return higestModSeq
          */
-        ModSeq getHighestModSeq();
-
-        /**
-         * Gets the number of messages that this mailbox contains. This is an
-         * optional property.<br>
-         * 
-         * @return number of messages contained or -1 when this optional data
-         *         has not be requested
-         * 
-         */
-        long getMessageCount();
-
-        /**
-         * Gets the number of unseen messages contained in this mailbox. This is
-         * an optional property.<br>
-         * 
-         * @return number of unseen messages contained or zero when this
-         *         optional data has not been requested
-         * @see FetchGroup#UNSEEN_COUNT
-         */
-        long getUnseenCount();
-
-        /**
-         * Gets the UID of the first unseen message. This is an optional
-         * property.<br>
-         * 
-         * @return uid of the first unseen message, or null when there are no
-         *         unseen messages
-         * @see FetchGroup#FIRST_UNSEEN
-         */
-        MessageUid getFirstUnseen();
-
-        /**
-         * Is this mailbox writable?
-         * 
-         * @return true if read-write, false if read only
-         */
-        boolean isWriteable();
+        public ModSeq getHighestModSeq() {
+            return highestModSeq;
+        }
 
         /**
          * Return true if the mailbox does store the mod-sequences in a
          * permanent way
-         * 
+         *
          * @return permanent
          */
-        boolean isModSeqPermanent();
+        public boolean isModSeqPermanent() {
+            return modSeqPermanent;
+        }
+
 
         /**
          * Returns the ACL concerning this mailbox.
-         * 
+         *
          * @return acl
          */
-        MailboxACL getACL();
+        public MailboxACL getACL() {
+            return acl;
+        }
 
     }
 

@@ -27,6 +27,6 @@ public class RecomputeAllFastViewProjectionItemsRequestToTask extends TaskFromRe
     @Inject
     RecomputeAllFastViewProjectionItemsRequestToTask(MessageFastViewProjectionCorrector corrector) {
         super(Constants.TASK_REGISTRATION_KEY,
-            request -> new RecomputeAllFastViewProjectionItemsTask(corrector));
+            request -> new RecomputeAllFastViewProjectionItemsTask(corrector, RunningOptionsParser.parse(request)));
     }
 }

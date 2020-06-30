@@ -19,23 +19,18 @@
 
 package org.apache.james.webadmin.integration.memory;
 
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.MemoryJamesServerMain;
-import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
 import org.apache.james.webadmin.integration.UnauthorizedEndpointsTest;
 import org.apache.james.webadmin.integration.UnauthorizedModule;
 import org.apache.james.webadmin.integration.WebadminIntegrationTestModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class MemoryUnauthorizedEndpointsTest extends UnauthorizedEndpointsTest {
-
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder()
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule())
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+        .server(configuration -> MemoryJamesServerMain.createServer(configuration)
             .overrideWith(new UnauthorizedModule())
             .overrideWith(new WebadminIntegrationTestModule()))
         .build();

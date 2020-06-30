@@ -29,12 +29,11 @@ import java.net.UnknownHostException;
  * Be aware that set and get operations are not thread-safe
  */
 public class ProtocolConfigurationImpl implements ProtocolConfiguration {
-    
-    private String greeting;
-    private String softwareName = "JAMES Protocols Server";
-    private String helloName = null;
+
     private static final String DEFAULT_HELLO_NAME;
-    
+
+    private final String softwareName;
+
     static {
         String hName;
         try {
@@ -44,35 +43,28 @@ public class ProtocolConfigurationImpl implements ProtocolConfiguration {
         }
         DEFAULT_HELLO_NAME = hName;
     }
-    
+
+    private ProtocolConfigurationImpl() {
+        this("JAMES Protocols Server");
+    }
+
+    protected ProtocolConfigurationImpl(String softwareName) {
+        this.softwareName = softwareName;
+    }
+
     @Override
     public String getHelloName() {
-        if (helloName == null) {
-            return DEFAULT_HELLO_NAME;
-        }
-        return helloName;
-    }
-    
-    public void setHelloName(String helloName) {
-        this.helloName = helloName;
+        return DEFAULT_HELLO_NAME;
     }
     
     @Override
     public String getGreeting() {
-        return greeting;
-    }
-    
-    public void setGreeting(String greeting) {
-        this.greeting = greeting;
+        return null;
     }
 
     @Override
     public String getSoftwareName() {
         return softwareName;
-    }
-    
-    public void setSoftwareName(String softwareName) {
-        this.softwareName = softwareName;
     }
 
 }

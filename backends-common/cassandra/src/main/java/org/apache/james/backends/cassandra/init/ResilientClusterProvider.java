@@ -19,6 +19,8 @@
 
 package org.apache.james.backends.cassandra.init;
 
+import static org.apache.james.backends.cassandra.init.KeyspaceFactory.keyspaceExist;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.Callable;
@@ -33,10 +35,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.driver.core.Cluster;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 @Singleton
 public class ResilientClusterProvider implements Provider<Cluster> {
@@ -44,13 +48,13 @@ public class ResilientClusterProvider implements Provider<Cluster> {
 
     private final Cluster cluster;
 
+    @VisibleForTesting
     @Inject
-    private ResilientClusterProvider(ClusterConfiguration configuration) {
+    ResilientClusterProvider(ClusterConfiguration configuration) {
         Duration waitDelay = Duration.ofMillis(configuration.getMinDelay());
-        Duration forever = Duration.ofMillis(Long.MAX_VALUE);
         cluster = Mono.fromCallable(getClusterRetryCallable(configuration))
             .doOnError(e -> LOGGER.warn("Error establishing Cassandra connection. Next retry scheduled in {} ms", waitDelay, e))
-            .retryBackoff(configuration.getMaxRetry(), waitDelay, forever, Schedulers.elastic())
+            .retryWhen(Retry.backoff(configuration.getMaxRetry(), waitDelay).scheduler(Schedulers.elastic()))
             .publishOn(Schedulers.elastic())
             .block();
     }
@@ -62,7 +66,7 @@ public class ResilientClusterProvider implements Provider<Cluster> {
         return () -> {
             Cluster cluster = ClusterFactory.create(configuration);
             try {
-                KeyspaceFactory.createKeyspace(configuration, cluster);
+                keyspaceExist(cluster, "any"); // plays a sample query to ensure we can contact the cluster
                 return cluster;
             } catch (Exception e) {
                 cluster.close();

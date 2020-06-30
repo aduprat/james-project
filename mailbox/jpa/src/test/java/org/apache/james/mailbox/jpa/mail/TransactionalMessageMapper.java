@@ -19,7 +19,6 @@
 
 package org.apache.james.mailbox.jpa.mail;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +39,8 @@ import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.transaction.Mapper;
+
+import reactor.core.publisher.Flux;
 
 public class TransactionalMessageMapper implements MessageMapper {
     private final JPAMessageMapper messageMapper;
@@ -63,7 +64,7 @@ public class TransactionalMessageMapper implements MessageMapper {
     }
 
     @Override
-    public Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException {
+    public Flux<MessageUid> listAllMessageUids(Mailbox mailbox) {
         return messageMapper.listAllMessageUids(mailbox);
     }
 
@@ -95,8 +96,7 @@ public class TransactionalMessageMapper implements MessageMapper {
         return messageMapper.countMessagesInMailbox(mailbox);
     }
 
-    @Override
-    public long countUnseenMessagesInMailbox(Mailbox mailbox) throws MailboxException {
+    private long countUnseenMessagesInMailbox(Mailbox mailbox) throws MailboxException {
         return messageMapper.countUnseenMessagesInMailbox(mailbox);
     }
 
@@ -153,10 +153,5 @@ public class TransactionalMessageMapper implements MessageMapper {
     @Override
     public Flags getApplicableFlag(Mailbox mailbox) throws MailboxException {
         return messageMapper.getApplicableFlag(mailbox);
-    }
-
-    @Override
-    public List<MailboxCounters> getMailboxCounters(Collection<Mailbox> mailboxes) throws MailboxException {
-        return messageMapper.getMailboxCounters(mailboxes);
     }
 }

@@ -28,6 +28,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageModseqTable.MAILBOX_ID;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageModseqTable.NEXT_MODSEQ;
 import static org.apache.james.mailbox.cassandra.table.CassandraMessageModseqTable.TABLE_NAME;
+import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -51,11 +52,11 @@ import com.datastax.driver.core.Session;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 public class CassandraModSeqProvider implements ModSeqProvider {
 
     public static final String MOD_SEQ_CONDITION = "modSeqCondition";
-    private final long maxModSeqRetries;
 
     public static class ExceptionRelay extends RuntimeException {
         private final MailboxException underlying;
@@ -82,6 +83,7 @@ public class CassandraModSeqProvider implements ModSeqProvider {
     }
 
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
+    private final long maxModSeqRetries;
     private final PreparedStatement select;
     private final PreparedStatement update;
     private final PreparedStatement insert;
@@ -156,7 +158,8 @@ public class CassandraModSeqProvider implements ModSeqProvider {
             insert.bind()
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
                 .setLong(NEXT_MODSEQ, nextModSeq.asLong()))
-            .handle((success, sink) -> successToModSeq(nextModSeq, success).ifPresent(sink::next));
+            .map(success -> successToModSeq(nextModSeq, success))
+            .handle(publishIfPresent());
     }
 
     private Mono<ModSeq> tryUpdateModSeq(CassandraId mailboxId, ModSeq modSeq) {
@@ -166,7 +169,8 @@ public class CassandraModSeqProvider implements ModSeqProvider {
                 .setUUID(MAILBOX_ID, mailboxId.asUuid())
                 .setLong(NEXT_MODSEQ, nextModSeq.asLong())
                 .setLong(MOD_SEQ_CONDITION, modSeq.asLong()))
-            .handle((success, sink) -> successToModSeq(nextModSeq, success).ifPresent(sink::next));
+            .map(success -> successToModSeq(nextModSeq, success))
+            .handle(publishIfPresent());
     }
 
     private Optional<ModSeq> successToModSeq(ModSeq modSeq, Boolean success) {
@@ -177,25 +181,13 @@ public class CassandraModSeqProvider implements ModSeqProvider {
     }
 
     public Mono<ModSeq> nextModSeq(CassandraId mailboxId) {
+        Duration firstBackoff = Duration.ofMillis(10);
+
         return findHighestModSeq(mailboxId)
             .flatMap(maybeHighestModSeq -> maybeHighestModSeq
                         .map(highestModSeq -> tryUpdateModSeq(mailboxId, highestModSeq))
                         .orElseGet(() -> tryInsertModSeq(mailboxId, ModSeq.first())))
-            .switchIfEmpty(handleRetries(mailboxId));
-    }
-
-    private Mono<ModSeq> handleRetries(CassandraId mailboxId) {
-        Duration forever = Duration.ofMillis(Long.MAX_VALUE);
-        Duration firstBackoff = Duration.ofMillis(10);
-        return tryFindThenUpdateOnce(mailboxId)
             .single()
-            .retryBackoff(maxModSeqRetries, firstBackoff, forever, Schedulers.elastic());
+            .retryWhen(Retry.backoff(maxModSeqRetries, firstBackoff).scheduler(Schedulers.elastic()));
     }
-
-    private Mono<ModSeq> tryFindThenUpdateOnce(CassandraId mailboxId) {
-        return Mono.defer(() -> findHighestModSeq(mailboxId)
-            .<ModSeq>handle((t, sink) -> t.ifPresent(sink::next))
-            .flatMap(highestModSeq -> tryUpdateModSeq(mailboxId, highestModSeq)));
-    }
-
 }

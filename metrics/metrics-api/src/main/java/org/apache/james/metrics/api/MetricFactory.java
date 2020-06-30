@@ -19,10 +19,11 @@
 
 package org.apache.james.metrics.api;
 
+import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
+
 import java.util.function.Supplier;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.reactivestreams.Publisher;
 
 public interface MetricFactory {
 
@@ -30,7 +31,7 @@ public interface MetricFactory {
 
     TimeMetric timer(String name);
 
-    default <T> T runPublishingTimerMetric(String name, Supplier<T> operation) {
+    default <T> T decorateSupplierWithTimerMetric(String name, Supplier<T> operation) {
         TimeMetric timer = timer(name);
         try {
             return operation.get();
@@ -39,18 +40,21 @@ public interface MetricFactory {
         }
     }
 
-    default <T> Mono<T> runPublishingTimerMetric(String name, Mono<T> mono) {
+    default <T> T decorateSupplierWithTimerMetricLogP99(String name, Supplier<T> operation) {
         TimeMetric timer = timer(name);
-        return mono.doOnSuccess(success -> timer.stopAndPublish());
+        try {
+            return operation.get();
+        } finally {
+            timer.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD);
+        }
     }
 
-    default <T> Flux<T> runPublishingTimerMetric(String name, Flux<T> flux) {
-        TimeMetric timer = timer(name);
-        return flux.doOnComplete(timer::stopAndPublish);
-    }
+    <T> Publisher<T> decoratePublisherWithTimerMetric(String name, Publisher<T> publisher);
+
+    <T> Publisher<T> decoratePublisherWithTimerMetricLogP99(String name, Publisher<T> publisher);
 
     default void runPublishingTimerMetric(String name, Runnable runnable) {
-        runPublishingTimerMetric(name, () -> {
+        decorateSupplierWithTimerMetric(name, () -> {
             runnable.run();
             return null;
         });

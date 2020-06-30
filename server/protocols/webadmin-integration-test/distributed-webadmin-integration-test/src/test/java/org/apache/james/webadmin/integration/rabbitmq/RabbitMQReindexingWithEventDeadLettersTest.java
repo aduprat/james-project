@@ -33,6 +33,7 @@ import static org.awaitility.Duration.ONE_HUNDRED_MILLISECONDS;
 import java.util.List;
 
 import org.apache.james.CassandraExtension;
+import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.GuiceJamesServer;
@@ -46,6 +47,7 @@ import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.objectstorage.PayloadCodecFactory;
 import org.apache.james.util.Port;
 import org.apache.james.utils.DataProbeImpl;
@@ -73,26 +75,27 @@ class RabbitMQReindexingWithEventDeadLettersTest {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
         .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
-        .atMost(Duration.ONE_MINUTE)
+        .atMost(Duration.FIVE_MINUTES)
         .await();
 
     private static final DockerElasticSearchExtension dockerElasticSearch =
-        new DockerElasticSearchExtension().withRequestTimeout(java.time.Duration.ofSeconds(1));
-
-    private static final JamesServerBuilder.ServerProvider CONFIGURATION_BUILDER = configuration -> GuiceJamesServer
-        .forConfiguration(configuration)
-        .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
-        .overrideWith(TestJMAPServerModule.limitToTenMessages())
-        .overrideWith(JmapJamesServerContract.DOMAIN_LIST_CONFIGURATION_MODULE)
-        .overrideWith(new WebadminIntegrationTestModule());
+        new DockerElasticSearchExtension().withRequestTimeout(java.time.Duration.ofSeconds(5));
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+        CassandraRabbitMQJamesConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
+            .build())
         .extension(dockerElasticSearch)
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension(PayloadCodecFactory.AES256))
-        .server(CONFIGURATION_BUILDER)
+        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(JmapJamesServerContract.DOMAIN_LIST_CONFIGURATION_MODULE)
+            .overrideWith(new WebadminIntegrationTestModule()))
         .build();
 
     private RequestSpecification webAdminApi;

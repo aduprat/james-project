@@ -78,7 +78,7 @@ public class MessageIdReIndexingTask implements Task {
 
     @Override
     public Result run() {
-        return reIndexerPerformer.handleMessageIdReindexing(messageId);
+        return reIndexerPerformer.reIndexMessageId(messageId).block();
     }
 
     @Override

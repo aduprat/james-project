@@ -43,7 +43,7 @@ public class RecomputeUserFastViewProjectionItemsRequestToTask extends TaskFromR
     private static Task toTask(MessageFastViewProjectionCorrector corrector, UsersRepository usersRepository, Request request) throws UsersRepositoryException {
         Username username = Username.of(request.params("username"));
         if (usersRepository.contains(username)) {
-            return new RecomputeUserFastViewProjectionItemsTask(corrector, username);
+            return new RecomputeUserFastViewProjectionItemsTask(corrector, RunningOptionsParser.parse(request), username);
         }
 
         throw ErrorResponder.builder()

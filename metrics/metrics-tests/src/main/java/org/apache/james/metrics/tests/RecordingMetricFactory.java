@@ -19,6 +19,8 @@
 
 package org.apache.james.metrics.tests;
 
+import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
@@ -28,11 +30,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.james.metrics.api.Metric;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.api.TimeMetric;
+import org.reactivestreams.Publisher;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class RecordingMetricFactory implements MetricFactory {
     private final Multimap<String, Duration> executionTimes = Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
@@ -54,6 +60,20 @@ public class RecordingMetricFactory implements MetricFactory {
                 executionTimes.put(name, executionTime);
             }
         });
+    }
+
+    @Override
+    public <T> Publisher<T> decoratePublisherWithTimerMetric(String name, Publisher<T> publisher) {
+        return Mono.fromCallable(() -> timer(name))
+            .flatMapMany(timer ->  Flux.from(publisher)
+                .doOnComplete(timer::stopAndPublish));
+    }
+
+    @Override
+    public <T> Publisher<T> decoratePublisherWithTimerMetricLogP99(String name, Publisher<T> publisher) {
+        return Mono.fromCallable(() -> timer(name))
+            .flatMapMany(timer ->  Flux.from(publisher)
+                .doOnComplete(() -> timer.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD)));
     }
 
     public Collection<Duration> executionTimesFor(String name) {

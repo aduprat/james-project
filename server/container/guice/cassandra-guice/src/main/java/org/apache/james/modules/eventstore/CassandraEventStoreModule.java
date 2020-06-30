@@ -20,8 +20,10 @@
 package org.apache.james.modules.eventstore;
 
 import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
 import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStore;
+import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTOModule;
 
 import com.google.inject.AbstractModule;
@@ -38,8 +40,8 @@ public class CassandraEventStoreModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), CassandraModule.class)
             .addBinding()
-            .toInstance(org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreModule.MODULE);
+            .toInstance(org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreModule.MODULE());
 
-        Multibinder.newSetBinder(binder(), new TypeLiteral<EventDTOModule<?, ?>>() {});
+        Multibinder.newSetBinder(binder(), new TypeLiteral<EventDTOModule<? extends Event, ? extends EventDTO>>() {});
     }
 }

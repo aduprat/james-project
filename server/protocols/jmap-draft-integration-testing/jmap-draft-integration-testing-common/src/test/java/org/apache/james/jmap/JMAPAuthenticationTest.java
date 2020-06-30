@@ -90,6 +90,7 @@ public abstract class JMAPAuthenticationTest {
     public void mustReturnMalformedRequestWhenContentTypeIsMissing() {
         given()
             .accept(ContentType.JSON)
+            .contentType("")
         .when()
             .post("/authentication")
         .then()
@@ -110,6 +111,7 @@ public abstract class JMAPAuthenticationTest {
     @Test
     public void mustReturnMalformedRequestWhenAcceptIsMissing() {
         given()
+            .accept("")
             .contentType(ContentType.JSON)
         .when()
             .post("/authentication")
@@ -160,6 +162,20 @@ public abstract class JMAPAuthenticationTest {
             .post("/authentication")
         .then()
             .statusCode(400);
+    }
+
+    @Test
+    public void mustPositionCorsHeaders() throws Exception {
+        given()
+            .contentType(ContentType.JSON)
+            .accept(ContentType.JSON)
+            .body("{\"username\": \"" + userCredentials.getUsername() + "\", \"clientName\": \"Mozilla Thunderbird\", \"clientVersion\": \"42.0\", \"deviceName\": \"Joe Blogg’s iPhone\"}")
+        .when()
+            .post("/authentication")
+        .then()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT")
+            .header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
     }
 
     @Test

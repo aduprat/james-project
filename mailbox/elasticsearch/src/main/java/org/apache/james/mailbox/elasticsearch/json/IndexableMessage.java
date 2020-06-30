@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -30,11 +31,9 @@ import java.util.stream.Stream;
 
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
-import org.apache.james.mailbox.elasticsearch.query.DateResolutionFormater;
 import org.apache.james.mailbox.extractor.TextExtractor;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
-import org.apache.james.mailbox.store.mail.model.Property;
-import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.search.SearchUtil;
 import org.apache.james.mime4j.MimeException;
 
@@ -45,6 +44,8 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 public class IndexableMessage {
+
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
 
     public static class Builder {
         private static ZonedDateTime getSanitizedInternalDate(MailboxMessage message, ZoneId zoneId) {
@@ -98,12 +99,6 @@ public class IndexableMessage {
             return this;
         }
 
-        private boolean computeHasAttachment(MailboxMessage message) {
-            return message.getProperties()
-                    .stream()
-                    .anyMatch(property -> property.equals(HAS_ATTACHMENT_PROPERTY));
-        }
-
         private IndexableMessage instantiateIndexedMessage() throws IOException, MimeException {
             String messageId = SearchUtil.getSerializedMessageIdIfSupportedByUnderlyingStorageOrNull(message);
             MimePart parsingResult = new MimePartParser(message, textExtractor).parse();
@@ -111,7 +106,7 @@ public class IndexableMessage {
             Optional<String> bodyText = parsingResult.locateFirstTextBody();
             Optional<String> bodyHtml = parsingResult.locateFirstHtmlBody();
 
-            boolean hasAttachment = computeHasAttachment(message);
+            boolean hasAttachment = MessageAttachmentMetadata.hasNonInlinedAttachment(message.getAttachments());
             List<MimePart> attachments = setFlattenedAttachments(parsingResult, indexAttachments);
 
             HeaderCollection headerCollection = parsingResult.getHeaderCollection();
@@ -123,7 +118,7 @@ public class IndexableMessage {
             EMailers to = EMailers.from(headerCollection.getToAddressSet());
             EMailers cc = EMailers.from(headerCollection.getCcAddressSet());
             EMailers bcc = EMailers.from(headerCollection.getBccAddressSet());
-            String sentDate = DateResolutionFormater.DATE_TIME_FOMATTER.format(headerCollection.getSentDate().orElse(internalDate));
+            String sentDate = DATE_TIME_FORMATTER.format(headerCollection.getSentDate().orElse(internalDate));
             Optional<String> mimeMessageID = headerCollection.getMessageID();
 
             String text = Stream.of(from.serialize(),
@@ -140,7 +135,7 @@ public class IndexableMessage {
             String mailboxId = message.getMailboxId().serialize();
             ModSeq modSeq = message.getModSeq();
             long size = message.getFullContentOctets();
-            String date = DateResolutionFormater.DATE_TIME_FOMATTER.format(getSanitizedInternalDate(message, zoneId));
+            String date = DATE_TIME_FORMATTER.format(getSanitizedInternalDate(message, zoneId));
             String mediaType = message.getMediaType();
             String subType = message.getSubType();
             boolean isAnswered = message.isAnswered();
@@ -191,8 +186,6 @@ public class IndexableMessage {
             }
         }
     }
-
-    public static final Property HAS_ATTACHMENT_PROPERTY = new Property(PropertyBuilder.JAMES_INTERNALS, PropertyBuilder.HAS_ATTACHMENT, "true");
 
     public static Builder builder() {
         return new Builder();

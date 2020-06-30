@@ -59,23 +59,25 @@ public class SetMessagesMethod implements Method {
     }
 
     @Override
-    public Stream<JmapResponse> process(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
+    public Stream<JmapResponse> processToStream(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
         Preconditions.checkArgument(request instanceof SetMessagesRequest);
         SetMessagesRequest setMessagesRequest = (SetMessagesRequest) request;
 
-        return metricFactory.runPublishingTimerMetric(JMAP_PREFIX + METHOD_NAME.getName(),
-            MDCBuilder.create()
-                .addContext(MDCBuilder.ACTION, "SET_MESSAGES")
-                .addContext("accountId", setMessagesRequest.getAccountId())
-                .addContext("create", setMessagesRequest.getCreate())
-                .addContext("destroy", setMessagesRequest.getDestroy())
-                .addContext("ifInState", setMessagesRequest.getIfInState())
-                .wrapArround(
+
+        return MDCBuilder.create()
+            .addContext(MDCBuilder.ACTION, "SET_MESSAGES")
+            .addContext("accountId", setMessagesRequest.getAccountId())
+            .addContext("create", setMessagesRequest.getCreate())
+            .addContext("destroy", setMessagesRequest.getDestroy())
+            .addContext("ifInState", setMessagesRequest.getIfInState())
+            .wrapArround(
+                () -> metricFactory.decorateSupplierWithTimerMetricLogP99(JMAP_PREFIX + METHOD_NAME.getName(),
                     () ->  Stream.of(
                         JmapResponse.builder().methodCallId(methodCallId)
                             .response(setMessagesResponse(setMessagesRequest, mailboxSession))
                             .responseName(RESPONSE_NAME)
-                            .build())));
+                            .build())))
+            .get();
     }
 
     private SetMessagesResponse setMessagesResponse(SetMessagesRequest request, MailboxSession mailboxSession) {

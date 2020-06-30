@@ -25,6 +25,8 @@ import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
 
+import reactor.core.publisher.Flux;
+
 public class Limit {
 
     public static Limit from(int limit) {
@@ -59,10 +61,20 @@ public class Limit {
         return limit;
     }
 
+    public boolean isUnlimited() {
+        return !limit.isPresent();
+    }
+
     public <T> Stream<T> applyOnStream(Stream<T> stream) {
         return limit
             .map(stream::limit)
             .orElse(stream);
+    }
+
+    public <T> Flux<T> applyOnFlux(Flux<T> flux) {
+        return limit
+            .map(flux::take)
+            .orElse(flux);
     }
 
     @Override

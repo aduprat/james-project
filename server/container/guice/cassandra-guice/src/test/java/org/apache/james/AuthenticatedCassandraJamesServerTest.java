@@ -19,10 +19,10 @@
 
 package org.apache.james;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
 import static org.apache.james.JamesServerContract.DOMAIN_LIST_CONFIGURATION_MODULE;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.james.backends.cassandra.DockerCassandra;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.store.search.PDFTextExtractor;
@@ -34,42 +34,41 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.CreationException;
 
 class AuthenticatedCassandraJamesServerTest {
+    private static final String CASSANDRA_USER = DockerCassandra.CASSANDRA_TESTING_USER;
+    private static final String VALID_PASSWORD = DockerCassandra.CASSANDRA_TESTING_PASSWORD;
+    private static final String INVALID_PASSWORD = "bad";
+
+    private final CassandraExtension cassandraExtension = new CassandraExtension();
+
     @Nested
     class AuthenticationTest implements JamesServerContract {
         @RegisterExtension
-        JamesServerExtension testExtension = new JamesServerBuilder()
+        JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
             .extension(new DockerElasticSearchExtension())
-            .extension(CassandraAuthenticationExtension.withValidCredentials())
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-                .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-                .overrideWith(TestJMAPServerModule.limitToTenMessages())
+            .extension(cassandraExtension)
+            .server(configuration -> CassandraJamesServerMain.createServer(configuration)
                 .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
+            .overrideServerModule(binder -> binder.bind(ClusterConfiguration.class)
+                .toInstance(DockerCassandra.configurationBuilder(cassandraExtension.getCassandra().getHost())
+                    .username(CASSANDRA_USER)
+                    .password(VALID_PASSWORD)
+                    .build()))
             .build();
     }
 
     @Nested
     class SslTest {
-        private final CassandraExtension cassandraExtension = new CassandraExtension();
-
         @RegisterExtension
-        JamesServerExtension testExtension = new JamesServerBuilder()
+        JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
             .extension(new DockerElasticSearchExtension())
             .extension(cassandraExtension)
             .disableAutoStart()
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-                .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-                .overrideWith(TestJMAPServerModule.limitToTenMessages())
+            .server(configuration -> CassandraJamesServerMain.createServer(configuration)
                 .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
             .overrideServerModule(binder -> binder.bind(ClusterConfiguration.class)
-                .toInstance(ClusterConfiguration.builder()
-                    .host(cassandraExtension.getCassandra().getHost())
-                    .keyspace("testing")
-                    .createKeyspace()
-                    .replicationFactor(1)
-                    .maxRetry(1)
-                    .minDelay(100)
+                .toInstance(DockerCassandra.configurationBuilder(cassandraExtension.getCassandra().getHost())
+                    .username(CASSANDRA_USER)
+                    .password(VALID_PASSWORD)
                     .useSsl()
                     .build()))
             .build();
@@ -85,15 +84,20 @@ class AuthenticatedCassandraJamesServerTest {
     @Nested
     class AuthenticationFailureTest {
         @RegisterExtension
-        JamesServerExtension testExtension = new JamesServerBuilder()
+        JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
             .extension(new DockerElasticSearchExtension())
-            .extension(CassandraAuthenticationExtension.withInvalidCredentials())
+            .extension(cassandraExtension)
             .disableAutoStart()
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
+            .server(configuration -> CassandraJamesServerMain.createServer(configuration)
                 .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-                .overrideWith(TestJMAPServerModule.limitToTenMessages())
+                .overrideWith(new TestJMAPServerModule())
                 .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
+            .overrideServerModule(binder -> binder.bind(ClusterConfiguration.class)
+                .toInstance(DockerCassandra.configurationBuilder(cassandraExtension.getCassandra().getHost())
+                    .username(CASSANDRA_USER)
+                    .password(INVALID_PASSWORD)
+                    .maxRetry(1)
+                    .build()))
             .build();
 
         @Test

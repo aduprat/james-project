@@ -19,7 +19,6 @@
 
 package org.apache.james;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -32,8 +31,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.util.concurrent.NamedThreadFactory;
@@ -49,13 +46,11 @@ class JamesServerWithRetryConnectionTest {
     private static final CassandraExtension dockerCassandra = new CassandraExtension();
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(dockerElasticSearch)
         .extension(dockerCassandra)
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.limitToTenMessages()))
+        .server(configuration -> CassandraJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule()))
         .disableAutoStart()
         .build();
 

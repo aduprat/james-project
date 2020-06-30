@@ -18,14 +18,8 @@
  ****************************************************************/
 package org.apache.james.util;
 
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.BiPredicate;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 public class OptionalUtils {
 
@@ -39,39 +33,6 @@ public class OptionalUtils {
             operation.perform();
         }
         return optional;
-    }
-
-    public static <T> Stream<T> toStream(Optional<T> optional) {
-        return optional.map(Stream::of)
-            .orElse(Stream.of());
-    }
-
-    public static <T> ImmutableList<T> toList(Optional<T> optional) {
-        return optional.map(ImmutableList::of)
-            .orElse(ImmutableList.of());
-    }
-
-    public static <T> ImmutableSet<T> toSet(Optional<T> optional) {
-        return optional.map(ImmutableSet::of)
-            .orElse(ImmutableSet.of());
-    }
-
-    @SafeVarargs
-    public static <T> Optional<T> or(Optional<T>... optionals) {
-        return orStream(Arrays.stream(optionals));
-    }
-
-    @SafeVarargs
-    public static <T> Optional<T> orSuppliers(Supplier<Optional<T>>... suppliers) {
-        return orStream(Arrays.stream(suppliers)
-            .map(Supplier::get));
-    }
-
-    private static <T> Optional<T> orStream(Stream<Optional<T>> stream) {
-        return stream
-            .filter(Optional::isPresent)
-            .findFirst()
-            .orElse(Optional.empty());
     }
 
     public static <T> boolean containsDifferent(Optional<T> requestValue, T storeValue) {

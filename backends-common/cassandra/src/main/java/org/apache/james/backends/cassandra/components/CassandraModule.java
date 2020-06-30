@@ -185,6 +185,8 @@ public interface CassandraModule {
             .build();
     }
 
+    CassandraModule EMPTY_MODULE = builder().build();
+
     List<CassandraTable> moduleTables();
 
     List<CassandraType> moduleTypes();

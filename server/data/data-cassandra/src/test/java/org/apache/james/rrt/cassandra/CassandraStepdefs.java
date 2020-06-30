@@ -18,17 +18,19 @@
  ****************************************************************/
 package org.apache.james.rrt.cassandra;
 
-import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.DockerCassandraRule;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
+import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.lib.RecipientRewriteTableFixture;
 import org.apache.james.rrt.lib.RewriteTablesStepdefs;
 import org.junit.Rule;
+
+import com.github.fge.lambdas.Throwing;
 
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
@@ -47,11 +49,11 @@ public class CassandraStepdefs {
     }
 
     @Before
-    public void setup() throws Throwable {
+    public void setup() {
         cassandra = CassandraCluster.create(
             CassandraModule.aggregateModules(CassandraRRTModule.MODULE, CassandraSchemaVersionModule.MODULE),
             cassandraServer.getHost());
-        mainStepdefs.rewriteTable = getRecipientRewriteTable();
+        mainStepdefs.setUp(Throwing.supplier(this::getRecipientRewriteTable).sneakyThrow());
     }
 
     @After
@@ -63,8 +65,7 @@ public class CassandraStepdefs {
         CassandraRecipientRewriteTable rrt = new CassandraRecipientRewriteTable(
             new CassandraRecipientRewriteTableDAO(cassandra.getConf(), CassandraUtils.WITH_DEFAULT_CONFIGURATION),
             new CassandraMappingsSourcesDAO(cassandra.getConf()),
-            new CassandraSchemaVersionDAO(cassandra.getConf()));
-        rrt.configure(new BaseHierarchicalConfiguration());
+            new CassandraSchemaVersionManager(new CassandraSchemaVersionDAO(cassandra.getConf())));
         rrt.setDomainList(RecipientRewriteTableFixture.domainListForCucumberTests());
         return rrt;
     }

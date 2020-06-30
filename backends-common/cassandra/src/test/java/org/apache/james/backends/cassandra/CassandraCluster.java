@@ -18,29 +18,21 @@
  ****************************************************************/
 package org.apache.james.backends.cassandra;
 
-import static org.apache.james.backends.cassandra.Scenario.NOTHING;
-
 import java.util.Optional;
 
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraTableManager;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.ClusterFactory;
-import org.apache.james.backends.cassandra.init.KeyspaceFactory;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
+import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
 import org.apache.james.util.Host;
 
 import com.datastax.driver.core.Cluster;
 
 public final class CassandraCluster implements AutoCloseable {
-    public static final String KEYSPACE = "testing";
-
-    private static Optional<Exception> startStackTrace = Optional.empty();
-    private final CassandraModule module;
-    private TestingSession session;
-    private CassandraTypesProvider typesProvider;
-    private Cluster cluster;
+    private static final String KEYSPACE = "testing";
 
     public static CassandraCluster create(CassandraModule module, Host host) {
         assertClusterNotRunning();
@@ -55,27 +47,34 @@ public final class CassandraCluster implements AutoCloseable {
       });
     }
 
+    private static Optional<Exception> startStackTrace = Optional.empty();
+
+    private final CassandraModule module;
+    private final Cluster nonPrivilegedCluster;
+    private final TestingSession nonPrivilegedSession;
+    private final CassandraTypesProvider typesProvider;
+    private final ClusterConfiguration clusterConfiguration;
+
     private CassandraCluster(CassandraModule module, Host host) throws RuntimeException {
         this.module = module;
-        try {
-            ClusterConfiguration clusterConfiguration = ClusterConfiguration.builder()
-                .host(host)
-                .keyspace(KEYSPACE)
-                .createKeyspace()
-                .disableDurableWrites()
-                .build();
-            cluster = ClusterFactory.create(clusterConfiguration);
-            KeyspaceFactory.createKeyspace(clusterConfiguration, cluster);
-            session = new TestingSession(
-                new SessionWithInitializedTablesFactory(clusterConfiguration, cluster, module).get());
-            typesProvider = new CassandraTypesProvider(module, session);
-        } catch (Exception exception) {
-            throw new RuntimeException(exception);
-        }
+
+        this.clusterConfiguration = DockerCassandra.configurationBuilder(host).build();
+        this.nonPrivilegedCluster = ClusterFactory.create(clusterConfiguration);
+        KeyspaceConfiguration keyspaceConfiguration = KeyspaceConfiguration.builder()
+            .keyspace(KEYSPACE)
+            .replicationFactor(1)
+            .disableDurableWrites();
+        this.nonPrivilegedSession = new TestingSession(new SessionWithInitializedTablesFactory(keyspaceConfiguration,
+            nonPrivilegedCluster, module).get());
+        this.typesProvider = new CassandraTypesProvider(module, nonPrivilegedSession);
+    }
+
+    public ClusterConfiguration getClusterConfiguration() {
+        return clusterConfiguration;
     }
 
     public TestingSession getConf() {
-        return session;
+        return nonPrivilegedSession;
     }
 
     public CassandraTypesProvider getTypesProvider() {
@@ -84,19 +83,19 @@ public final class CassandraCluster implements AutoCloseable {
 
     @Override
     public void close() {
-        session.registerScenario(NOTHING);
-        if (!cluster.isClosed()) {
+        nonPrivilegedSession.resetInstrumentation();
+        if (!nonPrivilegedCluster.isClosed()) {
             clearTables();
             closeCluster();
         }
     }
 
-    public void closeCluster() {
-        cluster.closeAsync().force();
+    void closeCluster() {
+        nonPrivilegedCluster.closeAsync().force();
         startStackTrace = Optional.empty();
     }
 
-    public void clearTables() {
-        new CassandraTableManager(module, session).clearAllTables();
+    void clearTables() {
+        new CassandraTableManager(module, nonPrivilegedSession).clearAllTables();
     }
 }

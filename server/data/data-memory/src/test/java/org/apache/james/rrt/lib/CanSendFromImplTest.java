@@ -20,12 +20,15 @@ package org.apache.james.rrt.lib;
 
 import static org.mockito.Mockito.mock;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.apache.james.rrt.api.CanSendFrom;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -40,14 +43,14 @@ public class CanSendFromImplTest implements CanSendFromContract {
 
         DNSService dnsService = mock(DNSService.class);
         MemoryDomainList domainList = new MemoryDomainList(dnsService);
-        domainList.configure(DomainListConfiguration.builder()
-            .autoDetect(false)
-            .autoDetectIp(false));
+        domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(DOMAIN);
         domainList.addDomain(OTHER_DOMAIN);
         recipientRewriteTable.setDomainList(domainList);
+        recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
 
-        canSendFrom = new CanSendFromImpl(recipientRewriteTable);
+        AliasReverseResolver aliasReverseResolver = new AliasReverseResolverImpl(recipientRewriteTable);
+        canSendFrom = new CanSendFromImpl(recipientRewriteTable, aliasReverseResolver);
     }
 
     @Override
@@ -61,8 +64,17 @@ public class CanSendFromImplTest implements CanSendFromContract {
     }
 
     @Override
-    public void addDomainMapping(Domain alias, Domain domain) throws Exception {
-        recipientRewriteTable.addAliasDomainMapping(MappingSource.fromDomain(alias), domain);
+    public void addDomainMapping(Domain alias, Domain domain, Mapping.Type mappingType) throws Exception {
+        switch (mappingType) {
+            case Domain:
+                recipientRewriteTable.addDomainMapping(MappingSource.fromDomain(alias), domain);
+                break;
+            case DomainAlias:
+                recipientRewriteTable.addDomainAliasMapping(MappingSource.fromDomain(alias), domain);
+                break;
+            default:
+                throw new NotImplementedException(mappingType + " is not supported");
+        }
     }
 
     @Override

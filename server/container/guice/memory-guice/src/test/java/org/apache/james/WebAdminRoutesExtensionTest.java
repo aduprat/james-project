@@ -23,7 +23,6 @@ import static io.restassured.RestAssured.when;
 import static org.apache.james.MyRoute.SHABANG;
 import static org.hamcrest.CoreMatchers.is;
 
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.RandomPortSupplier;
 import org.apache.james.webadmin.WebAdminConfiguration;
@@ -35,10 +34,8 @@ import io.restassured.RestAssured;
 
 class WebAdminRoutesExtensionTest {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder()
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+        .server(configuration -> MemoryJamesServerMain.createServer(configuration)
             .overrideWith(binder -> binder.bind(WebAdminConfiguration.class)
                 .toInstance(WebAdminConfiguration.builder()
                     .additionalRoute(MyRoute.class.getCanonicalName())

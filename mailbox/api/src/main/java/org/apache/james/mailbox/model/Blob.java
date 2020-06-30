@@ -19,10 +19,11 @@
 
 package org.apache.james.mailbox.model;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+
+import org.apache.james.mailbox.exception.BlobNotFoundException;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
@@ -30,10 +31,21 @@ import com.google.common.base.Preconditions;
 
 public class Blob {
 
+    @FunctionalInterface
+    public interface InputStreamSupplier {
+        /**
+         * @return the content of this blob as an inputStream.
+         *
+         * The caller is responsible of closing it.
+         */
+        InputStream load() throws IOException, BlobNotFoundException;
+    }
+
     public static class Builder {
         private BlobId blobId;
-        private byte[] payload;
-        private String contentType;
+        private InputStreamSupplier payload;
+        private ContentType contentType;
+        private Long size;
 
         private Builder() {
         }
@@ -43,13 +55,23 @@ public class Blob {
             return this;
         }
 
-        public Builder payload(byte[] payload) {
+        public Builder payload(InputStreamSupplier payload) {
             this.payload = payload;
             return this;
         }
 
         public Builder contentType(String contentType) {
+            this.contentType = ContentType.of(contentType);
+            return this;
+        }
+
+        public Builder contentType(ContentType contentType) {
             this.contentType = contentType;
+            return this;
+        }
+
+        public Builder size(long size) {
+            this.size = size;
             return this;
         }
 
@@ -57,8 +79,9 @@ public class Blob {
             Preconditions.checkState(blobId != null, "id can not be empty");
             Preconditions.checkState(payload != null, "payload can not be empty");
             Preconditions.checkState(contentType != null, "contentType can not be empty");
+            Preconditions.checkState(size != null, "size can not be empty");
 
-            return new Blob(blobId, payload, contentType);
+            return new Blob(blobId, payload, contentType, size);
         }
     }
 
@@ -67,35 +90,31 @@ public class Blob {
     }
 
     private final BlobId blobId;
-    private final byte[] payload;
-    private final String contentType;
+    private final InputStreamSupplier payload;
+    private final ContentType contentType;
     private final long size;
 
     @VisibleForTesting
-    Blob(BlobId blobId, byte[] payload, String contentType) {
+    Blob(BlobId blobId, InputStreamSupplier payload, ContentType contentType, long size) {
         this.blobId = blobId;
         this.payload = payload;
         this.contentType = contentType;
-        this.size = payload.length;
+        this.size = size;
     }
 
     public BlobId getBlobId() {
         return blobId;
     }
 
-    public byte[] getPayload() {
-        return payload;
-    }
-
     public InputStream getStream() throws IOException {
-        return new ByteArrayInputStream(payload);
+        return payload.load();
     }
 
     public long getSize() {
         return size;
     }
 
-    public String getContentType() {
+    public ContentType getContentType() {
         return contentType;
     }
 

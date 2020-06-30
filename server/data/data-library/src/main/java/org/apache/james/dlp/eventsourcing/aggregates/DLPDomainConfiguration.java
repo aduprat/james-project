@@ -31,7 +31,6 @@ import org.apache.james.dlp.eventsourcing.events.ConfigurationItemsRemoved;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.EventId;
 import org.apache.james.eventsourcing.eventstore.History;
-import org.apache.james.util.OptionalUtils;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.collect.ImmutableList;
@@ -74,7 +73,7 @@ public class DLPDomainConfiguration {
     private DLPDomainConfiguration(DLPAggregateId aggregateId, History history) {
         this.aggregateId = aggregateId;
         this.state = State.initial();
-        history.getEvents().forEach(this::apply);
+        history.getEventsJava().forEach(this::apply);
         this.history = history;
     }
 
@@ -102,7 +101,7 @@ public class DLPDomainConfiguration {
 
         ImmutableList<Event> events = Stream
             .of(removedRulesEvent, addedRulesEvent)
-            .flatMap(OptionalUtils::toStream)
+            .flatMap(Optional::stream)
             .collect(Guavate.toImmutableList());
 
         events.forEach(this::apply);

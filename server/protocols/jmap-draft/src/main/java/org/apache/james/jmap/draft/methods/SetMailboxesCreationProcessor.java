@@ -52,7 +52,6 @@ import org.apache.james.mailbox.model.MailboxId.Factory;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.api.TimeMetric;
-import org.apache.james.util.OptionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,13 +103,13 @@ public class SetMailboxesCreationProcessor implements SetMailboxesProcessor {
     }
 
     private void markRequestsAsNotCreatedDueToCycle(SetMailboxesRequest request, SetMailboxesResponse.Builder builder) {
-        request.getCreate().entrySet()
-            .forEach(entry ->
-                builder.notCreated(entry.getKey(),
-                        SetError.builder()
-                        .type(SetError.Type.INVALID_ARGUMENTS)
-                        .description("The created mailboxes introduce a cycle.")
-                        .build()));
+        request.getCreate().forEach((key, value) ->
+            builder.notCreated(
+                key,
+                SetError.builder()
+                    .type(SetError.Type.INVALID_ARGUMENTS)
+                    .description("The created mailboxes introduce a cycle.")
+                    .build()));
     }
 
     private void createMailbox(MailboxCreationId mailboxCreationId, MailboxCreateRequest mailboxRequest, MailboxSession mailboxSession,
@@ -199,9 +198,8 @@ public class SetMailboxesCreationProcessor implements SetMailboxesProcessor {
     }
 
     private MailboxPath getMailboxPath(Map<MailboxCreationId, MailboxId> creationIdsToCreatedMailboxId, MailboxSession mailboxSession, MailboxCreationId parentId) throws MailboxException {
-        Optional<MailboxId> mailboxId = OptionalUtils.or(
-            readCreationIdAsMailboxId(parentId),
-            Optional.ofNullable(creationIdsToCreatedMailboxId.get(parentId)));
+        Optional<MailboxId> mailboxId = readCreationIdAsMailboxId(parentId)
+            .or(() -> Optional.ofNullable(creationIdsToCreatedMailboxId.get(parentId)));
 
         return getMailboxPathFromId(mailboxId, mailboxSession)
                 .orElseThrow(() -> new MailboxParentNotFoundException(parentId));

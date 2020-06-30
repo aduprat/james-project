@@ -40,7 +40,7 @@ Finally, please note that in case of a malformed URL the 400 bad request respons
  - [Cassandra Schema upgrades](#Cassandra_Schema_upgrades)
  - [Correcting ghost mailbox](#Correcting_ghost_mailbox)
  - [Creating address aliases](#Creating_address_aliases)
- - [Creating address domain](#Creating_address_domain)
+ - [Creating domain mappings](#Creating_domain_mappings)
  - [Creating address forwards](#Creating_address_forwards)
  - [Creating address group](#Creating_address_group)
  - [Creating regex mapping](#Creating_regex_mapping)
@@ -271,7 +271,7 @@ Response codes:
 
  - 204: The redirection now exists
  - 400: `source.domain.tld` or `destination.domain.tld` have an invalid syntax
- - 400: source, domain and destination domain are the same
+ - 400: `source, domain` and `destination domain` are the same
  - 404: `source.domain.tld` are not part of handled domains.
 
 ### Delete an alias for a domain
@@ -297,8 +297,9 @@ Response codes:
 ## Administrating users
 
    - [Create a user](#Create_a_user)
+   - [Testing a user existence](#Testing_a_user_existence)
    - [Updating a user password](#Updating_a_user_password)
-   - [Deleting a domain](#Deleting_a_user)
+   - [Deleting a user](#Deleting_a_user)
    - [Retrieving the user list](#Retrieving_the_user_list)
    - [Retrieving the list of allowed `From` headers for a given user](Retrieving_the_list_of_allowed_From_headers_for_a_given_user)
 
@@ -319,6 +320,21 @@ Response codes:
  - 400: The user name or the payload is invalid
 
 Note: if the user exists already, its password will be updated.
+
+###Testing a user existence
+
+```
+curl -XHEAD http://ip:port/users/usernameToBeUsed
+```
+
+Resource name "usernameToBeUsed" represents a valid user,
+hence it should match the criteria at [User Repositories documentation](/server/config-users.html) 
+
+Response codes:
+
+ - 200: The user exists
+ - 400: The user name is invalid
+ - 404: The user does not exist
 
 ### Updating a user password
 
@@ -391,7 +407,103 @@ Response codes:
 
 The kind of task scheduled depends on the action parameter. See below for details.
 
-### Recomputing Global JMAP fast message view projection
+#### Fixing mailboxes inconsistencies
+
+This task is only available on top of Guice Cassandra products.
+
+```
+curl -XPOST /mailboxes?task=SolveInconsistencies
+```
+
+Will schedule a task for fixing inconsistencies for the mailbox deduplicated object stored in Cassandra.
+
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+The `I-KNOW-WHAT-I-M-DOING` header is mandatory (you can read more information about it in the warning section below).
+
+The scheduled task will have the following type `solve-mailbox-inconsistencies` and the following `additionalInformation`:
+
+```
+{
+  "type":"solve-mailbox-inconsistencies",
+  "processedMailboxEntries": 3,
+  "processedMailboxPathEntries": 3,
+  "fixedInconsistencies": 2,
+  "errors": 1,
+  "conflictingEntries":[{
+    "mailboxDaoEntry":{
+      "mailboxPath":"#private:user:mailboxName",
+      "mailboxId":"464765a0-e4e7-11e4-aba4-710c1de3782b"
+    }," +
+    "mailboxPathDaoEntry":{
+      "mailboxPath":"#private:user:mailboxName2",
+      "mailboxId":"464765a0-e4e7-11e4-aba4-710c1de3782b"
+    }
+  }]
+}
+```
+
+Note that conflicting entry inconsistencies will not be fixed and will require to explicitly use 
+[ghost mailbox](#correcting-ghost-mailbox) endpoint in order to merge the conflicting mailboxes and prevent any message
+loss.
+
+**WARNING**: this task can cancel concurrently running legitimate user operations upon dirty read. As such this task 
+should be run offline. 
+
+A dirty read is when data is read between the two writes of the denormalization operations (no isolation).
+
+In order to ensure being offline, stop the traffic on SMTP, JMAP and IMAP ports, for example via re-configuration or 
+firewall rules.
+
+Due to all of those risks, a `I-KNOW-WHAT-I-M-DOING` header should be positioned to `ALL-SERVICES-ARE-OFFLINE` in order 
+to prevent accidental calls.
+
+#### Recomputing mailbox counters
+
+This task is only available on top of Guice Cassandra products.
+
+```
+curl -XPOST /mailboxes?task=RecomputeMailboxCounters
+```
+
+Will recompute counters (unseen & total count) for the mailbox object stored in Cassandra.
+
+Cassandra maintains a per mailbox projection for message count and unseen message count. As with any projection, it can 
+go out of sync, leading to inconsistent results being returned to the client.
+
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+The scheduled task will have the following type `recompute-mailbox-counters` and the following `additionalInformation`:
+
+```
+{
+  "type":"recompute-mailbox-counters",
+  "processedMailboxes": 3,
+  "failedMailboxes": ["464765a0-e4e7-11e4-aba4-710c1de3782b"]
+}
+```
+
+Note that conflicting inconsistencies entries will not be fixed and will require to explicitly use 
+[ghost mailbox](#correcting-ghost-mailbox) endpoint in order to merge the conflicting mailboxes and prevent any message
+loss.
+
+**WARNING**: this task do not take into account concurrent modifications upon a single mailbox counter recomputation. 
+Rerunning the task will *eventually* provide the consistent result. As such we advise to run this task offline. 
+
+In order to ensure being offline, stop the traffic on SMTP, JMAP and IMAP ports, for example via re-configuration or 
+firewall rules.
+
+`trustMessageProjection` query parameter can be set to `true`. Content of `messageIdTable` (listing messages by their 
+mailbox context) table will be trusted and not compared against content of `imapUidTable` table (listing messages by their
+messageId mailbox independent identifier). This will result in a better performance running the
+task at the cost of safety in the face of message denormalization inconsistencies. 
+
+Defaults to false, which generates 
+additional checks. You can read 
+[this ADR](https://github.com/apache/james-project/blob/master/src/adr/0022-cassandra-message-inconsistency.md) to 
+better understand the message projection and how it can become inconsistent. 
+
+#### Recomputing Global JMAP fast message view projection
 
 This action is only available for backends supporting JMAP protocol.
 
@@ -410,8 +522,19 @@ Will schedule a task for recomputing the fast message view projection for all ma
 
 [More details about endpoints returning a task](#Endpoints_returning_a_task).
 
+An admin can specify the concurrency that should be used when running the task:
 
-The scheduled task will have the following type `RecomputeAllPreviewsTask` and the following `additionalInformation`:
+ - `messagesPerSecond` rate at which messages should be processed, per second. Defaults to 10.
+ 
+This optional parameter must have a strictly positive integer as a value and be passed as query parameters.
+
+Example:
+
+```
+curl -XPOST /mailboxes?task=recomputeFastViewProjectionItems&messagesPerSecond=20
+```
+
+The scheduled task will have the following type `RecomputeAllFastViewProjectionItemsTask` and the following `additionalInformation`:
 
 ```
 {
@@ -419,7 +542,10 @@ The scheduled task will have the following type `RecomputeAllPreviewsTask` and t
   "processedUserCount": 3,
   "processedMessageCount": 3,
   "failedUserCount": 2,
-  "failedMessageCount": 1
+  "failedMessageCount": 1,
+  "runningOptions": {
+    "messagesPerSecond":20
+  }
 }
 ```
 
@@ -429,6 +555,9 @@ Response codes:
  - 400: Error in the request. Details can be found in the reported error.
 
 #### ReIndexing action
+
+These tasks are only available on top of Guice Cassandra products or Guice JPA products. They are not part of Memory
+Guice product. 
 
 Be also aware of the limits of this API:
 
@@ -452,20 +581,53 @@ curl -XPOST http://ip:port/mailboxes?task=reIndex
 
 Will schedule a task for reIndexing all the mails stored on this James server.
 
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+An admin can specify the concurrency that should be used when running the task:
+
+ - `messagesPerSecond` rate at which messages should be processed per second. Default is 50.
+
+This optional parameter must have a strictly positive integer as a value and be passed as query parameter.
+
+An admin can also specify the reindexing mode it wants to use when running the task:
+
+ - `mode` the reindexing mode used. There are 2 modes for the moment:
+   - `rebuildAll` allows to rebuild all indexes. This is the default mode.
+   - `fixOutdated` will check for outdated indexed document and reindex only those.
+   
+This optional parameter must be passed as query parameter. 
+
+It's good to note as well that there is a limitation with the `fixOutdated` mode. As we first collect metadata of 
+stored messages to compare them with the ones in the index, a failed `expunged` operation might not be well corrected
+(as the message might not exist anymore but still be indexed).
+
+Example:
+
+curl -XPOST http://ip:port/mailboxes?task=reIndex&messagesPerSecond=200&mode=rebuildAll
+
 The scheduled task will have the following type `full-reindexing` and the following `additionalInformation`:
 
 ```
 {
+  "type":"full-reindexing",
+  "runningOptions":{
+    "messagesPerSecond":200,
+    "mode":"REBUILD_ALL"
+  },
   "successfullyReprocessedMailCount":18,
   "failedReprocessedMailCount": 3,
-  "failures": {
-    "mbx1": [{"uid": 35}, {"uid": 45}],
-    "mbx2": [{"uid": 38}]
-  }
+  "mailboxFailures": ["12", "23" ],
+  "messageFailures": [
+   {
+     "mailboxId": "1",
+      "uids": [1, 36]
+   }]
 }
 ```
 
 ##### Fixing previously failed ReIndexing
+
+Will schedule a task for reIndexing all the mails which had failed to be indexed from the ReIndexingAllMails task.
 
 Given `bbdb69c9-082a-44b0-a85a-6e33e74287a5` being a `taskId` generated for a reIndexing tasks
 
@@ -473,22 +635,57 @@ Given `bbdb69c9-082a-44b0-a85a-6e33e74287a5` being a `taskId` generated for a re
 curl -XPOST 'http://ip:port/mailboxes?task=reIndex&reIndexFailedMessagesOf=bbdb69c9-082a-44b0-a85a-6e33e74287a5'
 ```
 
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+An admin can specify the concurrency that should be used when running the task:
+
+ - `messagesPerSecond` rate at which messages should be processed per second. Default is 50.
+
+This optional parameter must have a strictly positive integer as a value and be passed as query parameter.
+
+An admin can also specify the reindexing mode it wants to use when running the task:
+
+ - `mode` the reindexing mode used. There are 2 modes for the moment:
+   - `rebuildAll` allows to rebuild all indexes. This is the default mode.
+   - `fixOutdated` will check for outdated indexed document and reindex only those.
+   
+This optional parameter must be passed as query parameter.
+
+It's good to note as well that there is a limitation with the `fixOutdated` mode. As we first collect metadata of 
+stored messages to compare them with the ones in the index, a failed `expunged` operation might not be well corrected
+(as the message might not exist anymore but still be indexed).
+
+Example:
+
+```
+curl -XPOST http://ip:port/mailboxes?task=reIndex&reIndexFailedMessagesOf=bbdb69c9-082a-44b0-a85a-6e33e74287a5&messagesPerSecond=200&mode=rebuildAll
+```
+
 The scheduled task will have the following type `error-recovery-indexation` and the following `additionalInformation`:
 
 ```
 {
+  "type":"error-recovery-indexation"
+  "runningOptions":{
+    "messagesPerSecond":200,
+    "mode":"REBUILD_ALL"
+  },
   "successfullyReprocessedMailCount":18,
   "failedReprocessedMailCount": 3,
-  "failures": {
-    "mbx1": [{"uid": 35}, {"uid": 45}],
-    "mbx2": [{"uid": 38}]
-  }
+  "mailboxFailures": ["12", "23" ],
+  "messageFailures": [{
+     "mailboxId": "1",
+      "uids": [1, 36]
+   }]
 }
 ```
 
 ### Single mailbox
 
 #### ReIndexing a mailbox mails
+
+This task is only available on top of Guice Cassandra products or Guice JPA products. It is not part of Memory
+Guice product. 
 
 ```
 curl -XPOST http://ip:port/mailboxes/{mailboxId}?task=reIndex
@@ -500,6 +697,30 @@ Note that 'mailboxId' path parameter needs to be a (implementation dependent) va
 
 [More details about endpoints returning a task](#Endpoints_returning_a_task).
 
+An admin can specify the concurrency that should be used when running the task:
+
+ - `messagesPerSecond` rate at which messages should be processed per second. Default is 50.
+
+This optional parameter must have a strictly positive integer as a value and be passed as query parameter.
+
+An admin can also specify the reindexing mode it wants to use when running the task:
+
+ - `mode` the reindexing mode used. There are 2 modes for the moment:
+   - `rebuildAll` allows to rebuild all indexes. This is the default mode.
+   - `fixOutdated` will check for outdated indexed document and reindex only those.
+   
+This optional parameter must be passed as query parameter.
+
+It's good to note as well that there is a limitation with the `fixOutdated` mode. As we first collect metadata of 
+stored messages to compare them with the ones in the index, a failed `expunged` operation might not be well corrected
+(as the message might not exist anymore but still be indexed).
+
+Example:
+
+```
+curl -XPOST http://ip:port/mailboxes/{mailboxId}?task=reIndex&messagesPerSecond=200&mode=fixOutdated
+```
+
 Response codes:
 
  - 201: Success. Corresponding task id is returned.
@@ -509,13 +730,20 @@ The scheduled task will have the following type `mailbox-reindexing` and the fol
 
 ```
 {
+  "type":"mailbox-reindexing",
+  "runningOptions":{
+    "messagesPerSecond":200,
+    "mode":"FIX_OUTDATED"
+  },   
   "mailboxId":"{mailboxId}",
   "successfullyReprocessedMailCount":18,
   "failedReprocessedMailCount": 3,
-  "failures": {
-    "mbx1": [{"uid": 35}, {"uid": 45}],
-    "mbx2": [{"uid": 38}]
-  }
+  "mailboxFailures": ["12"],
+  "messageFailures": [
+   {
+     "mailboxId": "1",
+      "uids": [1, 36]
+   }]
 }
 ```
 
@@ -527,6 +755,9 @@ Warning: While we have been trying to reduce the inconsistency window to a maxim
 concurrent changes done during the reIndexing might be ignored.
 
 #### ReIndexing a single mail
+
+This task is only available on top of Guice Cassandra products or Guice JPA products. It is not part of Memory
+Guice product.
 
 ```
 curl -XPOST http://ip:port/mailboxes/{mailboxId}/uid/{uid}?task=reIndex
@@ -560,6 +791,9 @@ Warning: Canceling this task should be considered unsafe as it will leave the cu
 
 ### ReIndexing a single mail by messageId
 
+This task is only available on top of Guice Cassandra products or Guice JPA products. It is not part of Memory
+Guice product.
+
 ```
 curl -XPOST http://ip:port/messages/{messageId}?task=reIndex
 ```
@@ -585,6 +819,109 @@ The scheduled task will have the following type `messageId-reindexing` and the f
 
 Warning: During the re-indexing, the result of search operations might be altered.
 
+### Fixing message inconsistencies
+
+This task is only available on top of Guice Cassandra products.
+
+```
+curl -XPOST /messages?task=SolveInconsistencies
+```
+
+Will schedule a task for fixing message inconsistencies created by the message denormalization process. 
+
+Messages are denormalized and stored in separated data tables in Cassandra, so they can be accessed 
+by their unique identifier or mailbox identifier & local mailbox identifier through different protocols. 
+
+Failure in the denormalization process will lead to inconsistencies, for example:
+
+```
+BOB receives a message
+The denormalization process fails
+BOB can read the message via JMAP
+BOB cannot read the message via IMAP
+
+BOB marks a message as SEEN
+The denormalization process fails
+The message is SEEN via JMAP
+The message is UNSEEN via IMAP
+```
+
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+An admin can specify the concurrency that should be used when running the task:
+
+ - `messagesPerSecond` rate of messages to be processed per second. Default is 100.
+
+This optional parameter must have a strictly positive integer as a value and be passed as query parameter.
+
+An admin can also specify the reindexing mode it wants to use when running the task:
+
+ - `mode` the reindexing mode used. There are 2 modes for the moment:
+   - `rebuildAll` allows to rebuild all indexes. This is the default mode.
+   - `fixOutdated` will check for outdated indexed document and reindex only those.
+   
+This optional parameter must be passed as query parameter.
+
+It's good to note as well that there is a limitation with the `fixOutdated` mode. As we first collect metadata of 
+stored messages to compare them with the ones in the index, a failed `expunged` operation might not be well corrected
+(as the message might not exist anymore but still be indexed).
+
+Example:
+
+```
+curl -XPOST /messages?task=SolveInconsistencies&messagesPerSecond=200&mode=rebuildAll
+```
+
+Response codes:
+
+ - 201: Success. Corresponding task id is returned.
+ - 400: Error in the request. Details can be found in the reported error.
+
+The scheduled task will have the following type `solve-message-inconsistencies` and the following `additionalInformation`:
+
+```
+{
+  "type":"solve-message-inconsistencies",
+  "timestamp":"2007-12-03T10:15:30Z",
+  "processedImapUidEntries": 2,
+  "processedMessageIdEntries": 1,
+  "addedMessageIdEntries": 1,
+  "updatedMessageIdEntries": 0,
+  "removedMessageIdEntries": 1,
+  "runningOptions":{
+    "messagesPerSecond": 200,
+    "mode":"REBUILD_ALL"
+  },
+  "fixedInconsistencies": [
+    {
+      "mailboxId": "551f0580-82fb-11ea-970e-f9c83d4cf8c2",
+      "messageId": "d2bee791-7e63-11ea-883c-95b84008f979",
+      "uid": 1
+    },
+    {
+      "mailboxId": "551f0580-82fb-11ea-970e-f9c83d4cf8c2",
+      "messageId": "d2bee792-7e63-11ea-883c-95b84008f979",
+      "uid": 2
+    }
+  ],
+  "errors": [
+    {
+      "mailboxId": "551f0580-82fb-11ea-970e-f9c83d4cf8c2",
+      "messageId": "ffffffff-7e63-11ea-883c-95b84008f979",
+      "uid": 3
+    }
+  ]
+}
+```
+
+User actions concurrent to the inconsistency fixing task could result in concurrency issues. New inconsistencies 
+could be created. 
+
+However the source of truth will not be impacted, hence rerunning the task will eventually fix all issues.
+
+This task could be run safely online and can be scheduled on a recurring basis outside of peak traffic 
+by an admin to ensure Cassandra message consistency.
+
 ## Administrating user mailboxes
 
  - [Creating a mailbox](#Creating_a_mailbox)
@@ -592,6 +929,7 @@ Warning: During the re-indexing, the result of search operations might be altere
  - [Testing existence of a mailbox](#Testing_existence_of_a_mailbox)
  - [Listing user mailboxes](#Listing_user_mailboxes)
  - [Deleting user mailboxes](#Deleting_user_mailboxes)
+ - [Exporting user mailboxes](#Exporting_user_mailboxes)
  - [ReIndexing a user mails](#ReIndexing_a_user_mails)
  - [Recomputing User JMAP fast message view projection](#Recomputing_User_JMAP_fast_message_view_projection)
 
@@ -634,11 +972,11 @@ Response codes:
 ### Testing existence of a mailbox
 
 ```
-curl -XGET http://ip:port/users/{usernameToBeUsed}/mailboxes/{mailboxNameToBeCreated}
+curl -XGET http://ip:port/users/{usernameToBeUsed}/mailboxes/{mailboxNameToBeTested}
 ```
 
 Resource name `usernameToBeUsed` should be an existing user
-Resource name `mailboxNameToBeCreated` should not be empty
+Resource name `mailboxNameToBeTested` should not be empty
 
 Response codes:
 
@@ -678,6 +1016,30 @@ Response codes:
  - 204: The user do not have mailboxes anymore
  - 404: The user name does not exist
 
+### Exporting user mailboxes
+
+```
+curl -XPOST http://ip:port/users/{usernameToBeUsed}/mailboxes?action=export
+```
+
+Resource name `usernameToBeUsed` should be an existing user
+
+Response codes:
+
+ - 201: Success. Corresponding task id is returned
+ - 404: The user name does not exist
+
+The scheduled task will have the following type `MailboxesExportTask` and the following `additionalInformation`:
+
+```
+{
+  "type":"MailboxesExportTask",
+  "timestamp":"2007-12-03T10:15:30Z",
+  "username": "user",
+  "stage": "STARTING"
+}
+```
+
 ### ReIndexing a user mails
  
 ```
@@ -688,6 +1050,30 @@ Will schedule a task for reIndexing all the mails in "user@domain.com" mailboxes
  
 [More details about endpoints returning a task](#Endpoints_returning_a_task).
  
+An admin can specify the concurrency that should be used when running the task:
+
+ - `messagesPerSecond` rate at which messages should be processed per second. Default is 50.
+
+This optional parameter must have a strictly positive integer as a value and be passed as query parameter.
+
+An admin can also specify the reindexing mode it wants to use when running the task:
+
+ - `mode` the reindexing mode used. There are 2 modes for the moment:
+   - `rebuildAll` allows to rebuild all indexes. This is the default mode.
+   - `fixOutdated` will check for outdated indexed document and reindex only those.
+   
+This optional parameter must be passed as query parameter.
+
+It's good to note as well that there is a limitation with the `fixOutdated` mode. As we first collect metadata of 
+stored messages to compare them with the ones in the index, a failed `expunged` operation might not be well corrected
+(as the message might not exist anymore but still be indexed).
+
+Example:
+
+```
+curl -XPOST http://ip:port/users/{usernameToBeUsed}/mailboxes?task=reIndex&messagesPerSecond=200&mode=fixOutdated
+```
+
 Response codes:
  
  - 201: Success. Corresponding task id is returned.
@@ -697,13 +1083,20 @@ The scheduled task will have the following type `user-reindexing` and the follow
 
 ```
 {
+  "type":"user-reindexing",
+  "runningOptions":{
+    "messagesPerSecond":200,
+    "mode":"FIX_OUTDATED"
+  }, 
   "user":"user@domain.com",
   "successfullyReprocessedMailCount":18,
   "failedReprocessedMailCount": 3,
-  "failures": {
-    "mbx1": [{"uid": 35}, {"uid": 45}],
-    "mbx2": [{"uid": 38}]
-  }
+  "mailboxFailures": ["12", "23" ],
+  "messageFailures": [
+   {
+     "mailboxId": "1",
+      "uids": [1, 36]
+   }]
 }
 ```
 
@@ -733,15 +1126,29 @@ Will schedule a task for recomputing the fast message view projection for all ma
 
 [More details about endpoints returning a task](#Endpoints_returning_a_task).
 
+An admin can specify the concurrency that should be used when running the task:
 
-The scheduled task will have the following type `RecomputeAllPreviewsTask` and the following `additionalInformation`:
+ - `messagesPerSecond` rate at which messages should be processed, per second. Defaults to 10.
+ 
+This optional parameter must have a strictly positive integer as a value and be passed as query parameters.
+
+Example:
+
+```
+curl -XPOST /mailboxes?task=recomputeFastViewProjectionItems&messagesPerSecond=20
+```
+
+The scheduled task will have the following type `RecomputeUserFastViewProjectionItemsTask` and the following `additionalInformation`:
 
 ```
 {
-  "type":"RecomputeAllPreviewsTask",
+  "type":"RecomputeUserFastViewProjectionItemsTask",
   "username": "{usernameToBeUsed}",
   "processedMessageCount": 3,
-  "failedMessageCount": 1
+  "failedMessageCount": 1,
+  "runningOptions": {
+    "messagesPerSecond":20
+  }
 }
 ```
 
@@ -762,6 +1169,7 @@ Response codes:
  - [Updating the quota size for a user](#Updating_the_quota_size_for_a_user)
  - [Deleting the quota size for a user](#Deleting_the_quota_size_for_a_user)
  - [Searching user by quota ratio](#Searching_user_by_quota_ratio)
+ - [Recomputing current quotas for users](#Recomputing_current_quotas_for_users)
 
 ### Getting the quota for a user
 
@@ -1014,6 +1422,49 @@ Response codes:
 
  - 200: List of users had successfully been returned.
  - 400: Validation issues with parameters
+ 
+### Recomputing current quotas for users
+
+This task is available on top of Cassandra & JPA products.
+
+```
+curl -XPOST /quota/users?task=RecomputeCurrentQuotas
+```
+
+Will recompute current quotas (count and size) for all users stored in James.
+
+James maintains per quota a projection for current quota count and size. As with any projection, it can 
+go out of sync, leading to inconsistent results being returned to the client.
+
+[More details about endpoints returning a task](#Endpoints_returning_a_task).
+
+An admin can specify the concurrency that should be used when running the task:
+
+ - `usersPerSecond` rate at which users quotas should be reprocessed, per second. Defaults to 1.
+ 
+This optional parameter must have a strictly positive integer as a value and be passed as query parameters.
+
+Example:
+
+```
+curl -XPOST /quota/users?task=RecomputeCurrentQuotas&usersPerSecond=20
+```
+
+The scheduled task will have the following type `recompute-current-quotas` and the following `additionalInformation`:
+
+```
+{
+  "type":"recompute-current-quotas",
+  "processedQuotaRoots": 3,
+  "failedQuotaRoots": ["#private&bob@localhost"],
+  "runningOptions": {
+    "usersPerSecond":20
+  }
+}
+```
+
+**WARNING**: this task do not take into account concurrent modifications upon a single current quota recomputation. 
+Rerunning the task will *eventually* provide the consistent result.
 
 ## Administrating quotas by domains
 
@@ -1448,7 +1899,7 @@ If the server restarts during the migration, the migration is silently aborted.
 The scheduled task will have the following type `cassandra-migration` and the following `additionalInformation`:
 
 ```
-{"toVersion":3}
+{"targetVersion":3}
 ```
 
 ### Upgrading to the latest version
@@ -1750,7 +2201,7 @@ Response codes:
  - 400: Alias structure or member is not valid
  - 400: The alias source exists as an user already
  - 400: Source and destination can't be the same!
- - 400: Domain in the source is not managed by the DomainList
+ - 400: Domain in the destination or source is not managed by the DomainList
 
 ### Removing an alias of an user
 
@@ -1765,7 +2216,7 @@ Response codes:
  - 204: OK
  - 400: Alias structure or member is not valid
 
-## Creating address domain
+## Creating domain mappings
 
 You can use **webadmin** to define domain mappings.
 
@@ -2334,7 +2785,7 @@ The scheduled task will have the following type `clear-mail-repository` and the 
 
 ```
 {
-  "repositoryPath":"var/mail/error/",
+  "mailRepositoryPath":"var/mail/error/",
   "initialCount": 243,
   "remainingCount": 17
 }
@@ -2383,7 +2834,7 @@ The scheduled task will have the following type `reprocessing-all` and the follo
 
 ```
 {
-  "repositoryPath":"var/mail/error/",
+  "mailRepositoryPath":"var/mail/error/",
   "targetQueue":"spool",
   "targetProcessor":"transport",
   "initialCount": 243,
@@ -2434,7 +2885,7 @@ The scheduled task will have the following type `reprocessing-one` and the follo
 
 ```
 {
-  "repositoryPath":"var/mail/error/",
+  "mailRepositoryPath":"var/mail/error/",
   "targetQueue":"spool",
   "targetProcessor":"transport",
   "mailKey":"name1"
@@ -2541,7 +2992,7 @@ The scheduled task will have the following type `delete-mails-from-mail-queue` a
 
 ```
 {
-  "mailQueueName":"outgoing",
+  "queue":"outgoing",
   "initialCount":10,
   "remainingCount": 5,
   "sender": "sender@james.org",
@@ -2570,7 +3021,7 @@ The scheduled task will have the following type `clear-mail-queue` and the follo
 
 ```
 {
-  "mailQueueName":"outgoing",
+  "queue":"outgoing",
   "initialCount":10,
   "remainingCount": 0
 }
@@ -2916,6 +3367,7 @@ Response codes:
 
  - 200: Success. A JSON representing this event is returned.
  - 400: Invalid group name or `insertionId`
+ - 404: No event with this `insertionId`
 
 ### Deleting an event
 
@@ -2933,7 +3385,7 @@ Response codes:
 ### Redeliver all events
 
 ```
-curl -XPOST http://ip:port/events/deadLetter
+curl -XPOST http://ip:port/events/deadLetter?action=redeliver
 ```
 
 Will create a task that will attempt to redeliver all events stored in "Event Dead Letter".
@@ -2965,7 +3417,7 @@ Response codes:
 ### Redeliver a single event
 
 ```
-curl -XPOST http://ip:port/events/deadLetter/groups/org.apache.james.mailbox.events.EventBusTestFixture$GroupA/6e0dd59d-660e-4d9b-b22f-0354479f47b4
+curl -XPOST http://ip:port/events/deadLetter/groups/org.apache.james.mailbox.events.EventBusTestFixture$GroupA/6e0dd59d-660e-4d9b-b22f-0354479f47b4?action=reDeliver
 ```
 
 Will create a task that will attempt to redeliver a single event of a particular group stored in "Event Dead Letter".
@@ -3224,8 +3676,8 @@ The scheduled task will have the following type `deleted-messages-delete` and th
  
 ```
  {
-   "user": "user@domain.ext",
-   "deleteMessageId": "3294a976-ce63-491e-bd52-1b6f465ed7a2"
+   "userName": "user@domain.ext",
+   "messageId": "3294a976-ce63-491e-bd52-1b6f465ed7a2"
  }
 ```
  
@@ -3335,7 +3787,7 @@ Response codes:
 A list of all tasks can be retrieved:
 
 ```
-curl -XGET /tasks
+curl -XGET http://ip:port/tasks
 ```
 
 Will return a list of Execution reports
@@ -3343,7 +3795,7 @@ Will return a list of Execution reports
 One can filter the above results by status. For example:
 
 ```
-curl -XGET /tasks?status=inProgress
+curl -XGET http://ip:port/tasks?status=inProgress
 ```
 
 Will return a list of Execution reports that are currently in progress.
@@ -3417,4 +3869,3 @@ Response codes :
 
  - 201: the taskId of the created task
  - 400: Invalid action argument for performing operation on mappings data
-

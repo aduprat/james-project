@@ -18,6 +18,8 @@
  ****************************************************************/
 package org.apache.james.mailetcontainer.impl.camel;
 
+import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
+
 import java.io.Closeable;
 import java.util.List;
 import java.util.Locale;
@@ -59,7 +61,7 @@ public class CamelProcessor {
     public void process(Mail mail) throws Exception {
         long start = System.currentTimeMillis();
         TimeMetric timeMetric = metricFactory.timer(mailet.getClass().getSimpleName());
-        Exception ex = null;
+        Throwable ex = null;
         try (Closeable closeable =
                  MDCBuilder.create()
                      .addContext(MDCBuilder.PROTOCOL, "MAILET")
@@ -73,7 +75,7 @@ public class CamelProcessor {
                      .build()) {
             MailetPipelineLogging.logBeginOfMailetProcess(mailet, mail);
             mailet.service(mail);
-        } catch (Exception me) {
+        } catch (Exception | NoClassDefFoundError me) {
             ex = me;
             String onMailetException = null;
 
@@ -97,7 +99,7 @@ public class CamelProcessor {
             }
 
         } finally {
-            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD);
             MailetPipelineLogging.logEndOfMailetProcess(mailet, mail);
             List<MailetProcessorListener> listeners = processor.getListeners();
             long complete = System.currentTimeMillis() - start;

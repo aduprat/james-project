@@ -18,10 +18,9 @@ class GuiceJamesServerTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(GuiceJamesServerTest.class);
 
     private static JamesServerBuilder extensionBuilder() {
-        return new JamesServerBuilder()
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-                .overrideWith(TestJMAPServerModule.limitToTenMessages()))
+        return new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+            .server(configuration -> MemoryJamesServerMain.createServer(configuration)
+                .overrideWith(new TestJMAPServerModule()))
             .disableAutoStart();
     }
 

@@ -19,6 +19,8 @@
 
 package org.apache.james.mailetcontainer.impl.camel;
 
+import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
+
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,7 +90,7 @@ public class MatcherSplitter {
         Collection<MailAddress> matchedRcpts = null;
         Collection<MailAddress> origRcpts = new ArrayList<>(mail.getRecipients());
         long start = System.currentTimeMillis();
-        Exception ex = null;
+        Throwable ex = null;
         TimeMetric timeMetric = metricFactory.timer(matcher.getClass().getSimpleName());
 
         try {
@@ -119,7 +121,7 @@ public class MatcherSplitter {
                     ProcessorUtil.verifyMailAddresses(matchedRcpts);
                 }
 
-            } catch (Exception me) {
+            } catch (Exception | NoClassDefFoundError me) {
                 ex = me;
                 if (onMatchException.equalsIgnoreCase("nomatch")) {
                     // In case the matcher returned null, create an empty
@@ -174,7 +176,7 @@ public class MatcherSplitter {
 
             return mails;
         } finally {
-            timeMetric.stopAndPublish();
+            timeMetric.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD);
             long complete = System.currentTimeMillis() - start;
             List<MailetProcessorListener> listeners = container.getListeners();
             for (MailetProcessorListener listener : listeners) {

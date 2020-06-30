@@ -21,13 +21,14 @@ package org.apache.james.adapter.mailbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.apache.james.core.Username;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.indexer.ReIndexer;
+import org.apache.james.mailbox.indexer.ReIndexer.RunningOptions;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
@@ -49,27 +50,29 @@ public class ReIndexerManagementTest {
     }
 
     @Test
-    void reIndexMailboxShouldWaitsForExecution() throws MailboxException {
+    void reIndexMailboxShouldWaitsForExecution() throws Exception {
         Task task = mock(Task.class);
+        doReturn(Task.Result.COMPLETED).when(task).run();
         String namespace = "namespace";
         String user = "user";
         String name = "name";
-        when(reIndexer.reIndex(any(MailboxPath.class))).thenReturn(task);
+        when(reIndexer.reIndex(any(MailboxPath.class), any(RunningOptions.class))).thenReturn(task);
 
         assertThat(taskManager.list()).isEmpty();
         testee.reIndex(namespace, user, name);
-        verify(reIndexer).reIndex(new MailboxPath(namespace, Username.of(user), name));
+        verify(reIndexer).reIndex(new MailboxPath(namespace, Username.of(user), name), RunningOptions.DEFAULT);
         assertThat(taskManager.list()).hasSize(1);
     }
 
     @Test
-    void reIndexShouldWaitsForExecution() throws MailboxException {
+    void reIndexShouldWaitsForExecution() throws Exception {
         Task task = mock(Task.class);
-        when(reIndexer.reIndex()).thenReturn(task);
+        doReturn(Task.Result.COMPLETED).when(task).run();
+        when(reIndexer.reIndex(any(RunningOptions.class))).thenReturn(task);
 
         assertThat(taskManager.list()).isEmpty();
         testee.reIndex();
-        verify(reIndexer).reIndex();
+        verify(reIndexer).reIndex(RunningOptions.DEFAULT);
         assertThat(taskManager.list()).hasSize(1);
     }
 }

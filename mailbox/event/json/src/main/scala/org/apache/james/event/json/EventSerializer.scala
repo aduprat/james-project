@@ -1,4 +1,4 @@
-/** **************************************************************
+/****************************************************************
   * Licensed to the Apache Software Foundation (ASF) under one   *
   * or more contributor license agreements.  See the NOTICE file *
   * distributed with this work for additional information        *
@@ -6,16 +6,16 @@
   * to you under the Apache License, Version 2.0 (the            *
   * "License"); you may not use this file except in compliance   *
   * with the License.  You may obtain a copy of the License at   *
-  * *
-  * http://www.apache.org/licenses/LICENSE-2.0                 *
-  * *
+  *                                                              *
+  * http://www.apache.org/licenses/LICENSE-2.0                   *
+  *                                                              *
   * Unless required by applicable law or agreed to in writing,   *
   * software distributed under the License is distributed on an  *
   * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
   * KIND, either express or implied.  See the License for the    *
   * specific language governing permissions and limitations      *
   * under the License.                                           *
-  * ***************************************************************/
+  ****************************************************************/
 
 package org.apache.james.event.json
 
@@ -205,9 +205,11 @@ class JsonSerialize(mailboxIdFactory: MailboxId.Factory, messageIdFactory: Messa
   implicit val systemFlagsWrites: Writes[SystemFlag] = Writes.enumNameWrites
   implicit val userWriters: Writes[Username] = (user: Username) => JsString(user.asString)
   implicit val quotaRootWrites: Writes[QuotaRoot] = quotaRoot => JsString(quotaRoot.getValue)
-  implicit val quotaUsageValueWrites: Writes[QuotaUsageValue[_, _]] = value => JsNumber(value.asLong())
-  implicit val quotaLimitValueWrites: Writes[QuotaLimitValue[_]] = value => if (value.isUnlimited) JsNull else JsNumber(value.asLong())
   implicit val quotaScopeWrites: Writes[JavaQuota.Scope] = value => JsString(value.name)
+  implicit val quotaCountLimitWrites: Writes[QuotaCountLimit] = value => if (value.isUnlimited) JsNull else JsNumber(value.asLong())
+  implicit val quotaCountUsageWrites: Writes[QuotaCountUsage] = value => JsNumber(value.asLong())
+  implicit val quotaSizeLimitWrites: Writes[QuotaSizeLimit] = value => if (value.isUnlimited) JsNull else JsNumber(value.asLong())
+  implicit val quotaSizeUsageWrites: Writes[QuotaSizeUsage] = value => JsNumber(value.asLong())
   implicit val quotaCountWrites: Writes[Quota[QuotaCountLimit, QuotaCountUsage]] = Json.writes[Quota[QuotaCountLimit, QuotaCountUsage]]
   implicit val quotaSizeWrites: Writes[Quota[QuotaSizeLimit, QuotaSizeUsage]] = Json.writes[Quota[QuotaSizeLimit, QuotaSizeUsage]]
   implicit val mailboxPathWrites: Writes[MailboxPath] = Json.writes[MailboxPath]

@@ -18,7 +18,8 @@
  ****************************************************************/
 package org.apache.james.mailbox.store.mail;
 
-import java.util.Collection;
+import static javax.mail.Flags.Flag.RECENT;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.Optional;
 
 import javax.mail.Flags;
 
+import org.apache.james.mailbox.MessageManager.FlagsUpdateMode;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -38,6 +40,12 @@ import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.transaction.Mapper;
+import org.apache.james.util.streams.Iterators;
+
+import com.google.common.collect.ImmutableList;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Maps {@link MailboxMessage} in a {@link org.apache.james.mailbox.MessageManager}. A {@link MessageMapper} has a lifecycle from the start of a request
@@ -57,6 +65,14 @@ public interface MessageMapper extends Mapper {
     Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange set, FetchType type, int limit)
             throws MailboxException;
 
+    default Flux<MailboxMessage> findInMailboxReactive(Mailbox mailbox, MessageRange set, FetchType type, int limit) {
+        try {
+            return Iterators.toFlux(findInMailbox(mailbox, set, type, limit));
+        } catch (MailboxException e) {
+            return Flux.error(e);
+        }
+    }
+
     /**
      * Returns a list of {@link MessageUid} which are marked as deleted
      */
@@ -68,15 +84,11 @@ public interface MessageMapper extends Mapper {
     long countMessagesInMailbox(Mailbox mailbox)
             throws MailboxException;
 
-    /**
-     * Return the count of unseen messages in the mailbox
-     */
-    long countUnseenMessagesInMailbox(Mailbox mailbox)
-            throws MailboxException;
-
     MailboxCounters getMailboxCounters(Mailbox mailbox) throws MailboxException;
 
-    List<MailboxCounters> getMailboxCounters(Collection<Mailbox> mailboxes) throws MailboxException;
+    default Mono<MailboxCounters> getMailboxCountersReactive(Mailbox mailbox) {
+        return Mono.fromCallable(() -> getMailboxCounters(mailbox));
+    }
 
     /**
      * Delete the given {@link MailboxMessage}
@@ -114,6 +126,20 @@ public interface MessageMapper extends Mapper {
      */
     Iterator<UpdatedFlags> updateFlags(Mailbox mailbox, FlagsUpdateCalculator flagsUpdateCalculator,
             final MessageRange set) throws MailboxException;
+
+    default List<UpdatedFlags> resetRecent(Mailbox mailbox) throws MailboxException {
+        final List<MessageUid> members = findRecentMessageUidsInMailbox(mailbox);
+        ImmutableList.Builder<UpdatedFlags> result = ImmutableList.builder();
+
+        FlagsUpdateCalculator calculator = new FlagsUpdateCalculator(new Flags(RECENT), FlagsUpdateMode.REMOVE);
+        // Convert to MessageRanges so we may be able to optimize the flag update
+        List<MessageRange> ranges = MessageRange.toRanges(members);
+        for (MessageRange range : ranges) {
+            result.addAll(updateFlags(mailbox, calculator, range));
+        }
+        return result.build();
+    }
+
     
     /**
      * Copy the given {@link MailboxMessage} to a new mailbox and return the uid of the copy. Be aware that the given uid is just a suggestion for the uid of the copied
@@ -150,7 +176,7 @@ public interface MessageMapper extends Mapper {
     /**
      * Return a list containing all MessageUid of Messages that belongs to given {@link Mailbox}
      */
-    Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException;
+    Flux<MessageUid> listAllMessageUids(Mailbox mailbox);
 
     /**
      * Specify what data needs to get filled in a {@link MailboxMessage} before returning it

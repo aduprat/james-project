@@ -38,16 +38,16 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.MessageManager.AppendResult;
 import org.apache.james.mailbox.exception.AttachmentNotFoundException;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.AttachmentId;
 import org.apache.james.mailbox.model.Cid;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
-import org.apache.james.util.OptionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,62 +74,63 @@ public class MessageAppender {
     }
 
     public MetaDataWithContent appendMessageInMailboxes(CreationMessageEntry createdEntry,
-                                                                               List<MailboxId> targetMailboxes,
-                                                                               MailboxSession session) throws MailboxException {
+                                                        List<MailboxId> targetMailboxes,
+                                                        MailboxSession session) throws MailboxException {
         Preconditions.checkArgument(!targetMailboxes.isEmpty());
-        ImmutableList<MessageAttachment> messageAttachments = getMessageAttachments(session, createdEntry.getValue().getAttachments());
-        byte[] messageContent = mimeMessageConverter.convert(createdEntry, messageAttachments);
+        ImmutableList<MessageAttachmentMetadata> messageAttachments = getMessageAttachments(session, createdEntry.getValue().getAttachments());
+        byte[] messageContent = mimeMessageConverter.convert(createdEntry, messageAttachments, session);
         SharedByteArrayInputStream content = new SharedByteArrayInputStream(messageContent);
         Date internalDate = Date.from(createdEntry.getValue().getDate().toInstant());
 
         MessageManager mailbox = mailboxManager.getMailbox(targetMailboxes.get(0), session);
-        ComposedMessageId message = mailbox.appendMessage(
+        AppendResult appendResult = mailbox.appendMessage(
             MessageManager.AppendCommand.builder()
                 .withInternalDate(internalDate)
                 .withFlags(getFlags(createdEntry.getValue()))
                 .notRecent()
                 .build(content),
             session);
+        ComposedMessageId ids = appendResult.getId();
         if (targetMailboxes.size() > 1) {
-            messageIdManager.setInMailboxes(message.getMessageId(), targetMailboxes, session);
+            messageIdManager.setInMailboxes(ids.getMessageId(), targetMailboxes, session);
         }
 
         return MetaDataWithContent.builder()
-            .uid(message.getUid())
+            .uid(ids.getUid())
             .keywords(createdEntry.getValue().getKeywords())
             .internalDate(internalDate.toInstant())
             .sharedContent(content)
             .size(messageContent.length)
-            .attachments(messageAttachments)
+            .attachments(appendResult.getMessageAttachments())
             .mailboxId(mailbox.getId())
-            .messageId(message.getMessageId())
+            .messageId(ids.getMessageId())
             .build();
     }
 
     public MetaDataWithContent appendMessageInMailbox(org.apache.james.mime4j.dom.Message message,
-                                                                             MessageManager messageManager,
-                                                                             List<MessageAttachment> attachments,
-                                                                             Flags flags,
-                                                                             MailboxSession session) throws MailboxException {
+                                                      MessageManager messageManager,
+                                                      Flags flags,
+                                                      MailboxSession session) throws MailboxException {
 
 
         byte[] messageContent = asBytes(message);
         SharedByteArrayInputStream content = new SharedByteArrayInputStream(messageContent);
         Date internalDate = new Date();
 
-        ComposedMessageId appendedMessage = messageManager.appendMessage(MessageManager.AppendCommand.builder()
+        AppendResult appendResult = messageManager.appendMessage(MessageManager.AppendCommand.builder()
             .withFlags(flags)
             .build(content), session);
+        ComposedMessageId ids = appendResult.getId();
 
         return MetaDataWithContent.builder()
-            .uid(appendedMessage.getUid())
+            .uid(ids.getUid())
             .keywords(Keywords.lenientFactory().fromFlags(flags))
             .internalDate(internalDate.toInstant())
             .sharedContent(content)
             .size(messageContent.length)
-            .attachments(attachments)
+            .attachments(appendResult.getMessageAttachments())
             .mailboxId(messageManager.getId())
-            .messageId(appendedMessage.getMessageId())
+            .messageId(ids.getMessageId())
             .build();
     }
 
@@ -141,27 +142,21 @@ public class MessageAppender {
         }
     }
 
-    public MetaDataWithContent appendMessageInMailbox(CreationMessageEntry createdEntry,
-                                                                             MailboxId targetMailbox,
-                                                                             MailboxSession session) throws MailboxException {
-        return appendMessageInMailboxes(createdEntry, ImmutableList.of(targetMailbox), session);
-    }
-
     private Flags getFlags(CreationMessage message) {
         return message.getKeywords().asFlags();
     }
 
-    private ImmutableList<MessageAttachment> getMessageAttachments(MailboxSession session, ImmutableList<Attachment> attachments) throws MailboxException {
-        ThrowingFunction<Attachment, Optional<MessageAttachment>> toMessageAttachment = att -> messageAttachment(session, att);
+    private ImmutableList<MessageAttachmentMetadata> getMessageAttachments(MailboxSession session, ImmutableList<Attachment> attachments) throws MailboxException {
+        ThrowingFunction<Attachment, Optional<MessageAttachmentMetadata>> toMessageAttachment = att -> messageAttachment(session, att);
         return attachments.stream()
             .map(Throwing.function(toMessageAttachment).sneakyThrow())
-            .flatMap(OptionalUtils::toStream)
+            .flatMap(Optional::stream)
             .collect(Guavate.toImmutableList());
     }
 
-    private Optional<MessageAttachment> messageAttachment(MailboxSession session, Attachment attachment) throws MailboxException {
+    private Optional<MessageAttachmentMetadata> messageAttachment(MailboxSession session, Attachment attachment) throws MailboxException {
         try {
-            return Optional.of(MessageAttachment.builder()
+            return Optional.of(MessageAttachmentMetadata.builder()
                 .attachment(attachmentManager.getAttachment(AttachmentId.from(attachment.getBlobId().getRawValue()), session))
                 .name(attachment.getName().orElse(null))
                 .cid(attachment.getCid().map(Cid::from).orElse(null))

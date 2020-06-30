@@ -71,7 +71,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.HashBlobId;
@@ -85,6 +84,7 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
@@ -111,6 +111,7 @@ import org.apache.james.vault.DeletedMessageVault;
 import org.apache.james.vault.DeletedMessageZipper;
 import org.apache.james.vault.RetentionConfiguration;
 import org.apache.james.vault.blob.BlobStoreDeletedMessageVault;
+import org.apache.james.vault.blob.BlobStoreVaultGarbageCollectionTaskAdditionalInformationDTO;
 import org.apache.james.vault.blob.BucketNameGenerator;
 import org.apache.james.vault.dto.query.QueryTranslator;
 import org.apache.james.vault.memory.metadata.MemoryDeletedMessageMetadataVault;
@@ -129,6 +130,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.google.common.collect.ImmutableList;
+
 import io.restassured.RestAssured;
 import io.restassured.filter.log.LogDetail;
 import reactor.core.publisher.Flux;
@@ -193,7 +195,12 @@ class DeletedMessagesVaultRoutesTest {
         usersRepository = createUsersRepository();
         MessageId.Factory messageIdFactory = new InMemoryMessageId.Factory();
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new TasksRoutes(taskManager, jsonTransformer),
+                new TasksRoutes(taskManager, jsonTransformer,
+                    DTOConverter.of(
+                        WebAdminDeletedMessagesVaultDeleteTaskAdditionalInformationDTO.module(messageIdFactory),
+                        DeletedMessagesVaultExportTaskAdditionalInformationDTO.module(),
+                        WebAdminDeletedMessagesVaultRestoreTaskAdditionalInformationDTO.module(),
+                        BlobStoreVaultGarbageCollectionTaskAdditionalInformationDTO.module())),
                 new DeletedMessagesVaultRoutes(vault, vaultRestore, exportService, jsonTransformer, taskManager, queryTranslator, usersRepository, messageIdFactory))
             .start();
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -205,13 +212,10 @@ class DeletedMessagesVaultRoutesTest {
     private MemoryUsersRepository createUsersRepository() throws Exception {
         DNSService dnsService = mock(DNSService.class);
         MemoryDomainList domainList = new MemoryDomainList(dnsService);
-        domainList.configure(DomainListConfiguration.builder()
-            .autoDetect(false)
-            .autoDetectIp(false));
+        domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(DOMAIN);
 
         MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
-        usersRepository.configure(new BaseHierarchicalConfiguration());
 
         usersRepository.addUser(USERNAME, "userPassword");
 
@@ -2263,7 +2267,8 @@ class DeletedMessagesVaultRoutesTest {
         MailboxSession session = mailboxManager.createSystemSession(username);
         int limitToOneMessage = 1;
 
-        return !mailboxManager.search(MultimailboxesSearchQuery.from(new SearchQuery()).build(), session, limitToOneMessage)
+        return !Flux.from(mailboxManager.search(MultimailboxesSearchQuery.from(SearchQuery.of()).build(), session, limitToOneMessage))
+            .collectList().block()
             .isEmpty();
     }
 

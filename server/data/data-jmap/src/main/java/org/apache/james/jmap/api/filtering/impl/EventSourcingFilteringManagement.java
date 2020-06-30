@@ -29,9 +29,12 @@ import org.apache.james.eventsourcing.Subscriber;
 import org.apache.james.eventsourcing.eventstore.EventStore;
 import org.apache.james.jmap.api.filtering.FilteringManagement;
 import org.apache.james.jmap.api.filtering.Rule;
+import org.reactivestreams.Publisher;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+
+import reactor.core.publisher.Mono;
 
 public class EventSourcingFilteringManagement implements FilteringManagement {
 
@@ -42,7 +45,7 @@ public class EventSourcingFilteringManagement implements FilteringManagement {
 
     @Inject
     public EventSourcingFilteringManagement(EventStore eventStore) {
-        this.eventSourcingSystem = new EventSourcingSystem(
+        this.eventSourcingSystem = EventSourcingSystem.fromJava(
             ImmutableSet.of(new DefineRulesCommandHandler(eventStore)),
             NO_SUBSCRIBER,
             eventStore);
@@ -50,20 +53,17 @@ public class EventSourcingFilteringManagement implements FilteringManagement {
     }
 
     @Override
-    public void defineRulesForUser(Username username, List<Rule> rules) {
-        eventSourcingSystem.dispatch(new DefineRulesCommand(username, rules));
+    public Publisher<Void> defineRulesForUser(Username username, List<Rule> rules) {
+        return eventSourcingSystem.dispatch(new DefineRulesCommand(username, rules));
     }
 
     @Override
-    public List<Rule> listRulesForUser(Username username) {
+    public Publisher<Rule> listRulesForUser(Username username) {
         Preconditions.checkNotNull(username);
 
         FilteringAggregateId aggregateId = new FilteringAggregateId(username);
 
-        return FilteringAggregate
-            .load(
-                aggregateId,
-                eventStore.getEventsOfAggregate(aggregateId))
-            .listRules();
+        return Mono.from(eventStore.getEventsOfAggregate(aggregateId))
+            .flatMapIterable(history -> FilteringAggregate.load(aggregateId, history).listRules());
     }
 }

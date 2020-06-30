@@ -53,6 +53,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxACL.EntryKey;
 import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +78,7 @@ public class MaildirFolder {
 
     private Optional<MessageUid> lastUid;
     private int messageCount = 0;
-    private long uidValidity = -1;
+    private Optional<UidValidity> uidValidity = Optional.empty();
     private MailboxACL acl;
     private boolean messageNameStrictParse = false;
 
@@ -249,19 +250,19 @@ public class MaildirFolder {
      * Returns the uidValidity of this mailbox
      * @return The uidValidity
      */
-    public long getUidValidity() throws IOException {
-        if (uidValidity == -1) {
-            uidValidity = readUidValidity();
+    public UidValidity getUidValidity() throws IOException {
+        if (!uidValidity.isPresent()) {
+            uidValidity = Optional.of(readUidValidity());
         }
-        return uidValidity;
+        return uidValidity.get();
     }
     
     /**
      * Sets the uidValidity for this mailbox and writes it to the file system
      */
-    public void setUidValidity(long uidValidity) throws IOException {
+    public void setUidValidity(UidValidity uidValidity) throws IOException {
         saveUidValidity(uidValidity);
-        this.uidValidity = uidValidity;
+        this.uidValidity = Optional.of(uidValidity);
     }
 
     /**
@@ -271,7 +272,7 @@ public class MaildirFolder {
      * @return The uidValidity
      * @throws IOException if there are problems with the validity file
      */
-    private long readUidValidity() throws IOException {
+    private UidValidity readUidValidity() throws IOException {
         File validityFile = new File(rootFolder, VALIDITY_FILE);
         if (!validityFile.exists()) {
             return resetUidValidity();
@@ -280,20 +281,28 @@ public class MaildirFolder {
              InputStreamReader isr = new InputStreamReader(fis)) {
             char[] uidValidity = new char[20];
             int len = isr.read(uidValidity);
-            return Long.parseLong(String.valueOf(uidValidity, 0, len).trim());
+            long uidValidityValue = Long.parseLong(String.valueOf(uidValidity, 0, len).trim());
+            return sanitizeUidValidity(uidValidityValue);
         }
+    }
+
+    private UidValidity sanitizeUidValidity(long uidValidityValue) throws IOException {
+        if (!UidValidity.isValid(uidValidityValue)) {
+            return resetUidValidity();
+        }
+        return UidValidity.of(uidValidityValue);
     }
 
     /**
      * Save the given uidValidity to the file system
      */
-    private void saveUidValidity(long uidValidity) throws IOException {
+    private void saveUidValidity(UidValidity uidValidity) throws IOException {
         File validityFile = new File(rootFolder, VALIDITY_FILE);
         if (!validityFile.createNewFile()) {
             throw new IOException("Could not create file " + validityFile);
         }
         try (FileOutputStream fos = new FileOutputStream(validityFile)) {
-            fos.write(String.valueOf(uidValidity).getBytes());
+            fos.write(String.valueOf(uidValidity.asLong()).getBytes());
         }
     }
 
@@ -339,11 +348,10 @@ public class MaildirFolder {
      * Sets and returns a new uidValidity for this folder.
      * @return the new uidValidity
      */
-    private long resetUidValidity() throws IOException {
-        // using the timestamp as uidValidity
-        long timestamp = System.currentTimeMillis();
-        setUidValidity(timestamp);
-        return timestamp;
+    private UidValidity resetUidValidity() throws IOException {
+        UidValidity uidValidity = UidValidity.generate();
+        setUidValidity(uidValidity);
+        return uidValidity;
     }
     
     /**
@@ -533,7 +541,7 @@ public class MaildirFolder {
                         }
 
                         MessageUid uid = MessageUid.of(Long.parseLong(line.substring(0, gap)));
-                        String name = line.substring(gap + 1, line.length());
+                        String name = line.substring(gap + 1);
                         for (String recentFile : recentFiles) {
                             if (recentFile.equals(name)) {
                                 recentMessages.put(uid, newMaildirMessageName(MaildirFolder.this, recentFile));
@@ -607,7 +615,7 @@ public class MaildirFolder {
                         throw new MailboxException("Corrupted entry in uid-file " + uidList + " line " + lineNumber);
                     }
                     MessageUid uid = MessageUid.of(Long.parseLong(line.substring(0, gap)));
-                    String name = line.substring(gap + 1, line.length());
+                    String name = line.substring(gap + 1);
                     reverseUidMap.put(stripMetaFromName(name), uid);
                 }
             }
@@ -662,7 +670,7 @@ public class MaildirFolder {
                         if (to != null && uid.compareTo(to) > 0) {
                             break;
                         }
-                        String name = line.substring(gap + 1, line.length());
+                        String name = line.substring(gap + 1);
                         uidMap.put(uid, newMaildirMessageName(MaildirFolder.this, name));
                     }
                 }
@@ -716,7 +724,7 @@ public class MaildirFolder {
         }
         int gap2 = line.indexOf(" ", gap1 + 1);
         lastUid = Optional.of(MessageUid.of(Long.parseLong(line.substring(gap1 + 1, gap2))));
-        messageCount = Integer.parseInt(line.substring(gap2 + 1, line.length()));
+        messageCount = Integer.parseInt(line.substring(gap2 + 1));
     }
     
     /**
@@ -876,7 +884,7 @@ public class MaildirFolder {
                     }
 
                     if (uid.equals(MessageUid.of(Long.parseLong(line.substring(0, line.indexOf(" ")))))) {
-                        deletedMessage = newMaildirMessageName(MaildirFolder.this, line.substring(gap + 1, line.length()));
+                        deletedMessage = newMaildirMessageName(MaildirFolder.this, line.substring(gap + 1));
                         messageCount--;
                     } else {
                         lines.add(line);

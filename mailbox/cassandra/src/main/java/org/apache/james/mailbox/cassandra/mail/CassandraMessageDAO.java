@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.cassandra.mail;
 
+import static com.datastax.driver.core.ConsistencyLevel.QUORUM;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
@@ -43,9 +44,7 @@ import static org.apache.james.mailbox.cassandra.table.CassandraMessageV2Table.T
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -53,7 +52,6 @@ import javax.inject.Inject;
 import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -66,15 +64,12 @@ import org.apache.james.mailbox.cassandra.table.CassandraMessageV2Table.Properti
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.AttachmentId;
 import org.apache.james.mailbox.model.Cid;
-import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
-import org.apache.james.mailbox.model.MessageAttachment;
-import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
-import org.apache.james.util.streams.Limit;
 
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.PreparedStatement;
@@ -85,15 +80,10 @@ import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Bytes;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 
 public class CassandraMessageDAO {
@@ -175,8 +165,7 @@ public class CassandraMessageDAO {
 
     public Mono<Void> save(MailboxMessage message) throws MailboxException {
         return saveContent(message)
-            .flatMap(pair -> cassandraAsyncExecutor.executeVoid(boundWriteStatement(message, pair)))
-            .then();
+            .flatMap(pair -> cassandraAsyncExecutor.executeVoid(boundWriteStatement(message, pair)));
     }
 
     private Mono<Tuple2<BlobId, BlobId>> saveContent(MailboxMessage message) throws MailboxException {
@@ -184,8 +173,8 @@ public class CassandraMessageDAO {
             byte[] headerContent = IOUtils.toByteArray(message.getHeaderContent());
             byte[] bodyContent = IOUtils.toByteArray(message.getBodyContent());
 
-            Mono<BlobId> bodyFuture = blobStore.save(blobStore.getDefaultBucketName(), bodyContent, LOW_COST);
-            Mono<BlobId> headerFuture = blobStore.save(blobStore.getDefaultBucketName(), headerContent, SIZE_BASED);
+            Mono<BlobId> bodyFuture = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), bodyContent, LOW_COST));
+            Mono<BlobId> headerFuture = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), headerContent, SIZE_BASED));
 
             return headerFuture.zipWith(bodyFuture);
         } catch (IOException e) {
@@ -214,7 +203,7 @@ public class CassandraMessageDAO {
             .collect(Guavate.toImmutableList());
     }
 
-    private UDTValue toUDT(MessageAttachment messageAttachment) {
+    private UDTValue toUDT(MessageAttachmentMetadata messageAttachment) {
         UDTValue result = typesProvider.getDefinedUserType(ATTACHMENTS)
             .newValue()
             .setString(Attachments.ID, messageAttachment.getAttachmentId().getId())
@@ -236,46 +225,40 @@ public class CassandraMessageDAO {
             .collect(Guavate.toImmutableList());
     }
 
-    public Flux<MessageResult> retrieveMessages(List<ComposedMessageIdWithMetaData> messageIds, FetchType fetchType, Limit limit) {
-        return Flux.fromStream(limit.applyOnStream(messageIds.stream().distinct()))
-            .publishOn(Schedulers.elastic())
-            .flatMap(id -> retrieveRow(id, fetchType)
-                .flatMap(resultSet -> message(resultSet, id, fetchType)), configuration.getMessageReadChunkSize());
+    public Mono<MessageRepresentation> retrieveMessage(ComposedMessageIdWithMetaData id, FetchType fetchType) {
+        CassandraMessageId cassandraMessageId = (CassandraMessageId) id.getComposedMessageId().getMessageId();
+        return retrieveMessage(cassandraMessageId, fetchType);
     }
 
-    private Mono<ResultSet> retrieveRow(ComposedMessageIdWithMetaData messageId, FetchType fetchType) {
-        CassandraMessageId cassandraMessageId = (CassandraMessageId) messageId.getComposedMessageId().getMessageId();
+    public Mono<MessageRepresentation> retrieveMessage(CassandraMessageId cassandraMessageId, FetchType fetchType) {
+        return retrieveRow(cassandraMessageId, fetchType)
+                .flatMap(resultSet -> message(resultSet, cassandraMessageId, fetchType));
+    }
 
+    private Mono<ResultSet> retrieveRow(CassandraMessageId messageId, FetchType fetchType) {
         return cassandraAsyncExecutor.execute(retrieveSelect(fetchType)
             .bind()
-            .setUUID(MESSAGE_ID, cassandraMessageId.get()));
+            .setUUID(MESSAGE_ID, messageId.get())
+            .setConsistencyLevel(QUORUM));
     }
 
-    private Mono<MessageResult>
-    message(ResultSet rows,ComposedMessageIdWithMetaData messageIdWithMetaData, FetchType fetchType) {
-        ComposedMessageId messageId = messageIdWithMetaData.getComposedMessageId();
-
+    private Mono<MessageRepresentation>
+    message(ResultSet rows, CassandraMessageId cassandraMessageId, FetchType fetchType) {
         if (rows.isExhausted()) {
-            return Mono.just(notFound(messageIdWithMetaData));
+            return Mono.empty();
         }
 
         Row row = rows.one();
-        return buildContentRetriever(fetchType, row).map(content -> {
-            MessageWithoutAttachment messageWithoutAttachment =
-                new MessageWithoutAttachment(
-                    messageId.getMessageId(),
-                    row.getTimestamp(INTERNAL_DATE),
-                    row.getLong(FULL_CONTENT_OCTETS),
-                    row.getInt(BODY_START_OCTET),
-                    new SharedByteArrayInputStream(content),
-                    messageIdWithMetaData.getFlags(),
-                    getPropertyBuilder(row),
-                    messageId.getMailboxId(),
-                    messageId.getUid(),
-                    messageIdWithMetaData.getModSeq(),
-                    hasAttachment(row));
-            return found(Pair.of(messageWithoutAttachment, getAttachments(row)));
-        });
+        return buildContentRetriever(fetchType, row).map(content ->
+            new MessageRepresentation(
+                cassandraMessageId,
+                row.getTimestamp(INTERNAL_DATE),
+                row.getLong(FULL_CONTENT_OCTETS),
+                row.getInt(BODY_START_OCTET),
+                new SharedByteArrayInputStream(content),
+                getPropertyBuilder(row),
+                hasAttachment(row),
+                getAttachments(row).collect(Guavate.toImmutableList())));
     }
 
     private PropertyBuilder getPropertyBuilder(Row row) {
@@ -365,99 +348,6 @@ public class CassandraMessageDAO {
     }
 
     private Mono<byte[]> getFieldContent(String field, Row row) {
-        return blobStore.readBytes(blobStore.getDefaultBucketName(), blobIdFactory.from(row.getString(field)));
-    }
-
-    public static MessageResult notFound(ComposedMessageIdWithMetaData id) {
-        return new MessageResult(id, Optional.empty());
-    }
-
-    public static MessageResult found(Pair<MessageWithoutAttachment, Stream<MessageAttachmentRepresentation>> message) {
-        return new MessageResult(message.getLeft().getMetadata(), Optional.of(message));
-    }
-
-    public static class MessageResult {
-        private final ComposedMessageIdWithMetaData metaData;
-        private final Optional<Pair<MessageWithoutAttachment, Stream<MessageAttachmentRepresentation>>> message;
-
-        public MessageResult(ComposedMessageIdWithMetaData metaData, Optional<Pair<MessageWithoutAttachment, Stream<MessageAttachmentRepresentation>>> message) {
-            this.metaData = metaData;
-            this.message = message;
-        }
-
-        public ComposedMessageIdWithMetaData getMetadata() {
-            return metaData;
-        }
-
-        public boolean isFound() {
-            return message.isPresent();
-        }
-
-        public Pair<MessageWithoutAttachment, Stream<MessageAttachmentRepresentation>> message() {
-            return message.get();
-        }
-    }
-
-    public Flux<MessageIdAttachmentIds> retrieveAllMessageIdAttachmentIds() {
-        return cassandraAsyncExecutor.executeRows(
-            selectAllMessagesWithAttachment.bind()
-                .setReadTimeoutMillis(configuration.getMessageAttachmentIdsReadTimeout()))
-            .map(this::fromRow)
-            .filter(MessageIdAttachmentIds::hasAttachment);
-    }
-
-    private MessageIdAttachmentIds fromRow(Row row) {
-        MessageId messageId = messageIdFactory.of(row.getUUID(MESSAGE_ID));
-        Set<AttachmentId> attachmentIds = attachmentByIds(row.getList(ATTACHMENTS, UDTValue.class))
-            .map(MessageAttachmentRepresentation::getAttachmentId)
-            .collect(Guavate.toImmutableSet());
-        return new MessageIdAttachmentIds(messageId, attachmentIds);
-    }
-
-    public static class MessageIdAttachmentIds {
-        private final MessageId messageId;
-        private final Set<AttachmentId> attachmentIds;
-        
-        public MessageIdAttachmentIds(MessageId messageId, Set<AttachmentId> attachmentIds) {
-            Preconditions.checkNotNull(messageId);
-            Preconditions.checkNotNull(attachmentIds);
-            this.messageId = messageId;
-            this.attachmentIds = ImmutableSet.copyOf(attachmentIds);
-        }
-        
-        public MessageId getMessageId() {
-            return messageId;
-        }
-        
-        public Set<AttachmentId> getAttachmentId() {
-            return attachmentIds;
-        }
-
-        public boolean hasAttachment() {
-            return ! attachmentIds.isEmpty();
-        }
-        
-        @Override
-        public final boolean equals(Object o) {
-            if (o instanceof MessageIdAttachmentIds) {
-                MessageIdAttachmentIds other = (MessageIdAttachmentIds) o;
-                return Objects.equals(messageId, other.messageId)
-                    && Objects.equals(attachmentIds, other.attachmentIds);
-            }
-            return false;
-        }
-
-        @Override
-        public final int hashCode() {
-            return Objects.hash(messageId, attachmentIds);
-        }
-
-        @Override
-        public String toString() {
-            return MoreObjects.toStringHelper(this)
-                .add("messageId", messageId)
-                .add("attachmentIds", attachmentIds)
-                .toString();
-        }
+        return Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), blobIdFactory.from(row.getString(field))));
     }
 }

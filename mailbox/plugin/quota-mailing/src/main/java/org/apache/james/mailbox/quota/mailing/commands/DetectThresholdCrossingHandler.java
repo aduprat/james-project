@@ -24,9 +24,11 @@ import java.util.List;
 import org.apache.james.eventsourcing.CommandHandler;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
-import org.apache.james.eventsourcing.eventstore.History;
 import org.apache.james.mailbox.quota.mailing.QuotaMailingListenerConfiguration;
 import org.apache.james.mailbox.quota.mailing.aggregates.UserQuotaThresholds;
+import org.reactivestreams.Publisher;
+
+import reactor.core.publisher.Mono;
 
 public class DetectThresholdCrossingHandler implements CommandHandler<DetectThresholdCrossing> {
 
@@ -41,15 +43,15 @@ public class DetectThresholdCrossingHandler implements CommandHandler<DetectThre
     }
 
     @Override
-    public List<? extends Event> handle(DetectThresholdCrossing command) {
+    public Publisher<List<? extends Event>> handle(DetectThresholdCrossing command) {
         return loadAggregate(command)
-            .detectThresholdCrossing(quotaMailingListenerConfiguration, command);
+            .map(aggregate -> aggregate.detectThresholdCrossing(quotaMailingListenerConfiguration, command));
     }
 
-    private UserQuotaThresholds loadAggregate(DetectThresholdCrossing command) {
+    private Mono<UserQuotaThresholds> loadAggregate(DetectThresholdCrossing command) {
         UserQuotaThresholds.Id aggregateId = UserQuotaThresholds.Id.from(command.getUsername(), listenerName);
-        History history = eventStore.getEventsOfAggregate(aggregateId);
-        return UserQuotaThresholds.fromEvents(aggregateId, history);
+        return Mono.from(eventStore.getEventsOfAggregate(aggregateId))
+            .map(history -> UserQuotaThresholds.fromEvents(aggregateId, history));
     }
 
     @Override

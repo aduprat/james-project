@@ -45,6 +45,8 @@ import org.apache.james.user.api.UsersRepositoryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import reactor.core.publisher.Mono;
+
 /**
  * {@link DeliverToRecipientHook} which deliver the message directly to the recipients mailbox.
  */
@@ -63,7 +65,7 @@ public class MailboxDeliverToRecipientHandler implements DeliverToRecipientHook 
     @Override
     public HookResult deliver(SMTPSession session, MailAddress recipient, MailEnvelope envelope) {
         try {
-            Username username = users.getUser(recipient);
+            Username username = users.getUsername(recipient);
 
             MailboxSession mailboxSession = mailboxManager.createSystemSession(username);
             MailboxPath inbox = MailboxPath.inbox(mailboxSession);
@@ -71,7 +73,7 @@ public class MailboxDeliverToRecipientHandler implements DeliverToRecipientHook 
             mailboxManager.startProcessingRequest(mailboxSession);
 
             // create inbox if not exist
-            if (!mailboxManager.mailboxExists(inbox, mailboxSession)) {
+            if (!Mono.from(mailboxManager.mailboxExists(inbox, mailboxSession)).block()) {
                 Optional<MailboxId> mailboxId = mailboxManager.createMailbox(inbox, mailboxSession);
                 LOGGER.info("Provisioning INBOX. {} created.", mailboxId);
             }

@@ -19,10 +19,11 @@
 
 package org.apache.james.modules;
 
+import static org.apache.james.mailbox.store.MailboxReactorUtils.block;
+
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -41,20 +42,18 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.Wildcard;
 import org.apache.james.mailbox.probe.MailboxProbe;
-import org.apache.james.mailbox.store.mail.MailboxMapper;
-import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
 import org.apache.james.utils.GuiceProbe;
+
+import reactor.core.publisher.Flux;
 
 public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
     private final MailboxManager mailboxManager;
-    private final MailboxMapperFactory mailboxMapperFactory;
     private final SubscriptionManager subscriptionManager;
 
     @Inject
-    private MailboxProbeImpl(MailboxManager mailboxManager, MailboxMapperFactory mailboxMapperFactory,
+    private MailboxProbeImpl(MailboxManager mailboxManager,
                              SubscriptionManager subscriptionManager) {
         this.mailboxManager = mailboxManager;
-        this.mailboxMapperFactory = mailboxMapperFactory;
         this.subscriptionManager = subscriptionManager;
     }
 
@@ -83,8 +82,9 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
         MailboxSession mailboxSession = null;
         try {
             mailboxSession = mailboxManager.createSystemSession(username);
-            MailboxMapper mailboxMapper = mailboxMapperFactory.getMailboxMapper(mailboxSession);
-            return mailboxMapper.findMailboxByPath(new MailboxPath(namespace, username, name)).getMailboxId();
+            MailboxPath path = new MailboxPath(namespace, username, name);
+            return mailboxManager.getMailbox(path, mailboxSession)
+                .getId();
         } catch (MailboxException e) {
             throw new RuntimeException(e);
         } finally {
@@ -105,11 +105,10 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
         try {
             mailboxSession = mailboxManager.createSystemSession(Username.of(user));
             mailboxManager.startProcessingRequest(mailboxSession);
-            return searchUserMailboxes(mailboxSession)
-                    .stream()
+            return block(searchUserMailboxes(mailboxSession)
                     .map(MailboxMetaData::getPath)
                     .map(MailboxPath::getName)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()));
         } catch (MailboxException e) {
             throw new RuntimeException(e);
         } finally {
@@ -117,14 +116,13 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
         }
     }
 
-    private List<MailboxMetaData> searchUserMailboxes(MailboxSession session) throws MailboxException {
+    private Flux<MailboxMetaData> searchUserMailboxes(MailboxSession session) {
         return mailboxManager.search(
             MailboxQuery.privateMailboxesBuilder(session)
                 .expression(Wildcard.INSTANCE)
                 .build(),
             session);
     }
-
 
     @Override
     public void deleteMailbox(String namespace, String user, String name) {
@@ -147,7 +145,7 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
 
         MailboxSession mailboxSession = mailboxManager.createSystemSession(Username.of(username));
         MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
-        return messageManager.appendMessage(message, internalDate, mailboxSession, isRecent, flags);
+        return messageManager.appendMessage(message, internalDate, mailboxSession, isRecent, flags).getId();
     }
 
     public ComposedMessageId appendMessage(String username, MailboxPath mailboxPath, MessageManager.AppendCommand appendCommand)
@@ -155,7 +153,7 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
 
         MailboxSession mailboxSession = mailboxManager.createSystemSession(Username.of(username));
         MessageManager messageManager = mailboxManager.getMailbox(mailboxPath, mailboxSession);
-        return messageManager.appendMessage(appendCommand, mailboxSession);
+        return messageManager.appendMessage(appendCommand, mailboxSession).getId();
     }
 
     @Override
@@ -163,5 +161,4 @@ public class MailboxProbeImpl implements GuiceProbe, MailboxProbe {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(Username.of(user));
         return subscriptionManager.subscriptions(mailboxSession);
     }
-
 }

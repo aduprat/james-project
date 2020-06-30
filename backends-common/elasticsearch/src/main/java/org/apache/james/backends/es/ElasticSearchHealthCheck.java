@@ -30,24 +30,20 @@ import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import reactor.core.publisher.Mono;
 
 public class ElasticSearchHealthCheck implements HealthCheck {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ElasticSearchHealthCheck.class);
     private static final ComponentName COMPONENT_NAME = new ComponentName("ElasticSearch Backend");
 
     private final Set<IndexName> indexNames;
-    private final RestHighLevelClient client;
+    private final ReactorElasticSearchClient client;
 
     @Inject
-    ElasticSearchHealthCheck(RestHighLevelClient client, Set<IndexName> indexNames) {
+    ElasticSearchHealthCheck(ReactorElasticSearchClient client, Set<IndexName> indexNames) {
         this.client = client;
         this.indexNames = indexNames;
     }
@@ -58,21 +54,16 @@ public class ElasticSearchHealthCheck implements HealthCheck {
     }
 
     @Override
-    public Result check() {
+    public Mono<Result> check() {
         String[] indices = indexNames.stream()
             .map(IndexName::getValue)
             .toArray(String[]::new);
         ClusterHealthRequest request = Requests.clusterHealthRequest(indices);
 
-        try {
-            ClusterHealthResponse response = client.cluster()
-                .health(request, RequestOptions.DEFAULT);
-
-            return toHealthCheckResult(response);
-        } catch (IOException e) {
-            LOGGER.error("Error while contacting cluster", e);
-            return Result.unhealthy(COMPONENT_NAME, "Error while contacting cluster. Check James server logs.");
-        }
+        return client.health(request)
+            .map(this::toHealthCheckResult)
+            .onErrorResume(IOException.class, e -> Mono.just(
+                Result.unhealthy(COMPONENT_NAME, "Error while contacting cluster", e)));
     }
 
     @VisibleForTesting

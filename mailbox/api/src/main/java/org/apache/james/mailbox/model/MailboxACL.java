@@ -180,12 +180,16 @@ public class MailboxACL {
             return new Rfc4314Rights(serialized);
         }
 
+        public static Rfc4314Rights of(Collection<Right> rights) {
+            return new Rfc4314Rights(rights);
+        }
+
         private static final char c_ObsoleteCreate = 'c';
         private static final char d_ObsoleteDelete = 'd';
 
         private final EnumSet<Right> value;
 
-        private Rfc4314Rights(Collection<Right> rights) {
+        public Rfc4314Rights(Collection<Right> rights) {
             this.value = copyOf(rights);
         }
 
@@ -237,10 +241,16 @@ public class MailboxACL {
             return value.containsAll(Arrays.asList(rights));
         }
 
-        public boolean equals(Object o) {
+        @Override
+        public final int hashCode() {
+            return Objects.hash(value);
+        }
+
+        @Override
+        public final boolean equals(Object o) {
             if (o instanceof Rfc4314Rights) {
                 Rfc4314Rights that = (Rfc4314Rights) o;
-                return this.value.equals(that.value);
+                return Objects.equals(this.value, that.value);
             }
             return false;
         }
@@ -713,7 +723,7 @@ public class MailboxACL {
         this(toMap(props));
     }
 
-    public boolean equals(Object o) {
+    public final boolean equals(Object o) {
         if (o instanceof MailboxACL) {
             MailboxACL acl = (MailboxACL) o;
             return Objects.equals(this.getEntries(), acl.getEntries());
@@ -721,7 +731,7 @@ public class MailboxACL {
         return false;
     }
 
-    public int hashCode() {
+    public final int hashCode() {
         return Objects.hash(entries);
     }
 

@@ -28,6 +28,7 @@ import static org.elasticsearch.index.query.QueryBuilders.nestedQuery;
 import static org.elasticsearch.index.query.QueryBuilders.rangeQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
@@ -186,13 +187,13 @@ public class CriterionConverter {
         return boolQuery().filter(
             convertDateOperator(field,
                 dateOperator.getType(),
-                DateResolutionFormater.DATE_TIME_FOMATTER.format(
-                    DateResolutionFormater.computeLowerDate(
-                        DateResolutionFormater.convertDateToZonedDateTime(dateOperator.getDate()),
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+                    DateResolutionFormatter.computeLowerDate(
+                        DateResolutionFormatter.convertDateToZonedDateTime(dateOperator.getDate()),
                         dateOperator.getDateResultion())),
-                DateResolutionFormater.DATE_TIME_FOMATTER.format(
-                    DateResolutionFormater.computeUpperDate(
-                        DateResolutionFormater.convertDateToZonedDateTime(dateOperator.getDate()),
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+                    DateResolutionFormatter.computeUpperDate(
+                        DateResolutionFormatter.convertDateToZonedDateTime(dateOperator.getDate()),
                         dateOperator.getDateResultion()))));
     }
 
@@ -214,6 +215,7 @@ public class CriterionConverter {
         }
     }
 
+    @SuppressWarnings("ReturnValueIgnored")
     private BoolQueryBuilder convertToBoolQuery(Stream<QueryBuilder> stream, BiFunction<BoolQueryBuilder, QueryBuilder, BoolQueryBuilder> addCriterionToBoolQuery) {
         return stream.collect(Collector.of(QueryBuilders::boolQuery,
                 addCriterionToBoolQuery::apply,

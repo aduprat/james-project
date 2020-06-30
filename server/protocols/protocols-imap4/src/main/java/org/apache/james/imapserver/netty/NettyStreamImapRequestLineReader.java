@@ -18,16 +18,18 @@
  ****************************************************************/
 package org.apache.james.imapserver.netty;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 
 import org.apache.james.imap.api.display.HumanReadableText;
 import org.apache.james.imap.decode.DecodingException;
 import org.apache.james.imap.utils.EolInputStream;
-import org.apache.james.imap.utils.FixedLengthInputStream;
 import org.jboss.netty.channel.Channel;
 
-public class NettyStreamImapRequestLineReader extends AbstractNettyImapRequestLineReader {
+import com.google.common.io.ByteStreams;
+
+public class NettyStreamImapRequestLineReader extends AbstractNettyImapRequestLineReader implements Closeable {
 
     private final InputStream in;
 
@@ -86,16 +88,17 @@ public class NettyStreamImapRequestLineReader extends AbstractNettyImapRequestLi
         // Unset the next char.
         nextSeen = false;
         nextChar = 0;
-        FixedLengthInputStream fin = new FixedLengthInputStream(this.in, size);
+        InputStream limited = ByteStreams.limit(this.in, size);
         if (extraCRLF) {
-            return new EolInputStream(this, fin);
+            return new EolInputStream(this, limited);
         } else {
-            return fin;
+            return limited;
         }
         
     }
 
-    public void dispose() throws IOException {
+    @Override
+    public void close() throws IOException {
         in.close();
     }
 

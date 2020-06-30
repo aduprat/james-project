@@ -92,13 +92,13 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
         Preconditions.checkNotNull(mimeMessage);
         BucketName bucketName = nameGenerator.currentBucket();
 
-        return metricFactory.runPublishingTimerMetric(
+        return metricFactory.decoratePublisherWithTimerMetric(
             APPEND_METRIC_NAME,
             appendMessage(deletedMessage, mimeMessage, bucketName));
     }
 
     private Mono<Void> appendMessage(DeletedMessage deletedMessage, InputStream mimeMessage, BucketName bucketName) {
-        return blobStore.save(bucketName, mimeMessage, LOW_COST)
+        return Mono.from(blobStore.save(bucketName, mimeMessage, LOW_COST))
             .map(blobId -> StorageInformation.builder()
                 .bucketName(bucketName)
                 .blobId(blobId))
@@ -112,7 +112,7 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
         Preconditions.checkNotNull(username);
         Preconditions.checkNotNull(messageId);
 
-        return metricFactory.runPublishingTimerMetric(
+        return metricFactory.decoratePublisherWithTimerMetric(
             LOAD_MIME_MESSAGE_METRIC_NAME,
             Mono.from(messageMetadataVault.retrieveStorageInformation(username, messageId))
                 .flatMap(storageInformation -> loadMimeMessage(storageInformation, username, messageId)));
@@ -130,7 +130,7 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
         Preconditions.checkNotNull(username);
         Preconditions.checkNotNull(query);
 
-        return metricFactory.runPublishingTimerMetric(
+        return metricFactory.decoratePublisherWithTimerMetric(
             SEARCH_METRIC_NAME,
             searchOn(username, query));
     }
@@ -147,7 +147,7 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
         Preconditions.checkNotNull(username);
         Preconditions.checkNotNull(messageId);
 
-        return metricFactory.runPublishingTimerMetric(
+        return metricFactory.decoratePublisherWithTimerMetric(
             DELETE_METRIC_NAME,
             deleteMessage(username, messageId));
     }
@@ -156,7 +156,7 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
         return Mono.from(messageMetadataVault.retrieveStorageInformation(username, messageId))
             .flatMap(storageInformation -> Mono.from(messageMetadataVault.remove(storageInformation.getBucketName(), username, messageId))
                 .thenReturn(storageInformation))
-            .flatMap(storageInformation -> blobStore.delete(storageInformation.getBucketName(), storageInformation.getBlobId()))
+            .flatMap(storageInformation -> Mono.from(blobStore.delete(storageInformation.getBucketName(), storageInformation.getBlobId())))
             .subscribeOn(Schedulers.elastic());
     }
 
@@ -167,10 +167,11 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
 
 
     Flux<BucketName> deleteExpiredMessages(ZonedDateTime beginningOfRetentionPeriod) {
-        return metricFactory.runPublishingTimerMetric(
-            DELETE_EXPIRED_MESSAGES_METRIC_NAME,
-            retentionQualifiedBuckets(beginningOfRetentionPeriod)
-                .flatMap(bucketName -> deleteBucketData(bucketName).then(Mono.just(bucketName))));
+        return Flux.from(
+            metricFactory.decoratePublisherWithTimerMetric(
+                DELETE_EXPIRED_MESSAGES_METRIC_NAME,
+                retentionQualifiedBuckets(beginningOfRetentionPeriod)
+                    .flatMap(bucketName -> deleteBucketData(bucketName).then(Mono.just(bucketName)))));
 
     }
 
@@ -196,7 +197,7 @@ public class BlobStoreDeletedMessageVault implements DeletedMessageVault {
     }
 
     private Mono<Void> deleteBucketData(BucketName bucketName) {
-        return blobStore.deleteBucket(bucketName)
+        return Mono.from(blobStore.deleteBucket(bucketName))
             .then(Mono.from(messageMetadataVault.removeMetadataRelatedToBucket(bucketName)));
     }
 }

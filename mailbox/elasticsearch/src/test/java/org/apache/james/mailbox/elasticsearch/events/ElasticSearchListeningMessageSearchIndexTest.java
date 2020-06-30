@@ -33,7 +33,9 @@ import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.james.backends.es.DockerElasticSearchExtension;
 import org.apache.james.backends.es.ElasticSearchIndexer;
+import org.apache.james.backends.es.ReactorElasticSearchClient;
 import org.apache.james.core.Username;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
@@ -54,16 +56,18 @@ import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.manager.ManagerTestProvisionner;
-import org.apache.james.mailbox.model.Attachment;
+import org.apache.james.mailbox.model.AttachmentId;
+import org.apache.james.mailbox.model.AttachmentMetadata;
+import org.apache.james.mailbox.model.ContentType;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.TestId;
 import org.apache.james.mailbox.model.TestMessageId;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mailbox.model.UpdatedFlags;
-import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mailbox.store.FakeAuthenticator;
 import org.apache.james.mailbox.store.FakeAuthorizator;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
@@ -71,9 +75,12 @@ import org.apache.james.mailbox.store.SessionProviderImpl;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
+import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
+import org.apache.james.mailbox.store.search.ListeningMessageSearchIndexContract;
 import org.awaitility.Duration;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
@@ -89,9 +96,11 @@ class ElasticSearchListeningMessageSearchIndexTest {
     static final MessageUid MESSAGE_UID_1 = MessageUid.of(25);
     static final MessageUid MESSAGE_UID_2 = MessageUid.of(26);
     static final MessageUid MESSAGE_UID_3 = MessageUid.of(27);
+    static final MessageUid MESSAGE_UID_4 = MessageUid.of(28);
     static final MessageId MESSAGE_ID_1 = TestMessageId.of(18L);
     static final MessageId MESSAGE_ID_2 = TestMessageId.of(19L);
     static final MessageId MESSAGE_ID_3 = TestMessageId.of(20L);
+    static final MessageId MESSAGE_ID_4 = TestMessageId.of(21L);
 
     static final SimpleMailboxMessage.Builder MESSAGE_BUILDER = SimpleMailboxMessage.builder()
         .mailboxId(MAILBOX_ID)
@@ -111,10 +120,11 @@ class ElasticSearchListeningMessageSearchIndexTest {
         .uid(MESSAGE_UID_2)
         .build();
 
-    static final MessageAttachment MESSAGE_ATTACHMENT = MessageAttachment.builder()
-        .attachment(Attachment.builder()
-            .bytes("".getBytes(StandardCharsets.UTF_8))
+    static final MessageAttachmentMetadata MESSAGE_ATTACHMENT = MessageAttachmentMetadata.builder()
+        .attachment(AttachmentMetadata.builder()
+            .attachmentId(AttachmentId.from("1"))
             .type("type")
+            .size(523)
             .build())
         .name("name")
         .isInline(false)
@@ -127,7 +137,7 @@ class ElasticSearchListeningMessageSearchIndexTest {
 
     static class FailingTextExtractor implements TextExtractor {
         @Override
-        public ParsedContent extractContent(InputStream inputStream, String contentType) {
+        public ParsedContent extractContent(InputStream inputStream, ContentType contentType) {
             throw new RuntimeException();
         }
     }
@@ -154,7 +164,7 @@ class ElasticSearchListeningMessageSearchIndexTest {
 
         InMemoryMessageId.Factory messageIdFactory = new InMemoryMessageId.Factory();
 
-        RestHighLevelClient client = MailboxIndexCreationUtil.prepareDefaultClient(
+        ReactorElasticSearchClient client = MailboxIndexCreationUtil.prepareDefaultClient(
             elasticSearch.getDockerElasticSearch().clientProvider().get(),
             elasticSearch.getDockerElasticSearch().configuration());
 
@@ -177,7 +187,7 @@ class ElasticSearchListeningMessageSearchIndexTest {
             messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory());
         session = sessionProvider.createSystemSession(USERNAME);
 
-        mailbox = mapperFactory.getMailboxMapper(session).create(MailboxPath.forUser(USERNAME, DefaultMailboxes.INBOX), MAILBOX_ID.id);
+        mailbox = mapperFactory.getMailboxMapper(session).create(MailboxPath.forUser(USERNAME, DefaultMailboxes.INBOX), UidValidity.generate()).block();
     }
 
     @Test
@@ -188,10 +198,10 @@ class ElasticSearchListeningMessageSearchIndexTest {
     
     @Test
     void addShouldIndexMessageWithoutAttachment() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_1.getUid());
     }
@@ -199,34 +209,34 @@ class ElasticSearchListeningMessageSearchIndexTest {
 
     @Test
     void addShouldIndexMessageWithAttachment() throws Exception {
-        testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT);
+        testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_WITH_ATTACHMENT.getUid());
     }
 
     @Test
     void addShouldBeIndempotent() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
+        testee.add(session, mailbox, MESSAGE_1).block();
 
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_1.getUid());
     }
 
     @Test
     void addShouldIndexMultipleMessages() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
-        testee.add(session, mailbox, MESSAGE_2);
+        testee.add(session, mailbox, MESSAGE_1).block();
+        testee.add(session, mailbox, MESSAGE_2).block();
 
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_1.getUid(), MESSAGE_2.getUid());
     }
@@ -241,10 +251,10 @@ class ElasticSearchListeningMessageSearchIndexTest {
         testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
             messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory());
 
-        testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT);
+        testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_WITH_ATTACHMENT.getUid());
     }
@@ -254,72 +264,72 @@ class ElasticSearchListeningMessageSearchIndexTest {
         elasticSearch.getDockerElasticSearch().pause();
         Thread.sleep(Duration.FIVE_SECONDS.getValueInMS()); // Docker pause is asynchronous and we found no way to poll for it
 
-        assertThatThrownBy(() -> testee.add(session, mailbox, MESSAGE_1))
-            .isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> testee.add(session, mailbox, MESSAGE_1).block())
+            .hasCauseInstanceOf(IOException.class);
 
         elasticSearch.getDockerElasticSearch().unpause();
     }
 
     @Test
     void deleteShouldRemoveIndex() throws IOException {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
-        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1));
+        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .isEmpty();
     }
 
     @Test
     void deleteShouldOnlyRemoveIndexesPassedAsArguments() throws IOException {
-        testee.add(session, mailbox, MESSAGE_1);
-        testee.add(session, mailbox, MESSAGE_2);
+        testee.add(session, mailbox, MESSAGE_1).block();
+        testee.add(session, mailbox, MESSAGE_2).block();
 
         elasticSearch.awaitForElasticSearch();
 
-        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1));
+        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_2.getUid());
     }
 
     @Test
     void deleteShouldRemoveMultipleIndexes() throws IOException {
-        testee.add(session, mailbox, MESSAGE_1);
-        testee.add(session, mailbox, MESSAGE_2);
+        testee.add(session, mailbox, MESSAGE_1).block();
+        testee.add(session, mailbox, MESSAGE_2).block();
 
         elasticSearch.awaitForElasticSearch();
 
-        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1, MESSAGE_UID_2));
+        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1, MESSAGE_UID_2)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .isEmpty();
     }
 
     @Test
     void deleteShouldBeIdempotent() throws IOException {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
-        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1));
-        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1));
+        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block();
+        testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .isEmpty();
     }
 
     @Test
     void deleteShouldNotThrowOnUnknownMessageUid() {
-        assertThatCode(() -> testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)))
+        assertThatCode(() -> testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block())
             .doesNotThrowAnyException();
     }
 
@@ -328,15 +338,15 @@ class ElasticSearchListeningMessageSearchIndexTest {
         elasticSearch.getDockerElasticSearch().pause();
         Thread.sleep(Duration.FIVE_SECONDS.getValueInMS()); // Docker pause is asynchronous and we found no way to poll for it
 
-        assertThatThrownBy(() -> testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)))
-            .isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> testee.delete(session, mailbox, Lists.newArrayList(MESSAGE_UID_1)).block())
+            .hasCauseInstanceOf(IOException.class);
 
         elasticSearch.getDockerElasticSearch().unpause();
     }
 
     @Test
     void updateShouldUpdateIndex() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
         Flags newFlags = new Flags(Flags.Flag.ANSWERED);
@@ -347,17 +357,17 @@ class ElasticSearchListeningMessageSearchIndexTest {
             .newFlags(newFlags)
             .build();
 
-        testee.update(session, mailbox, Lists.newArrayList(updatedFlags));
+        testee.update(session, mailbox, Lists.newArrayList(updatedFlags)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
+        SearchQuery query = SearchQuery.of(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_1.getUid());
     }
 
     @Test
     void updateShouldNotUpdateNorThrowOnUnknownMessageUid() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
         Flags newFlags = new Flags(Flags.Flag.ANSWERED);
@@ -368,17 +378,17 @@ class ElasticSearchListeningMessageSearchIndexTest {
             .newFlags(newFlags)
             .build();
 
-        testee.update(session, mailbox, Lists.newArrayList(updatedFlags));
+        testee.update(session, mailbox, Lists.newArrayList(updatedFlags)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
+        SearchQuery query = SearchQuery.of(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
         assertThat(testee.search(session, mailbox, query))
             .isEmpty();
     }
 
     @Test
     void updateShouldBeIdempotent() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
+        testee.add(session, mailbox, MESSAGE_1).block();
         elasticSearch.awaitForElasticSearch();
 
         Flags newFlags = new Flags(Flags.Flag.ANSWERED);
@@ -389,11 +399,11 @@ class ElasticSearchListeningMessageSearchIndexTest {
             .newFlags(newFlags)
             .build();
 
-        testee.update(session, mailbox, Lists.newArrayList(updatedFlags));
-        testee.update(session, mailbox, Lists.newArrayList(updatedFlags));
+        testee.update(session, mailbox, Lists.newArrayList(updatedFlags)).block();
+        testee.update(session, mailbox, Lists.newArrayList(updatedFlags)).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
+        SearchQuery query = SearchQuery.of(SearchQuery.flagIsSet(Flags.Flag.ANSWERED));
         assertThat(testee.search(session, mailbox, query))
             .containsExactly(MESSAGE_1.getUid());
     }
@@ -411,31 +421,54 @@ class ElasticSearchListeningMessageSearchIndexTest {
             .newFlags(newFlags)
             .build();
 
-        assertThatThrownBy(() -> testee.update(session, mailbox, Lists.newArrayList(updatedFlags)))
-            .isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> testee.update(session, mailbox, Lists.newArrayList(updatedFlags)).block())
+            .hasCauseInstanceOf(IOException.class);
 
         elasticSearch.getDockerElasticSearch().unpause();
     }
 
     @Test
     void deleteAllShouldRemoveAllIndexes() throws Exception {
-        testee.add(session, mailbox, MESSAGE_1);
-        testee.add(session, mailbox, MESSAGE_2);
+        testee.add(session, mailbox, MESSAGE_1).block();
+        testee.add(session, mailbox, MESSAGE_2).block();
 
         elasticSearch.awaitForElasticSearch();
 
-        testee.deleteAll(session, mailbox.getMailboxId());
+        testee.deleteAll(session, mailbox.getMailboxId()).block();
         elasticSearch.awaitForElasticSearch();
 
-        SearchQuery query = new SearchQuery(SearchQuery.all());
+        SearchQuery query = SearchQuery.of(SearchQuery.all());
         assertThat(testee.search(session, mailbox, query))
             .isEmpty();
     }
 
     @Test
     void deleteAllShouldNotThrowWhenEmptyIndex() {
-        assertThatCode(() -> testee.deleteAll(session, mailbox.getMailboxId()))
+        assertThatCode(() -> testee.deleteAll(session, mailbox.getMailboxId()).block())
             .doesNotThrowAnyException();
     }
 
+    @Nested
+    class RetrieveIndexedFlags implements ListeningMessageSearchIndexContract {
+        @Override
+        public ListeningMessageSearchIndex testee() {
+            return testee;
+        }
+
+        @Override
+        public MailboxSession session() {
+            return session;
+        }
+
+        @Override
+        public Mailbox mailbox() {
+            return mailbox;
+        }
+
+        @Test
+        void retrieveIndexedFlagsShouldPropagateExceptionWhenNotFound() {
+            assertThatThrownBy(() -> testee.retrieveIndexedFlags(mailbox, MESSAGE_UID_4).block())
+                .isInstanceOf(IndexNotFoundException.class);
+        }
+    }
 }

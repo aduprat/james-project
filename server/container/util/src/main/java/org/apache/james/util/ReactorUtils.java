@@ -18,23 +18,89 @@
  ****************************************************************/
 package org.apache.james.util;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import org.reactivestreams.Publisher;
+
+import com.google.common.base.Preconditions;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
+import reactor.core.publisher.SynchronousSink;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 public class ReactorUtils {
+
+    public static final String MDC_KEY_PREFIX = "MDC-";
+
+    private static final Duration DELAY = Duration.ZERO;
+
+    public static <T, U> RequiresQuantity<T, U> throttle() {
+        return elements -> duration -> operation -> {
+            Preconditions.checkArgument(elements > 0, "'windowMaxSize' must be strictly positive");
+            Preconditions.checkArgument(!duration.isNegative(), "'windowDuration' must be strictly positive");
+            Preconditions.checkArgument(!duration.isZero(), "'windowDuration' must be strictly positive");
+
+            return flux -> flux
+                .windowTimeout(elements, duration)
+                .zipWith(Flux.interval(DELAY, duration))
+                .flatMap(Tuple2::getT1, elements, elements)
+                .flatMap(operation, elements);
+        };
+    }
+
+    @FunctionalInterface
+    public interface RequiresQuantity<T, U> {
+        RequiresPeriod<T, U> elements(int maxSize);
+    }
+
+    @FunctionalInterface
+    public interface RequiresPeriod<T, U> {
+        RequiresOperation<T, U> per(Duration duration);
+    }
+
+    @FunctionalInterface
+    public interface RequiresOperation<T, U> {
+        Function<Flux<T>, Flux<U>> forOperation(Function<T, Publisher<U>> operation);
+    }
+
     public static <T> Mono<T> executeAndEmpty(Runnable runnable) {
         return Mono.fromRunnable(runnable).then(Mono.empty());
     }
 
+    public static <T> BiConsumer<Optional<T>, SynchronousSink<T>> publishIfPresent() {
+        return (element, sink) -> element.ifPresent(sink::next);
+    }
 
     public static InputStream toInputStream(Flux<ByteBuffer> byteArrays) {
         return new StreamInputStream(byteArrays.toIterable(1).iterator());
+    }
+
+    public static Flux<ByteBuffer> toChunks(InputStream inputStream, int bufferSize) {
+        return Flux.<ByteBuffer>generate(sink -> {
+                try {
+                    byte[] buffer = new byte[bufferSize];
+                    int read = inputStream.read(buffer);
+                    if (read >= 0) {
+                        sink.next(ByteBuffer.wrap(buffer, 0, read));
+                    } else {
+                        sink.complete();
+                    }
+                } catch (IOException e) {
+                    sink.error(e);
+                }
+            }).defaultIfEmpty(ByteBuffer.wrap(new byte[0]));
     }
 
     private static class StreamInputStream extends InputStream {
@@ -84,4 +150,47 @@ public class ReactorUtils {
     private static int byteToInt(ByteBuffer buffer) {
         return buffer.get() & 0xff;
     }
+
+    public static Consumer<Signal<?>> logOnError(Consumer<Throwable> errorLogStatement) {
+        return signal -> {
+            if (!signal.isOnError()) {
+                return;
+            }
+            try {
+                try (Closeable mdc = retrieveMDCBuilder(signal).build()) {
+                    errorLogStatement.accept(signal.getThrowable());
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
+    public static Consumer<Signal<?>> log(Runnable logStatement) {
+        return signal -> {
+            try (Closeable mdc = retrieveMDCBuilder(signal).build()) {
+                logStatement.run();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
+    public static Context context(String keySuffix, MDCBuilder mdcBuilder) {
+        return Context.of(mdcKey(keySuffix), mdcBuilder);
+    }
+
+    private static String mdcKey(String value) {
+        return MDC_KEY_PREFIX + value;
+    }
+
+    private static MDCBuilder retrieveMDCBuilder(Signal<?> signal) {
+        return signal.getContext().stream()
+            .filter(entry -> entry.getKey() instanceof String)
+            .filter(entry -> entry.getValue() instanceof MDCBuilder)
+            .filter(entry -> ((String) entry.getKey()).startsWith(MDC_KEY_PREFIX))
+            .map(entry -> (MDCBuilder) entry.getValue())
+            .reduce(MDCBuilder.create(), MDCBuilder::addContext);
+    }
+
 }

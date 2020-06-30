@@ -29,6 +29,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.ImapConstants;
 import org.apache.james.imap.api.message.response.ImapResponseMessage;
@@ -42,7 +44,7 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MessageManager.MetaData;
+import org.apache.james.mailbox.MessageManager.MailboxMetaData;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.MailboxACL;
@@ -65,11 +67,11 @@ public class ListRightsProcessorTest {
     private FakeImapSession imapSession;
     private MailboxManager mailboxManager;
     private MailboxSession mailboxSession;
-    private MetaData metaData;
+    private MailboxMetaData metaData;
     private ListRightsRequest listRightsRequest;
     private ListRightsProcessor subject;
     private EntryKey user1Key;
-    private Rfc4314Rights[] listRights;
+    private List<Rfc4314Rights> listRights;
     private MailboxPath path;
     private Responder responder;
     private ArgumentCaptor<ImapResponseMessage> argumentCaptor;
@@ -83,14 +85,14 @@ public class ListRightsProcessorTest {
         imapSession = new FakeImapSession();
         mailboxSession = MailboxSessionUtil.create(USER_1);
         MessageManager messageManager = mock(MessageManager.class);
-        metaData = mock(MetaData.class);
+        metaData = mock(MailboxMetaData.class);
         responder = mock(Responder.class);
 
         argumentCaptor = ArgumentCaptor.forClass(ImapResponseMessage.class);
 
         imapSession.authenticated();
         imapSession.setMailboxSession(mailboxSession);
-        when(messageManager.getMetaData(anyBoolean(), any(MailboxSession.class), any(MetaData.FetchGroup.class)))
+        when(messageManager.getMetaData(anyBoolean(), any(MailboxSession.class), any(MailboxMetaData.FetchGroup.class)))
             .thenReturn(metaData);
         when(mailboxManager.getMailbox(any(MailboxPath.class), any(MailboxSession.class)))
             .thenReturn(messageManager);
@@ -98,7 +100,10 @@ public class ListRightsProcessorTest {
         listRightsRequest = new ListRightsRequest(TAG, MAILBOX_NAME, USER_1.asString());
 
         user1Key = EntryKey.deserialize(USER_1.asString());
-        listRights = new Rfc4314Rights[] {Rfc4314Rights.fromSerializedRfc4314Rights("ae"), Rfc4314Rights.fromSerializedRfc4314Rights("i"), Rfc4314Rights.fromSerializedRfc4314Rights("k")};
+        listRights = List.of(
+            Rfc4314Rights.fromSerializedRfc4314Rights("ae"),
+            Rfc4314Rights.fromSerializedRfc4314Rights("i"),
+            Rfc4314Rights.fromSerializedRfc4314Rights("k"));
     }
     
     @Test

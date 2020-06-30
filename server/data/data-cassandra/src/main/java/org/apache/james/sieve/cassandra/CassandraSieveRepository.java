@@ -101,7 +101,7 @@ public class CassandraSieveRepository implements SieveRepository {
     private Mono<Long> spaceThatWillBeUsedByNewScript(Username username, ScriptName name, long scriptSize) {
         return cassandraSieveDAO.getScript(username, name)
             .map(Script::getSize)
-            .switchIfEmpty(Mono.just(0L))
+            .defaultIfEmpty(0L)
             .map(sizeOfStoredScript -> scriptSize - sizeOfStoredScript);
     }
 
@@ -178,7 +178,8 @@ public class CassandraSieveRepository implements SieveRepository {
 
     private Mono<Void> unactivateOldScript(Username username) {
         return cassandraActiveScriptDAO.getActiveSctiptInfo(username)
-            .flatMap(activeScriptInfo -> updateScriptActivation(username, activeScriptInfo.getName(), false).then());
+            .flatMap(activeScriptInfo -> updateScriptActivation(username, activeScriptInfo.getName(), false))
+            .then();
     }
 
     private Mono<Boolean> updateScriptActivation(Username username, ScriptName scriptName, boolean active) {
@@ -199,7 +200,7 @@ public class CassandraSieveRepository implements SieveRepository {
     @Override
     public void deleteScript(Username username, ScriptName name) throws ScriptNotFoundException, IsActiveException {
         ensureIsNotActive(username, name);
-        if (!cassandraSieveDAO.deleteScriptInCassandra(username, name).switchIfEmpty(Mono.just(false)).block()) {
+        if (!cassandraSieveDAO.deleteScriptInCassandra(username, name).defaultIfEmpty(false).block()) {
             throw new ScriptNotFoundException();
         }
     }

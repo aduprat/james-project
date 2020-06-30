@@ -18,26 +18,34 @@
  ****************************************************************/
 package org.apache.james.mailbox.store.mail;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.exception.AttachmentNotFoundException;
 import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.Attachment;
 import org.apache.james.mailbox.model.AttachmentId;
+import org.apache.james.mailbox.model.AttachmentMetadata;
+import org.apache.james.mailbox.model.ContentType;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.store.transaction.Mapper;
+import org.reactivestreams.Publisher;
 
 public interface AttachmentMapper extends Mapper {
 
-    Attachment getAttachment(AttachmentId attachmentId) throws AttachmentNotFoundException;
+    InputStream loadAttachmentContent(AttachmentId attachmentId) throws AttachmentNotFoundException, IOException;
 
-    List<Attachment> getAttachments(Collection<AttachmentId> attachmentIds);
+    AttachmentMetadata getAttachment(AttachmentId attachmentId) throws AttachmentNotFoundException;
 
-    void storeAttachmentForOwner(Attachment attachment, Username owner) throws MailboxException;
+    List<AttachmentMetadata> getAttachments(Collection<AttachmentId> attachmentIds);
 
-    void storeAttachmentsForMessage(Collection<Attachment> attachments, MessageId ownerMessageId) throws MailboxException;
+    Publisher<AttachmentMetadata> storeAttachmentForOwner(ContentType contentType, InputStream attachmentContent, Username owner);
+
+    List<MessageAttachmentMetadata> storeAttachmentsForMessage(Collection<ParsedAttachment> attachments, MessageId ownerMessageId) throws MailboxException;
 
     Collection<MessageId> getRelatedMessageIds(AttachmentId attachmentId) throws MailboxException;
 

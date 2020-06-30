@@ -44,7 +44,6 @@ import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
-import org.apache.james.util.OptionalUtils;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
@@ -110,8 +109,9 @@ public class MailboxFactory {
                 MailboxPath mailboxPath = mailboxMetaData.map(MailboxMetaData::getPath)
                     .orElseGet(Throwing.supplier(() -> retrieveCachedMailbox(mailboxId, mailbox).getMailboxPath()).sneakyThrow());
 
-                MailboxCounters mailboxCounters = mailboxMetaData.map(MailboxMetaData::getCounters)
-                    .orElseGet(Throwing.supplier(() -> retrieveCachedMailbox(mailboxId, mailbox).getMailboxCounters(session)).sneakyThrow());
+                MailboxCounters.Sanitized mailboxCounters = mailboxMetaData.map(MailboxMetaData::getCounters)
+                    .orElseGet(Throwing.supplier(() -> retrieveCachedMailbox(mailboxId, mailbox).getMailboxCounters(session)).sneakyThrow())
+                    .sanitize();
 
                 return Optional.of(mailboxFactory.from(
                     mailboxId,
@@ -131,9 +131,8 @@ public class MailboxFactory {
         private MailboxId computeMailboxId() {
             int idCount = Booleans.countTrue(id.isPresent(), mailboxMetaData.isPresent());
             Preconditions.checkState(idCount == 1, "You need exactly one 'id' 'mailboxMetaData'");
-            return OptionalUtils.or(
-                id,
-                mailboxMetaData.map(MailboxMetaData::getId))
+            return id.or(
+                () -> mailboxMetaData.map(MailboxMetaData::getId))
                 .get();
         }
 
@@ -163,13 +162,14 @@ public class MailboxFactory {
 
     private Mailbox from(MailboxId mailboxId,
                          MailboxPath mailboxPath,
-                         MailboxCounters mailboxCounters,
+                         MailboxCounters.Sanitized mailboxCounters,
                          MailboxACL resolvedAcl,
                          Optional<List<MailboxMetaData>> userMailboxesMetadata,
                          QuotaLoader quotaLoader,
                          MailboxSession mailboxSession) throws MailboxException {
         boolean isOwner = mailboxPath.belongsTo(mailboxSession);
-        Optional<Role> role = Role.from(mailboxPath.getName());
+        Optional<Role> role = Role.from(mailboxPath.getName())
+            .filter(any -> mailboxPath.belongsTo(mailboxSession));
 
         Rights rights = Rights.fromACL(resolvedAcl)
             .removeEntriesFor(mailboxPath.getUser());
@@ -223,7 +223,7 @@ public class MailboxFactory {
         }
         MailboxPath parent = levels.get(levels.size() - 2);
         return userMailboxesMetadata.map(list -> retrieveParentFromMetadata(parent, list))
-            .orElse(retrieveParentFromBackend(mailboxSession, parent));
+            .orElseGet(Throwing.supplier(() -> retrieveParentFromBackend(mailboxSession, parent)).sneakyThrow());
     }
 
     private Optional<MailboxId> retrieveParentFromBackend(MailboxSession mailboxSession, MailboxPath parent) throws MailboxException {

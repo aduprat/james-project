@@ -1,3 +1,5 @@
+
+
 Apache James Project
 ====================
 
@@ -44,10 +46,10 @@ There is many other ways one can help us: packaging, communication, etc ...
  * link:#how-to-release-via-maven-release-plugin[How to release via maven release plugin]
  * link:#how-to-check-the-compilation[How to check the compilation]
  * link:#how-to-run-james-in-docker[How to run James in Docker]
- ** link:#run-james-with-java-8-%2Dguice-%2Dcassandra-%2Drabbitmq-%2Dswift-%2Delasticsearch[Run James with Java 8 + Guice + Cassandra + RabbitMQ + Swift + ElasticSearch]
- ** link:#run-james-with-java-8-%2Dguice-%2Dcassandra-%2Delasticsearch[Run James with Java 8 + Guice + Cassandra + ElasticSearch]
- ** link:#run-james-with-java-8-%2Dguice-%2Djpa-%2Dlucene[Run James with Java 8 + Guice + JPA + Lucene]
- ** link:#run-james-with-java-8-%2Dspring-%2Djpa[Run James with Java 8 + Spring + JPA]
+ ** link:#run-james-with-%2Dguice-%2Dcassandra-%2Drabbitmq-%2Dswift-%2Delasticsearch[Run James with Guice + Cassandra + RabbitMQ + Swift + ElasticSearch]
+ ** link:#run-james-with-%2Dguice-%2Dcassandra-%2Delasticsearch[Run James with Guice + Cassandra + ElasticSearch]
+ ** link:#run-james-with-%2Dguice-%2Djpa-%2Dlucene[Run James with Guice + JPA + Lucene]
+ ** link:#run-james-with-%2Dspring-%2Djpa[Run James with Spring + JPA]
  * link:#other-useful-commands[Other Useful commands]
  ** link:#how-to-add-a-domain-[How to add a domain?]
  ** link:#how-to-add-a-user-[How to add a user?]
@@ -149,7 +151,7 @@ In short, just follow the 'standard' process:
 * vote
 * release
 
-Don't forget to add your key to http://www.apache.org/dist/james/KEYS
+Don't forget to add your key to https://downloads.apache.org/james/KEYS
 
     $ ssh people.apache.org
     $ cd /www/www.apache.org/dist/james
@@ -157,13 +159,13 @@ Don't forget to add your key to http://www.apache.org/dist/james/KEYS
 
 == How to check the compilation
 
-In order to have a standard compilation environment, we introduce Dockerfiles, using java-8.
+In order to have a standard compilation environment, we introduce Dockerfiles, using java-11.
 
-=== Java 8
+=== Java 11
 
 First step, you have to build the Docker image
 
-    $ docker build -t james/project dockerfiles/compilation/java-8
+    $ docker build -t james/project dockerfiles/compilation/java-11
 
 In order to run the build, you have to launch the following command:
 
@@ -198,20 +200,20 @@ If you are using a a fresh installation of Docker, your DOCKER_HOST should be un
 
 This feature is available for three configurations :
 
- * Java 8 + Guice + Cassandra + RabbitMQ + Swift + ElasticSearch
- * Java 8 + Guice + Cassandra + ElasticSearch
- * Java 8 + Guice + JPA + Lucene
- * Java 8 + Spring + JPA
+ * Guice + Cassandra + RabbitMQ + Swift + ElasticSearch
+ * Guice + Cassandra + ElasticSearch
+ * Guice + JPA + Lucene
+ * Spring + JPA
 
 
-=== Run James with Java 8 + Guice + Cassandra + RabbitMQ + Swift + ElasticSearch
+=== Run James with Guice + Cassandra + RabbitMQ + Swift + ElasticSearch
 
 
 ==== Requirements
 Built artifacts should be in ./dockerfiles/run/guice/cassandra-rabbitmq/destination folder for cassandra.
 If you haven't already:
 
-    $ docker build -t james/project dockerfiles/compilation/java-8
+    $ docker build -t james/project dockerfiles/compilation/java-11
     $ docker run -v $HOME/.m2:/root/.m2 -v $PWD:/origin \
   -v $PWD/dockerfiles/run/guice/cassandra-rabbitmq/destination:/cassandra-rabbitmq/destination \
   -t james/project -s HEAD
@@ -236,7 +238,7 @@ You need a running *ElasticSearch* in docker. To achieve this run:
 
 If you want to use all the JMAP search capabilities, you may also need to start Tika:
 
-    $ docker run -d --name=tika apache/tika:1.22
+    $ docker run -d --name=tika apache/tika:1.24
 
 You can find more explanation on the need of Tika in this page http://james.apache.org/server/config-elasticsearch.html
 
@@ -252,14 +254,15 @@ Then we need to build james container :
 
 To run this container :
 
-    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" --link cassandra:cassandra --link rabbitmq:rabbitmq
+    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "127.0.0.1:8000:8000" --link cassandra:cassandra --link rabbitmq:rabbitmq
    --link elasticsearch:elasticsearch --link tika:tika --link swift:swift --name james_run -t james_run
 
 Where :
 
 - HOSTNAME: is the hostname you want to give to your James container. This DNS entry will be used to send mail to your James server.
 
-You can add an optional port binding to port 8000, to expose the webadmin server. Please note that users are not authenticated on webadmin server, thus you should avoid exposing it in production.
+Webadmin port binding is restricted to loopback as users are not authenticated by default on webadmin server. Thus you should avoid exposing it in production.
+Note that the above example assumes `127.0.0.1` is your loopback interface for convenience but you should change it if this is not the case on your machine.
 
 If you want to pass additional options to the underlying java command, you can configure a _JVM_OPTIONS_ env variable, for example add:
 
@@ -287,21 +290,21 @@ You can handle attachment text extraction before indexing in ElasticSearch. This
 
 Run tika:
 
-    $ docker run --name tika apache/tika:1.22
+    $ docker run --name tika apache/tika:1.24
 
 Add a link for the tika container in the above command line:
 
     $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" --link cassandra:cassandra --link rabbitmq:rabbitmq
     --link elasticsearch:elasticsearch --link tika:tika --name james_run -t james_run
 
-=== Run James with Java 8 + Guice + Cassandra + ElasticSearch
+=== Run James with Guice + Cassandra + ElasticSearch
 
 
 ==== Requirements
 Built artifacts should be in ./dockerfiles/run/guice/cassandra/destination folder for cassandra.
 If you haven't already:
 
-    $ docker build -t james/project dockerfiles/compilation/java-8
+    $ docker build -t james/project dockerfiles/compilation/java-11
     $ docker run -v $HOME/.m2:/root/.m2 -v $PWD:/origin \
   -v $PWD/dockerfiles/run/guice/cassandra/destination:/cassandra/destination \
   -t james/project -s HEAD
@@ -318,7 +321,7 @@ You need a running *ElasticSearch* in docker. To achieve this run:
 
 If you want to use all the JMAP search capabilities, you may also need to start Tika:
 
-    $ docker run -d --name=tika apache/tika:1.22
+    $ docker run -d --name=tika apache/tika:1.24
 
 You can find more explanation on the need of Tika in this page http://james.apache.org/server/config-elasticsearch.html
 
@@ -334,13 +337,14 @@ Then we need to build james container :
 
 To run this container :
 
-    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" --link cassandra:cassandra --link elasticsearch:elasticsearch --link tika:tika --name james_run -t james_run
+    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "127.0.0.1:8000:8000" --link cassandra:cassandra --link elasticsearch:elasticsearch --link tika:tika --name james_run -t james_run
 
 Where :
 
 - HOSTNAME: is the hostname you want to give to your James container. This DNS entry will be used to send mail to your James server.
 
-You can add an optional port binding to port 8000, to expose the webadmin server. Please note that webadmin is not secured by default, unless you configure JWT authentication.
+Webadmin port binding is restricted to loopback as users are not authenticated by default on webadmin server. Thus you should avoid exposing it in production.
+Note that the above example assumes `127.0.0.1` is your loopback interface for convenience but you should change it if this is not the case on your machine.
 
 To have log file accessible on a volume, add *-v  $PWD/logs:/logs* option to the above command line, where *$PWD/logs* is your local directory to put files in.
 
@@ -350,19 +354,19 @@ You can handle attachment text extraction before indexing in ElasticSearch. This
 
 Run tika:
 
-    $ docker run --name tika apache/tika:1.22
+    $ docker run --name tika apache/tika:1.24
 
 Add a link for the tika container in the above command line:
 
     $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" --link cassandra:cassandra --link elasticsearch:elasticsearch --link tika:tika --name james_run -t james_run
 
-=== Run James with Java 8 + Guice + JPA + Lucene
+=== Run James with Guice + JPA + Lucene
 
 ==== Requirements
 Built artifacts should be in ./dockerfiles/run/guice/jpa/destination folder for jpa.
 If you haven't already:
 
-    $ docker build -t james/project dockerfiles/compilation/java-8
+    $ docker build -t james/project dockerfiles/compilation/java-11
     $ docker run -v $HOME/.m2:/root/.m2 -v $PWD:/origin \
   -v $PWD/dockerfiles/run/guice/jpa/destination:/jpa/destination \
   -t james/project -s HEAD
@@ -382,23 +386,24 @@ Then we need to build james container :
 
 To run this container :
 
-    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" --name james_run -t james_run
+    $ docker run --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "127.0.0.1:8000:8000" --name james_run -t james_run
 
 HOSTNAME is the hostname you want to give to your James container. This DNS entry will be used to send mail to your James server.
 
-You can add an optional port binding to port 8000, to expose the webadmin server. Please note that webadmin is not secured by default, unless you configure JWT authentication.
+Webadmin port binding is restricted to loopback as users are not authenticated by default on webadmin server. Thus you should avoid exposing it in production.
+Note that the above example assumes `127.0.0.1` is your loopback interface for convenience but you should change it if this is not the case on your machine.
 
 To have log file accessible on a volume, add *-v  $PWD/logs:/logs* option to the above command line, where *$PWD/logs* is your local directory to put files in.
 
 
-=== Run James with Java 8 + Spring + JPA
+=== Run James with Spring + JPA
 
 ==== Requirements
 
 Built artifacts should be in ./dockerfiles/run/spring/destination folder for Spring.
 If you haven't already:
 
-    $ docker build -t james/project dockerfiles/compilation/java-8
+    $ docker build -t james/project dockerfiles/compilation/java-11
     $ docker run -v $HOME/.m2:/root/.m2 -v $PWD:/origin \
   -v $PWD/dockerfiles/run/spring/destination:/spring/destination \
   -t james/project -s HEAD
@@ -459,14 +464,14 @@ You can then just add DOMAIN to your /etc/hosts and you can connect to your jame
 
 === How to manage SIEVE scripts ?
 
-Each user can manage his SIEVE scripts threw the manage SIEVE mailet.
+Each user can manage his SIEVE scripts through the manage SIEVE mailet.
 
 To use the manage SIEVE mailet :
 
  * You need to create the user sievemanager@DOMAIN ( if you don't, the SMTP server will check the domain, recognize it, and look for an absent local user, and will generate an error ).
  * You can send Manage Sieve commands by mail to sievemanager@DOMAIN. Your subject must contain the command. Scripts needs to be added as attachments and need the ".sieve" extension.
 
-To activate a script for a user, you need the following combinaison :
+To activate a script for a user, you need the following combination :
 
  * PUTSCRIPT scriptname
  * SETACTIVE scriptname

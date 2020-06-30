@@ -25,21 +25,27 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 
+import org.apache.james.mailbox.indexer.ReIndexer.RunningOptions;
 import org.apache.james.mailbox.indexer.ReIndexingExecutionFailures;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
 
+import com.google.common.annotations.VisibleForTesting;
+
 public class SingleMailboxReindexingTask implements Task {
 
-    public static final TaskType MAILBOX_RE_INDEXING = TaskType.of("mailbox-reindexing");
+    public static final TaskType TYPE = TaskType.of("mailbox-reindexing");
 
     public static class AdditionalInformation extends ReprocessingContextInformation {
         private final MailboxId mailboxId;
 
-        AdditionalInformation(MailboxId mailboxId, int successfullyReprocessedMailCount, int failedReprocessedMailCount, ReIndexingExecutionFailures failures, Instant timestamp) {
-            super(successfullyReprocessedMailCount, failedReprocessedMailCount, failures, timestamp);
+        @VisibleForTesting
+        public AdditionalInformation(MailboxId mailboxId, int successfullyReprocessedMailCount,
+                              int failedReprocessedMailCount, ReIndexingExecutionFailures failures,
+                              Instant timestamp, RunningOptions runningOptions) {
+            super(successfullyReprocessedMailCount, failedReprocessedMailCount, failures, timestamp, runningOptions);
             this.mailboxId = mailboxId;
         }
 
@@ -61,25 +67,31 @@ public class SingleMailboxReindexingTask implements Task {
 
         public SingleMailboxReindexingTask create(SingleMailboxReindexingTaskDTO dto) {
             MailboxId mailboxId = mailboxIdFactory.fromString(dto.getMailboxId());
-            return new SingleMailboxReindexingTask(reIndexerPerformer, mailboxId);
+            return new SingleMailboxReindexingTask(reIndexerPerformer, mailboxId,
+                dto.getRunningOptions()
+                    .map(RunningOptionsDTO::toDomainObject)
+                    .orElse(RunningOptions.DEFAULT));
         }
     }
 
     private final ReIndexerPerformer reIndexerPerformer;
     private final MailboxId mailboxId;
     private final ReprocessingContext reprocessingContext;
+    private final RunningOptions runningOptions;
 
     @Inject
-    public SingleMailboxReindexingTask(ReIndexerPerformer reIndexerPerformer, MailboxId mailboxId) {
+    public SingleMailboxReindexingTask(ReIndexerPerformer reIndexerPerformer, MailboxId mailboxId, RunningOptions runningOptions) {
         this.reIndexerPerformer = reIndexerPerformer;
         this.mailboxId = mailboxId;
         this.reprocessingContext = new ReprocessingContext();
+        this.runningOptions = runningOptions;
     }
 
     @Override
     public Result run() {
         try {
-            return reIndexerPerformer.reIndex(mailboxId, reprocessingContext);
+            return reIndexerPerformer.reIndexSingleMailbox(mailboxId, reprocessingContext, runningOptions)
+                .block();
         } catch (Exception e) {
             return Result.PARTIAL;
         }
@@ -91,7 +103,11 @@ public class SingleMailboxReindexingTask implements Task {
 
     @Override
     public TaskType type() {
-        return MAILBOX_RE_INDEXING;
+        return TYPE;
+    }
+
+    public RunningOptions getRunningOptions() {
+        return runningOptions;
     }
 
     @Override
@@ -102,7 +118,8 @@ public class SingleMailboxReindexingTask implements Task {
                 reprocessingContext.successfullyReprocessedMailCount(),
                 reprocessingContext.failedReprocessingMailCount(),
                 reprocessingContext.failures(),
-                Clock.systemUTC().instant())
+                Clock.systemUTC().instant(),
+                runningOptions)
         );
     }
 

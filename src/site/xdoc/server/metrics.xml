@@ -27,7 +27,7 @@
 
         <section name="Presentation">
 
-            <p>James relies on the <a href="http://metrics.dropwizard.io/3.1.0/manual/core/">Dropwizard metric library</a>
+            <p>James relies on the <a href="https://metrics.dropwizard.io/4.1.2/manual/core.html">Dropwizard metric library</a>
             for keeping track of some core metrics of James.</p>
 
             <p>Such metrics are made available via JMX. You can connect for instance using VisualVM and the associated
@@ -36,6 +36,10 @@
             <p>
                 You can also export the metrics to ElasticSearch and visualize them with <a href="https://grafana.com/">Grafana</a>.
                 See <a href="config-elasticsearch.html">elaticseach.properties</a> documentation for more details on how to set this up.
+            </p>
+
+            <p>
+                Yet another solution is to have metrics values written in logs, see  See <a href="monitor-logging.html">Monitor via Logging</a>.
             </p>
 
         </section>

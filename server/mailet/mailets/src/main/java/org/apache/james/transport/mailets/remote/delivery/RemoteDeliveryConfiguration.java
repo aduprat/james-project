@@ -27,6 +27,7 @@ import java.util.Properties;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.queue.api.MailQueueName;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.base.MailetUtil;
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class RemoteDeliveryConfiguration {
     public static final String DELAY_TIME = "delayTime";
     public static final String DEBUG = "debug";
     public static final int DEFAULT_SMTP_TIMEOUT = 180000;
-    public static final String DEFAULT_OUTGOING_QUEUE_NAME = "outgoing";
+    public static final MailQueueName DEFAULT_OUTGOING_QUEUE_NAME = MailQueueName.of("outgoing");
     public static final int DEFAULT_CONNECTION_TIMEOUT = 60000;
     public static final int DEFAULT_DNS_RETRY_PROBLEM = 0;
     public static final int DEFAULT_MAX_RETRY = 5;
@@ -80,7 +81,7 @@ public class RemoteDeliveryConfiguration {
     private final int connectionTimeout;
     private final List<Duration> delayTimes;
     private final HeloNameProvider heloNameProvider;
-    private final String outGoingQueueName;
+    private final MailQueueName outGoingQueueName;
     private final String bindAddress;
     private final String bounceProcessor;
     private final Collection<String> gatewayServer;
@@ -94,7 +95,9 @@ public class RemoteDeliveryConfiguration {
         isSSLEnable = MailetUtil.getInitParameter(mailetConfig, SSL_ENABLE).orElse(false);
         usePriority = MailetUtil.getInitParameter(mailetConfig, USE_PRIORITY).orElse(false);
         sendPartial = MailetUtil.getInitParameter(mailetConfig, SENDPARTIAL).orElse(false);
-        outGoingQueueName = Optional.ofNullable(mailetConfig.getInitParameter(OUTGOING)).orElse(DEFAULT_OUTGOING_QUEUE_NAME);
+        outGoingQueueName = Optional.ofNullable(mailetConfig.getInitParameter(OUTGOING))
+            .map(MailQueueName::of)
+            .orElse(DEFAULT_OUTGOING_QUEUE_NAME);
         bounceProcessor = mailetConfig.getInitParameter(BOUNCE_PROCESSOR);
         bindAddress = mailetConfig.getInitParameter(BIND);
 
@@ -222,7 +225,7 @@ public class RemoteDeliveryConfiguration {
         if (isBindUsed()) {
             // undocumented JavaMail 1.2 feature, smtp transport will use
             // our socket factory, which will also set the local address
-            props.put("mail.smtp.socketFactory.class", RemoteDeliverySocketFactory.class.getClass());
+            props.put("mail.smtp.socketFactory.class", RemoteDeliverySocketFactory.class);
             // Don't fallback to the standard socket factory on error, do throw an exception
             props.put("mail.smtp.socketFactory.fallback", "false");
         }
@@ -293,7 +296,7 @@ public class RemoteDeliveryConfiguration {
         return heloNameProvider;
     }
 
-    public String getOutGoingQueueName() {
+    public MailQueueName getOutGoingQueueName() {
         return outGoingQueueName;
     }
 

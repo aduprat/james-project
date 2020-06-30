@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +51,8 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.Iterables;
 
+import reactor.core.publisher.Flux;
+
 class StoreMailboxMessageResultIteratorTest {
 
     private final class TestMessageMapper implements MessageMapper {
@@ -62,8 +63,8 @@ class StoreMailboxMessageResultIteratorTest {
         }
 
         @Override
-        public Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) throws MailboxException {
-            return messageRange.iterator();
+        public Flux<MessageUid> listAllMessageUids(Mailbox mailbox) {
+            return Flux.fromIterable(messageRange);
         }
 
         @Override
@@ -72,21 +73,12 @@ class StoreMailboxMessageResultIteratorTest {
         }
 
         @Override
-        public <T> T execute(Transaction<T> transaction) throws MailboxException {
+        public <T> T execute(Transaction<T> transaction) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public MailboxCounters getMailboxCounters(Mailbox mailbox) throws MailboxException {
-            return MailboxCounters.builder()
-                .mailboxId(mailbox.getMailboxId())
-                .count(countMessagesInMailbox(mailbox))
-                .unseen(countUnseenMessagesInMailbox(mailbox))
-                .build();
-        }
-
-        @Override
-        public List<MailboxCounters> getMailboxCounters(Collection<Mailbox> mailboxes) {
+        public MailboxCounters getMailboxCounters(Mailbox mailbox) {
             throw new UnsupportedOperationException();
         }
 
@@ -125,11 +117,6 @@ class StoreMailboxMessageResultIteratorTest {
         public long countMessagesInMailbox(Mailbox mailbox) throws MailboxException {
             throw new UnsupportedOperationException();
 
-        }
-
-        @Override
-        public long countUnseenMessagesInMailbox(Mailbox mailbox) throws MailboxException {
-            throw new UnsupportedOperationException();
         }
 
         @Override

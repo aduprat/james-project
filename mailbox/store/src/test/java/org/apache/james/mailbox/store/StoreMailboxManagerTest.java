@@ -26,12 +26,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.apache.james.core.Username;
+import org.apache.james.mailbox.AttachmentContentLoader;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
+import org.apache.james.mailbox.events.EventBusTestFixture;
 import org.apache.james.mailbox.events.InVMEventBus;
+import org.apache.james.mailbox.events.MemoryEventDeadLetters;
 import org.apache.james.mailbox.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.exception.BadCredentialsException;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -57,6 +60,8 @@ import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import reactor.core.publisher.Mono;
 
 class StoreMailboxManagerTest {
     static final Username CURRENT_USER = Username.of("user");
@@ -84,7 +89,7 @@ class StoreMailboxManagerTest {
         authenticator.addUser(CURRENT_USER, CURRENT_USER_PASSWORD);
         authenticator.addUser(ADMIN, ADMIN_PASSWORD);
 
-        InVMEventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()));
+        InVMEventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, new MemoryEventDeadLetters());
 
         StoreRightManager storeRightManager = new StoreRightManager(mockedMapperFactory, new UnionMailboxACLResolver(),
                                                                     new SimpleGroupMembershipResolver(), eventBus);
@@ -92,7 +97,8 @@ class StoreMailboxManagerTest {
         StoreMailboxAnnotationManager annotationManager = new StoreMailboxAnnotationManager(mockedMapperFactory, storeRightManager);
         SessionProviderImpl sessionProvider = new SessionProviderImpl(authenticator, FakeAuthorizator.forUserAndAdmin(ADMIN, CURRENT_USER));
         QuotaComponents quotaComponents = QuotaComponents.disabled(sessionProvider, mockedMapperFactory);
-        MessageSearchIndex index = new SimpleMessageSearchIndex(mockedMapperFactory, mockedMapperFactory, new DefaultTextExtractor());
+        AttachmentContentLoader attachmentContentLoader = null;
+        MessageSearchIndex index = new SimpleMessageSearchIndex(mockedMapperFactory, mockedMapperFactory, new DefaultTextExtractor(), attachmentContentLoader);
 
         storeMailboxManager = new StoreMailboxManager(mockedMapperFactory, sessionProvider,
                 new JVMMailboxPathLocker(), new MessageParser(), messageIdFactory,
@@ -101,8 +107,8 @@ class StoreMailboxManagerTest {
     }
 
     @Test
-    void getMailboxShouldThrowWhenUnknownId() throws Exception {
-        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(null);
+    void getMailboxShouldThrowWhenUnknownId() {
+        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(Mono.error(new MailboxNotFoundException(MAILBOX_ID)));
 
         assertThatThrownBy(() -> storeMailboxManager.getMailbox(MAILBOX_ID, mockedMailboxSession))
             .isInstanceOf(MailboxNotFoundException.class);
@@ -114,7 +120,7 @@ class StoreMailboxManagerTest {
         when(mockedMailbox.generateAssociatedPath())
             .thenReturn(MailboxPath.forUser(CURRENT_USER, "mailboxName"));
         when(mockedMailbox.getMailboxId()).thenReturn(MAILBOX_ID);
-        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(mockedMailbox);
+        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(Mono.just(mockedMailbox));
 
         MessageManager expected = storeMailboxManager.getMailbox(MAILBOX_ID, mockedMailboxSession);
 
@@ -127,7 +133,7 @@ class StoreMailboxManagerTest {
         when(mockedMailbox.generateAssociatedPath())
             .thenReturn(MailboxPath.forUser(Username.of("uSEr"), "mailboxName"));
         when(mockedMailbox.getMailboxId()).thenReturn(MAILBOX_ID);
-        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(mockedMailbox);
+        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(Mono.just(mockedMailbox));
 
         MessageManager expected = storeMailboxManager.getMailbox(MAILBOX_ID, mockedMailboxSession);
 
@@ -135,7 +141,7 @@ class StoreMailboxManagerTest {
     }
 
     @Test
-    void getMailboxShouldThrowWhenMailboxDoesNotMatchUserWithoutRight() throws Exception {
+    void getMailboxShouldThrowWhenMailboxDoesNotMatchUserWithoutRight() {
         Username otherUser = Username.of("other.user");
         Mailbox mockedMailbox = mock(Mailbox.class);
         when(mockedMailbox.getACL()).thenReturn(new MailboxACL());
@@ -143,8 +149,8 @@ class StoreMailboxManagerTest {
             .thenReturn(MailboxPath.forUser(otherUser, "mailboxName"));
         when(mockedMailbox.getMailboxId()).thenReturn(MAILBOX_ID);
         when(mockedMailbox.getUser()).thenReturn(otherUser);
-        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(mockedMailbox);
-        when(mockedMailboxMapper.findMailboxByPath(any())).thenReturn(mockedMailbox);
+        when(mockedMailboxMapper.findMailboxById(MAILBOX_ID)).thenReturn(Mono.just(mockedMailbox));
+        when(mockedMailboxMapper.findMailboxByPath(any())).thenReturn(Mono.just(mockedMailbox));
 
         assertThatThrownBy(() -> storeMailboxManager.getMailbox(MAILBOX_ID, mockedMailboxSession))
             .isInstanceOf(MailboxNotFoundException.class);

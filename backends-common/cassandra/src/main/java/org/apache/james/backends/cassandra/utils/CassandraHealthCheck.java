@@ -24,10 +24,11 @@ import javax.inject.Inject;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Health check for the Cassandra backend.
@@ -35,15 +36,14 @@ import com.datastax.driver.core.Session;
  */
 public class CassandraHealthCheck implements HealthCheck {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraHealthCheck.class);
     private static final ComponentName COMPONENT_NAME = new ComponentName("Cassandra backend");
     private static final String SAMPLE_QUERY = "SELECT NOW() FROM system.local";
 
-    private final Session session;
+    private final CassandraAsyncExecutor queryExecutor;
 
     @Inject
     public CassandraHealthCheck(Session session) {
-        this.session = session;
+        this.queryExecutor = new CassandraAsyncExecutor(session);
     }
 
     @Override
@@ -52,15 +52,11 @@ public class CassandraHealthCheck implements HealthCheck {
     }
 
     @Override
-    public Result check() {
-        try {
-            // execute a simple query to check if cassandra is responding
-            // idea from: https://stackoverflow.com/questions/10246287
-            session.execute(SAMPLE_QUERY);
-            return Result.healthy(COMPONENT_NAME);
-        } catch (Exception e) {
-            LOGGER.error("Error checking cassandra backend", e);
-            return Result.unhealthy(COMPONENT_NAME, e.getMessage());
-        }
+    public Mono<Result> check() {
+        // execute a simple query to check if cassandra is responding
+        // idea from: https://stackoverflow.com/questions/10246287
+        return queryExecutor.execute(new SimpleStatement(SAMPLE_QUERY))
+            .map(resultSet -> Result.healthy(COMPONENT_NAME))
+            .onErrorResume(e -> Mono.just(Result.unhealthy(COMPONENT_NAME, "Error checking Cassandra backend", e)));
     }
 }

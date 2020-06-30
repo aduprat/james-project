@@ -30,6 +30,7 @@ import java.util.stream.IntStream;
 
 import org.apache.james.backends.es.DockerElasticSearchExtension;
 import org.apache.james.backends.es.ElasticSearchIndexer;
+import org.apache.james.backends.es.ReactorElasticSearchClient;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
@@ -58,7 +59,6 @@ import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mime4j.dom.Message;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,7 +80,7 @@ class ElasticSearchSearcherTest {
     DockerElasticSearchExtension elasticSearch = new DockerElasticSearchExtension();
 
     TikaTextExtractor textExtractor;
-    RestHighLevelClient client;
+    ReactorElasticSearchClient client;
     private InMemoryMailboxManager storeMailboxManager;
 
     @BeforeEach
@@ -147,14 +147,15 @@ class ElasticSearchSearcherTest {
         elasticSearch.awaitForElasticSearch();
 
         MultimailboxesSearchQuery multimailboxesSearchQuery = MultimailboxesSearchQuery
-            .from(new SearchQuery(SearchQuery.all()))
+            .from(SearchQuery.of(SearchQuery.all()))
             .inMailboxes(mailboxIds)
             .build();
         List<MessageId> expectedMessageIds = composedMessageIds
             .stream()
             .map(ComposedMessageId::getMessageId)
             .collect(Guavate.toImmutableList());
-        assertThat(storeMailboxManager.search(multimailboxesSearchQuery, session, numberOfMailboxes + 1))
+        assertThat(storeMailboxManager.search(multimailboxesSearchQuery, session, numberOfMailboxes + 1)
+            .collectList().block())
             .containsExactlyInAnyOrderElementsOf(expectedMessageIds);
     }
 
@@ -166,6 +167,7 @@ class ElasticSearchSearcherTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody("Hello", StandardCharsets.UTF_8)),
-            session);
+            session)
+            .getId();
     }
 }

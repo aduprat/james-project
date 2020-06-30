@@ -24,6 +24,7 @@ import org.apache.james.protocols.api.Protocol;
 import org.apache.james.protocols.api.ProtocolSession.State;
 import org.apache.james.protocols.netty.BasicChannelUpstreamHandler;
 import org.apache.james.protocols.smtp.SMTPSession;
+import org.apache.james.protocols.smtp.core.SMTPMDCContextFactory;
 import org.apache.james.smtpserver.SMTPConstants;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -40,12 +41,12 @@ public class SMTPChannelUpstreamHandler extends BasicChannelUpstreamHandler {
     private final SmtpMetrics smtpMetrics;
 
     public SMTPChannelUpstreamHandler(Protocol protocol, Encryption encryption, SmtpMetrics smtpMetrics) {
-        super(protocol, encryption);
+        super(new SMTPMDCContextFactory(), protocol, encryption);
         this.smtpMetrics = smtpMetrics;
     }
 
     public SMTPChannelUpstreamHandler(Protocol protocol, SmtpMetrics smtpMetrics) {
-        super(protocol);
+        super(new SMTPMDCContextFactory(), protocol);
         this.smtpMetrics = smtpMetrics;
     }
 
@@ -76,8 +77,8 @@ public class SMTPChannelUpstreamHandler extends BasicChannelUpstreamHandler {
         SMTPSession smtpSession = (SMTPSession) ctx.getAttachment();
 
         if (smtpSession != null) {
-            LifecycleUtil.dispose(smtpSession.getAttachment(SMTPConstants.MAIL, State.Transaction));
-            LifecycleUtil.dispose(smtpSession.getAttachment(SMTPConstants.DATA_MIMEMESSAGE_STREAMSOURCE, State.Transaction));
+            smtpSession.getAttachment(SMTPConstants.MAIL, State.Transaction).ifPresent(LifecycleUtil::dispose);
+            smtpSession.getAttachment(SMTPConstants.DATA_MIMEMESSAGE_STREAMSOURCE, State.Transaction).ifPresent(LifecycleUtil::dispose);
         }
 
         super.cleanup(ctx);

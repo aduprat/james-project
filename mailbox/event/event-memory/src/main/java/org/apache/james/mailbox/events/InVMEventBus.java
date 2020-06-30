@@ -30,19 +30,17 @@ import org.apache.james.mailbox.events.delivery.EventDelivery.PermanentFailureHa
 import org.apache.james.mailbox.events.delivery.EventDelivery.Retryer.BackoffRetryer;
 
 import com.github.steveash.guavate.Guavate;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public class InVMEventBus implements EventBus {
 
-    private final Multimap<RegistrationKey, MailboxListener> registrations;
-    private final ConcurrentHashMap<Group, MailboxListener> groups;
+    private final Multimap<RegistrationKey, MailboxListener.ReactiveMailboxListener> registrations;
+    private final ConcurrentHashMap<Group, MailboxListener.ReactiveMailboxListener> groups;
     private final EventDelivery eventDelivery;
     private final RetryBackoffConfiguration retryBackoff;
     private final EventDeadLetters eventDeadLetters;
@@ -56,19 +54,14 @@ public class InVMEventBus implements EventBus {
         this.groups = new ConcurrentHashMap<>();
     }
 
-    @VisibleForTesting
-    public InVMEventBus(EventDelivery eventDelivery) {
-        this(eventDelivery, RetryBackoffConfiguration.DEFAULT, new MemoryEventDeadLetters());
-    }
-
     @Override
-    public Registration register(MailboxListener listener, RegistrationKey key) {
+    public Mono<Registration> register(MailboxListener.ReactiveMailboxListener listener, RegistrationKey key) {
         registrations.put(key, listener);
-        return () -> registrations.remove(key, listener);
+        return Mono.just(() -> registrations.remove(key, listener));
     }
 
     @Override
-    public Registration register(MailboxListener listener, Group group) {
+    public Registration register(MailboxListener.ReactiveMailboxListener listener, Group group) {
         MailboxListener previous = groups.putIfAbsent(group, listener);
         if (previous == null) {
             return () -> groups.remove(group, listener);
@@ -94,24 +87,24 @@ public class InVMEventBus implements EventBus {
         return Mono.empty();
     }
 
-    private MailboxListener retrieveListenerFromGroup(Group group) {
+    private MailboxListener.ReactiveMailboxListener retrieveListenerFromGroup(Group group) {
         return Optional.ofNullable(groups.get(group))
             .orElseThrow(() -> new GroupRegistrationNotFound(group));
     }
 
     private Mono<Void> keyDeliveries(Event event, Set<RegistrationKey> keys) {
         return Flux.fromIterable(registeredListenersByKeys(keys))
-            .flatMap(listener -> eventDelivery.deliver(listener, event, EventDelivery.DeliveryOption.none()).subscribeOn(Schedulers.elastic()))
+            .flatMap(listener -> eventDelivery.deliver(listener, event, EventDelivery.DeliveryOption.none()))
             .then();
     }
 
     private Mono<Void> groupDeliveries(Event event) {
         return Flux.fromIterable(groups.entrySet())
-            .flatMap(entry -> groupDelivery(event, entry.getValue(), entry.getKey()).subscribeOn(Schedulers.elastic()))
+            .flatMap(entry -> groupDelivery(event, entry.getValue(), entry.getKey()))
             .then();
     }
 
-    private Mono<Void> groupDelivery(Event event, MailboxListener mailboxListener, Group group) {
+    private Mono<Void> groupDelivery(Event event, MailboxListener.ReactiveMailboxListener mailboxListener, Group group) {
         return eventDelivery.deliver(
             mailboxListener,
             event,
@@ -124,7 +117,7 @@ public class InVMEventBus implements EventBus {
         return groups.keySet();
     }
 
-    private Set<MailboxListener> registeredListenersByKeys(Set<RegistrationKey> keys) {
+    private Set<MailboxListener.ReactiveMailboxListener> registeredListenersByKeys(Set<RegistrationKey> keys) {
         return keys.stream()
             .flatMap(registrationKey -> registrations.get(registrationKey).stream())
             .collect(Guavate.toImmutableSet());

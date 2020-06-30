@@ -22,8 +22,11 @@ import static org.apache.james.modules.Names.MAILBOXMANAGER_NAME;
 
 import javax.inject.Singleton;
 
-import org.apache.james.adapter.mailbox.store.UserRepositoryAuthenticator;
-import org.apache.james.adapter.mailbox.store.UserRepositoryAuthorizator;
+import org.apache.james.adapter.mailbox.UserRepositoryAuthenticator;
+import org.apache.james.adapter.mailbox.UserRepositoryAuthorizator;
+import org.apache.james.mailbox.AttachmentContentLoader;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxPathLocker;
 import org.apache.james.mailbox.SessionProvider;
@@ -34,6 +37,7 @@ import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
 import org.apache.james.mailbox.events.MailboxListener;
 import org.apache.james.mailbox.indexer.ReIndexer;
+import org.apache.james.mailbox.jpa.JPAAttachmentContentLoader;
 import org.apache.james.mailbox.jpa.JPAId;
 import org.apache.james.mailbox.jpa.JPAMailboxSessionMapperFactory;
 import org.apache.james.mailbox.jpa.mail.JPAModSeqProvider;
@@ -41,8 +45,6 @@ import org.apache.james.mailbox.jpa.mail.JPAUidProvider;
 import org.apache.james.mailbox.jpa.openjpa.OpenJPAMailboxManager;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.mailbox.store.Authenticator;
-import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mailbox.store.JVMMailboxPathLocker;
 import org.apache.james.mailbox.store.MailboxManagerConfiguration;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
@@ -107,6 +109,7 @@ public class JPAMailboxModule extends AbstractModule {
         bind(MailboxId.Factory.class).to(JPAId.Factory.class);
         bind(GroupMembershipResolver.class).to(SimpleGroupMembershipResolver.class);
         bind(MailboxACLResolver.class).to(UnionMailboxACLResolver.class);
+        bind(AttachmentContentLoader.class).to(JPAAttachmentContentLoader.class);
 
         bind(ReIndexer.class).to(ReIndexerImpl.class);
         

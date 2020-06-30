@@ -23,9 +23,12 @@ import static org.apache.james.modules.Names.MAILBOXMANAGER_NAME;
 
 import javax.inject.Singleton;
 
-import org.apache.james.adapter.mailbox.store.UserRepositoryAuthenticator;
-import org.apache.james.adapter.mailbox.store.UserRepositoryAuthorizator;
+import org.apache.james.adapter.mailbox.UserRepositoryAuthenticator;
+import org.apache.james.adapter.mailbox.UserRepositoryAuthorizator;
+import org.apache.james.mailbox.AttachmentContentLoader;
 import org.apache.james.mailbox.AttachmentManager;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.BlobManager;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxPathLocker;
@@ -43,8 +46,6 @@ import org.apache.james.mailbox.inmemory.mail.InMemoryModSeqProvider;
 import org.apache.james.mailbox.inmemory.mail.InMemoryUidProvider;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.mailbox.store.Authenticator;
-import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mailbox.store.JVMMailboxPathLocker;
 import org.apache.james.mailbox.store.MailboxManagerConfiguration;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
@@ -109,6 +110,7 @@ public class MemoryMailboxModule extends AbstractModule {
         bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class);
         bind(TextExtractor.class).to(JsoupTextExtractor.class);
         bind(RightManager.class).to(StoreRightManager.class);
+        bind(AttachmentContentLoader.class).to(AttachmentManager.class);
 
         bind(DeletedMessageMetadataVault.class).to(MemoryDeletedMessageMetadataVault.class);
 

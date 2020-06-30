@@ -27,6 +27,7 @@ import java.time.ZoneId;
 
 import org.apache.james.backends.es.DockerElasticSearchExtension;
 import org.apache.james.backends.es.ElasticSearchIndexer;
+import org.apache.james.backends.es.ReactorElasticSearchClient;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageManager;
@@ -48,7 +49,6 @@ import org.apache.james.mailbox.tika.TikaHttpClientImpl;
 import org.apache.james.mailbox.tika.TikaTextExtractor;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mime4j.dom.Message;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -67,7 +67,7 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
     DockerElasticSearchExtension elasticSearch = new DockerElasticSearchExtension();
 
     TikaTextExtractor textExtractor;
-    RestHighLevelClient client;
+    ReactorElasticSearchClient client;
 
     @AfterEach
     void tearDown() throws IOException {
@@ -131,11 +131,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody(Strings.repeat("0à2345678é", 3200), StandardCharsets.UTF_8)),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.address(SearchQuery.AddressType.To, recipient)), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, recipient)), session))
             .containsExactly(composedMessageId.getUid());
     }
 
@@ -150,11 +150,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody(Strings.repeat("0123456789", 3300), StandardCharsets.UTF_8)),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.address(SearchQuery.AddressType.To, recipient)), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, recipient)), session))
             .containsExactly(composedMessageId.getUid());
     }
 
@@ -169,11 +169,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody(Strings.repeat("0123456789 ", 5000), StandardCharsets.UTF_8)),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.bodyContains("0123456789")), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.bodyContains("0123456789")), session))
             .containsExactly(composedMessageId.getUid());
     }
 
@@ -188,11 +188,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody(Strings.repeat("0123456789 ", 5000) + " matchMe", StandardCharsets.UTF_8)),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.bodyContains("matchMe")), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.bodyContains("matchMe")), session))
             .containsExactly(composedMessageId.getUid());
     }
 
@@ -208,11 +208,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
             Message.Builder.of()
                 .setTo(recipient)
                 .setBody(reasonableLongTerm, StandardCharsets.UTF_8)),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.bodyContains(reasonableLongTerm)), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.bodyContains(reasonableLongTerm)), session))
             .containsExactly(composedMessageId.getUid());
     }
 
@@ -225,18 +225,18 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
         ComposedMessageId customDateHeaderMessageId = messageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(ClassLoader.getSystemResourceAsStream("eml/mailCustomDateHeader.eml")),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
         ComposedMessageId customStringHeaderMessageId = messageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(ClassLoader.getSystemResourceAsStream("eml/mailCustomStringHeader.eml")),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.headerExists("Custom-header")), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.headerExists("Custom-header")), session))
             .containsExactly(customDateHeaderMessageId.getUid(), customStringHeaderMessageId.getUid());
     }
 
@@ -256,11 +256,11 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
         ComposedMessageId customStringHeaderMessageId = messageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(ClassLoader.getSystemResourceAsStream("eml/mailCustomStringHeader.eml")),
-            session);
+            session).getId();
 
         elasticSearch.awaitForElasticSearch();
 
-        assertThat(messageManager.search(new SearchQuery(SearchQuery.all()), session))
+        assertThat(messageManager.search(SearchQuery.of(SearchQuery.all()), session))
             .contains(customStringHeaderMessageId.getUid());
     }
 }

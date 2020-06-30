@@ -22,29 +22,41 @@ package org.apache.james;
 import static org.apache.james.CassandraJamesServerMain.REQUIRE_TASK_MANAGER_MODULE;
 
 import org.apache.james.modules.DistributedTaskManagerModule;
-import org.apache.james.modules.TaskSerializationModule;
-import org.apache.james.modules.blobstore.BlobStoreChoosingModule;
+import org.apache.james.modules.DistributedTaskSerializationModule;
+import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
+import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.JMXServerModule;
-import org.apache.james.server.core.configuration.Configuration;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
-public class CassandraRabbitMQJamesServerMain {
-    public static final Module MODULES =
+public class CassandraRabbitMQJamesServerMain implements JamesServerMain {
+    protected static final Module MODULES =
         Modules
             .override(Modules.combine(REQUIRE_TASK_MANAGER_MODULE, new DistributedTaskManagerModule()))
-            .with(new RabbitMQModule(), new BlobStoreChoosingModule(), new RabbitMQEventBusModule(), new TaskSerializationModule());
+            .with(new RabbitMQModule(), new RabbitMQEventBusModule(), new DistributedTaskSerializationModule());
 
     public static void main(String[] args) throws Exception {
-        Configuration configuration = Configuration.builder()
+        CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
             .useWorkingDirectoryEnvProperty()
             .build();
 
-        GuiceJamesServer server = GuiceJamesServer.forConfiguration(configuration)
-                    .combineWith(MODULES, new JMXServerModule());
-        server.start();
+        LOGGER.info("Loading configuration {}", configuration.toString());
+        GuiceJamesServer server = createServer(configuration)
+            .combineWith(new JMXServerModule());
+
+        JamesServerMain.main(server);
+    }
+
+    public static GuiceJamesServer createServer(CassandraRabbitMQJamesConfiguration configuration) {
+        BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
+
+        return GuiceJamesServer.forConfiguration(configuration)
+            .combineWith(MODULES)
+            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
+            .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration));
     }
 }

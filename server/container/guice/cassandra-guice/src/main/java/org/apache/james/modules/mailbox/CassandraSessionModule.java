@@ -25,10 +25,12 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
+import org.apache.james.backends.cassandra.init.KeyspaceFactory;
 import org.apache.james.backends.cassandra.init.ResilientClusterProvider;
 import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
+import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraHealthCheck;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
@@ -48,6 +50,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
@@ -65,8 +68,11 @@ public class CassandraSessionModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(CassandraUtils.class).in(Scopes.SINGLETON);
-        bind(Session.class).toProvider(SessionWithInitializedTablesFactory.class);
         bind(Cluster.class).toProvider(ResilientClusterProvider.class);
+
+        bind(InitializedCluster.class).in(Scopes.SINGLETON);
+
+        bind(Session.class).toProvider(SessionWithInitializedTablesFactory.class);
 
         Multibinder<CassandraModule> cassandraDataDefinitions = Multibinder.newSetBinder(binder(), CassandraModule.class);
         cassandraDataDefinitions.addBinding().toInstance(CassandraZonedDateTimeModule.MODULE);
@@ -81,6 +87,14 @@ public class CassandraSessionModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), GuiceProbe.class).addBinding().to(CassandraProbe.class);
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding().to(CassandraHealthCheck.class);
+    }
+
+    @Singleton
+    @Provides
+    SessionWithInitializedTablesFactory provideSessionFactory(KeyspaceConfiguration keyspaceConfiguration,
+                                               InitializedCluster cluster,
+                                               CassandraModule module) {
+        return new SessionWithInitializedTablesFactory(keyspaceConfiguration, cluster.cluster, module);
     }
 
     @Provides
@@ -131,6 +145,36 @@ public class CassandraSessionModule extends AbstractModule {
             return ClusterConfiguration.builder()
                 .host(Host.from(LOCALHOST, CASSANDRA_PORT))
                 .build();
+        }
+    }
+
+    @Provides
+    @Singleton
+    KeyspacesConfiguration provideKeyspacesConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            return KeyspacesConfiguration.from(propertiesProvider.getConfiguration(CASSANDRA_FILE_NAME));
+        } catch (FileNotFoundException e) {
+            LOGGER.warn("Could not locate cassandra configuration file. Using default keyspaces configuration instead");
+            return KeyspacesConfiguration.builder().build();
+        }
+    }
+
+    @Provides
+    @Singleton
+    KeyspaceConfiguration provideMainKeyspaceConfiguration(KeyspacesConfiguration keyspacesConfiguration) {
+        return keyspacesConfiguration.mainKeyspaceConfiguration();
+    }
+
+    static class InitializedCluster {
+        private final Cluster cluster;
+
+        @Inject
+        private InitializedCluster(Cluster cluster, ClusterConfiguration clusterConfiguration, KeyspacesConfiguration keyspacesConfiguration) {
+            this.cluster = cluster;
+
+            if (clusterConfiguration.shouldCreateKeyspace()) {
+                KeyspaceFactory.createKeyspace(keyspacesConfiguration.mainKeyspaceConfiguration(), cluster);
+            }
         }
     }
 }

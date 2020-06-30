@@ -51,6 +51,7 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedSearchException;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.SearchQuery;
@@ -70,7 +71,6 @@ import org.apache.james.mailbox.model.SearchQuery.UidRange;
 import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
-import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.SearchUtil;
 import org.apache.james.mime4j.MimeException;
@@ -119,9 +119,13 @@ import org.apache.lucene.util.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Lucene based {@link ListeningMessageSearchIndex} which offers message searching via a Lucene index
@@ -461,18 +465,18 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public List<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) throws MailboxException {
+    public Flux<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) throws MailboxException {
         Preconditions.checkArgument(session != null, "'session' is mandatory");
         if (mailboxIds.isEmpty()) {
-            return ImmutableList.of();
+            return Flux.empty();
         }
 
-        return searchMultimap(mailboxIds, searchQuery)
+        return Flux.fromIterable(searchMultimap(mailboxIds, searchQuery)
             .stream()
             .map(searchResult -> searchResult.getMessageId().get())
             .filter(SearchUtil.distinct())
             .limit(Long.valueOf(limit).intValue())
-            .collect(Guavate.toImmutableList());
+            .collect(Guavate.toImmutableList()));
     }
     
     private List<SearchResult> searchMultimap(Collection<MailboxId> mailboxIds, SearchQuery searchQuery) throws MailboxException {
@@ -486,7 +490,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
             // Not return flags documents
             query.add(new PrefixQuery(new Term(FLAGS_FIELD, "")), BooleanClause.Occur.MUST_NOT);
 
-            List<Criterion> crits = searchQuery.getCriterias();
+            List<Criterion> crits = searchQuery.getCriteria();
             for (Criterion crit : crits) {
                 query.add(createQuery(crit, inMailboxes, searchQuery.getRecentMessageUids()), BooleanClause.Occur.MUST);
             }
@@ -730,8 +734,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     private static boolean hasAttachment(MailboxMessage membership) {
-       return membership.getProperties().stream()
-            .anyMatch(PropertyBuilder.isHasAttachmentProperty());
+       return MessageAttachmentMetadata.hasNonInlinedAttachment(membership.getAttachments());
     }
 
     private String toSentDateField(DateResolution res) {
@@ -988,7 +991,7 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
         // add the uid sorting as last so if no other sorting was able to do the job it will get sorted by the uid
         fields.add(UID_SORT);
         Sort sort = new Sort();
-        sort.setSort(fields.toArray(new SortField[0]));
+        sort.setSort(fields.toArray(SortField[]::new));
         return sort;
     }
 
@@ -1175,19 +1178,23 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public void add(MailboxSession session, Mailbox mailbox, MailboxMessage membership) throws IOException, MimeException {
-        Document doc = createMessageDocument(session, membership);
-        Document flagsDoc = createFlagsDocument(membership);
+    public Mono<Void> add(MailboxSession session, Mailbox mailbox, MailboxMessage membership) {
+        return Mono.fromRunnable(Throwing.runnable(() -> {
+            Document doc = createMessageDocument(session, membership);
+            Document flagsDoc = createFlagsDocument(membership);
 
-        writer.addDocument(doc);
-        writer.addDocument(flagsDoc);
+            writer.addDocument(doc);
+            writer.addDocument(flagsDoc);
+        }));
     }
 
     @Override
-    public void update(MailboxSession session, Mailbox mailbox, List<UpdatedFlags> updatedFlagsList) throws IOException {
-        for (UpdatedFlags updatedFlags : updatedFlagsList) {
-            update(mailbox, updatedFlags.getUid(), updatedFlags.getNewFlags());
-        }
+    public Mono<Void> update(MailboxSession session, Mailbox mailbox, List<UpdatedFlags> updatedFlagsList) {
+        return Mono.fromRunnable(Throwing.runnable(() -> {
+            for (UpdatedFlags updatedFlags : updatedFlagsList) {
+                update(mailbox, updatedFlags.getUid(), updatedFlags.getNewFlags());
+            }
+        }));
     }
 
     private void update(Mailbox mailbox, MessageUid uid, Flags f) throws IOException {
@@ -1202,13 +1209,10 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
             for (ScoreDoc sDoc : sDocs) {
                 Document doc = searcher.doc(sDoc.doc);
 
-                if (doc.getFieldable(FLAGS_FIELD) == null) {
-                    doc.removeFields(FLAGS_FIELD);
-                    indexFlags(doc, f);
+                doc.removeFields(FLAGS_FIELD);
+                indexFlags(doc, f);
 
-                    writer.updateDocument(new Term(ID_FIELD, doc.get(ID_FIELD)), doc);
-
-                }
+                writer.updateDocument(new Term(ID_FIELD, doc.get(ID_FIELD)), doc);
             }
         }
     }
@@ -1234,12 +1238,12 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
         Flag[] flags = f.getSystemFlags();
         for (Flag flag : flags) {
             fString.add(toString(flag));
-            doc.add(new Field(FLAGS_FIELD, toString(flag), Store.NO, Index.NOT_ANALYZED));
+            doc.add(new Field(FLAGS_FIELD, toString(flag), Store.YES, Index.NOT_ANALYZED));
         }
         
         String[] userFlags = f.getUserFlags();
         for (String userFlag : userFlags) {
-            doc.add(new Field(FLAGS_FIELD, userFlag, Store.NO, Index.NOT_ANALYZED));
+            doc.add(new Field(FLAGS_FIELD, userFlag, Store.YES, Index.NOT_ANALYZED));
         }
         
         // if no flags are there we just use a empty field
@@ -1265,16 +1269,18 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public void delete(MailboxSession session, Mailbox mailbox, Collection<MessageUid> expungedUids) throws IOException {
-        Collection<MessageRange> messageRanges = MessageRange.toRanges(expungedUids);
-        for (MessageRange messageRange : messageRanges) {
-            delete(mailbox.getMailboxId(), messageRange);
-        }
+    public Mono<Void> delete(MailboxSession session, Mailbox mailbox, Collection<MessageUid> expungedUids) {
+        return Mono.fromRunnable(Throwing.runnable(() -> {
+            Collection<MessageRange> messageRanges = MessageRange.toRanges(expungedUids);
+            for (MessageRange messageRange : messageRanges) {
+                delete(mailbox.getMailboxId(), messageRange);
+            }
+        }));
     }
 
     @Override
-    public void deleteAll(MailboxSession session, MailboxId mailboxId) throws IOException {
-        delete(mailboxId, MessageRange.all());
+    public Mono<Void> deleteAll(MailboxSession session, MailboxId mailboxId) {
+        return Mono.fromRunnable(Throwing.runnable(() -> delete(mailboxId, MessageRange.all())));
     }
 
     public void delete(MailboxId mailboxId, MessageRange range) throws IOException {
@@ -1287,5 +1293,53 @@ public class LuceneMessageSearchIndex extends ListeningMessageSearchIndex {
 
     public void commit() throws IOException {
         writer.commit();
+    }
+
+    @Override
+    public Mono<Flags> retrieveIndexedFlags(Mailbox mailbox, MessageUid uid) {
+        return Mono.fromCallable(() -> retrieveFlags(mailbox, uid));
+    }
+
+    private Flags retrieveFlags(Mailbox mailbox, MessageUid uid) throws IOException {
+        try (IndexSearcher searcher = new IndexSearcher(IndexReader.open(writer, true))) {
+            Flags retrievedFlags = new Flags();
+
+            BooleanQuery query = new BooleanQuery();
+            query.add(new TermQuery(new Term(MAILBOX_ID_FIELD, mailbox.getMailboxId().serialize())), BooleanClause.Occur.MUST);
+            query.add(createQuery(MessageRange.one(uid)), BooleanClause.Occur.MUST);
+            query.add(new PrefixQuery(new Term(FLAGS_FIELD, "")), BooleanClause.Occur.MUST);
+
+            TopDocs docs = searcher.search(query, 100000);
+            ScoreDoc[] sDocs = docs.scoreDocs;
+            for (ScoreDoc sDoc : sDocs) {
+                Document doc = searcher.doc(sDoc.doc);
+
+                Stream.of(doc.getValues(FLAGS_FIELD))
+                    .forEach(flag -> fromString(flag).ifPresentOrElse(retrievedFlags::add, () -> retrievedFlags.add(flag)));
+            }
+            return retrievedFlags;
+        }
+    }
+
+    /**
+     * Convert the given {@link Flag} to a String
+     */
+    private Optional<Flag> fromString(String flag) {
+        switch (flag) {
+            case "\\ANSWERED":
+                return Optional.of(Flag.ANSWERED);
+            case "\\DELETED":
+                return Optional.of(Flag.DELETED);
+            case "\\DRAFT":
+                return Optional.of(Flag.DRAFT);
+            case "\\FLAGGED":
+                return Optional.of(Flag.FLAGGED);
+            case "\\RECENT":
+                return Optional.of(Flag.RECENT);
+            case "\\FLAG":
+                return Optional.of(Flag.SEEN);
+            default:
+                return Optional.empty();
+        }
     }
 }

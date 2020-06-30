@@ -58,7 +58,7 @@ public class FilteringAggregate {
     private FilteringAggregate(FilteringAggregateId aggregateId, History history) {
         this.aggregateId = aggregateId;
         this.state = State.initial();
-        history.getEvents().forEach(this::apply);
+        history.getEventsJava().forEach(this::apply);
         this.history = history;
     }
 

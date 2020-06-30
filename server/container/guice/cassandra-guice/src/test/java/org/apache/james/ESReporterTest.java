@@ -21,7 +21,6 @@ package org.apache.james;
 import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 import static io.restassured.config.RestAssuredConfig.newConfig;
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
 import static org.apache.james.jmap.HttpJmapAuthentication.authenticateJamesUser;
 import static org.apache.james.jmap.JmapURIBuilder.baseUri;
 import static org.awaitility.Awaitility.await;
@@ -34,18 +33,16 @@ import java.util.TimerTask;
 import java.util.stream.Collectors;
 
 import org.apache.commons.net.imap.IMAPClient;
+import org.apache.james.backends.es.ReactorElasticSearchClient;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.AccessToken;
 import org.apache.james.jmap.draft.JmapGuiceProbe;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestDockerESMetricReporterModule;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.utils.DataProbeImpl;
 import org.awaitility.Duration;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.AfterEach;
@@ -64,13 +61,11 @@ class ESReporterTest {
     static final DockerElasticSearchExtension elasticSearchExtension = new DockerElasticSearchExtension();
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(elasticSearchExtension)
         .extension(new CassandraExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
+        .server(configuration -> CassandraJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(new TestDockerESMetricReporterModule(elasticSearchExtension.getDockerES().getHttpHost())))
         .build();
 
@@ -152,12 +147,13 @@ class ESReporterTest {
     }
 
     private boolean checkMetricRecordedInElasticSearch() {
-        try (RestHighLevelClient client = elasticSearchExtension.getDockerES().clientProvider().get()) {
+        try (ReactorElasticSearchClient client = elasticSearchExtension.getDockerES().clientProvider().get()) {
             SearchRequest searchRequest = new SearchRequest()
                 .source(new SearchSourceBuilder()
                     .query(QueryBuilders.matchAllQuery()));
             return !Arrays.stream(client
                     .search(searchRequest)
+                    .block()
                     .getHits()
                     .getHits())
                 .filter(searchHit -> searchHit.getIndex().startsWith(TestDockerESMetricReporterModule.METRICS_INDEX))

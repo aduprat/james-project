@@ -40,11 +40,14 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.domainlist.api.mock.SimpleDomainList;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.apache.james.rrt.api.CanSendFrom;
 import org.apache.james.rrt.api.RecipientRewriteTable;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.rrt.lib.CanSendFromImpl;
 import org.apache.james.rrt.lib.MappingSource;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
@@ -98,6 +101,7 @@ class UserRoutesTest {
         final MemoryUsersRepository usersRepository;
         final SimpleDomainList domainList;
         final MemoryRecipientRewriteTable recipientRewriteTable;
+        final AliasReverseResolver aliasReverseResolver;
         final CanSendFrom canSendFrom;
 
         WebAdminServer webAdminServer;
@@ -107,7 +111,9 @@ class UserRoutesTest {
             this.domainList = domainList;
             this.recipientRewriteTable = new MemoryRecipientRewriteTable();
             this.recipientRewriteTable.setDomainList(domainList);
-            this.canSendFrom = new CanSendFromImpl(recipientRewriteTable);
+            this.recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+            this.aliasReverseResolver = new AliasReverseResolverImpl(recipientRewriteTable);
+            this.canSendFrom = new CanSendFromImpl(recipientRewriteTable, aliasReverseResolver);
         }
 
         @Override
@@ -235,6 +241,14 @@ class UserRoutesTest {
             default void deleteShouldReturnBadRequestWhenEmptyUserName() {
                 when()
                     .delete("/")
+                .then()
+                    .statusCode(HttpStatus.NOT_FOUND_404);
+            }
+
+            @Test
+            default void headShouldReturnBadRequestWhenEmptyUserName() {
+                when()
+                    .head("/")
                 .then()
                     .statusCode(HttpStatus.NOT_FOUND_404);
             }
@@ -508,6 +522,26 @@ class UserRoutesTest {
         }
 
         @Test
+        void headShouldReturnOKWhenUserExists() {
+            with()
+                .body("{\"password\":\"password\"}")
+                .put(USERNAME_WITH_DOMAIN.asString());
+
+            when()
+                .head(USERNAME_WITH_DOMAIN.asString())
+            .then()
+                .statusCode(HttpStatus.OK_200);
+        }
+
+        @Test
+        void headShouldReturnNotFoundWhenUserDoesNotExist() {
+            when()
+                .head(USERNAME_WITH_DOMAIN.asString())
+            .then()
+                .statusCode(HttpStatus.NOT_FOUND_404);
+        }
+
+        @Test
         void puttingWithDomainPartInUsernameTwoTimesShouldBeAllowed() {
             // Given
             with()
@@ -674,6 +708,26 @@ class UserRoutesTest {
         UserRoutesExtension extension = UserRoutesExtension.withoutVirtualHosting();
 
         WithoutVirtualHosting() throws DomainListException {
+        }
+
+        @Test
+        void headShouldReturnOKWhenUserExists() {
+            with()
+                .body("{\"password\":\"password\"}")
+                .put(USERNAME_WITHOUT_DOMAIN.asString());
+
+            when()
+                .head(USERNAME_WITHOUT_DOMAIN.asString())
+            .then()
+                .statusCode(HttpStatus.OK_200);
+        }
+
+        @Test
+        void headShouldReturnNotFoundWhenUserDoesNotExist() {
+            when()
+                .head(USERNAME_WITHOUT_DOMAIN.asString())
+            .then()
+                .statusCode(HttpStatus.NOT_FOUND_404);
         }
 
         @Test

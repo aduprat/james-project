@@ -19,7 +19,7 @@
 
 package org.apache.james.queue.rabbitmq.view.cassandra.configuration;
 
-import java.util.Optional;
+import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
 import javax.inject.Inject;
 
@@ -32,6 +32,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
+import reactor.core.publisher.Mono;
+
 public class EventsourcingConfigurationManagement {
     static final String CONFIGURATION_AGGREGATE_KEY = "CassandraMailQueueViewConfiguration";
     static final AggregateId CONFIGURATION_AGGREGATE_ID = () -> CONFIGURATION_AGGREGATE_KEY;
@@ -43,7 +45,7 @@ public class EventsourcingConfigurationManagement {
 
     @Inject
     public EventsourcingConfigurationManagement(EventStore eventStore) {
-        this.eventSourcingSystem = new EventSourcingSystem(
+        this.eventSourcingSystem = EventSourcingSystem.fromJava(
             ImmutableSet.of(new RegisterConfigurationCommandHandler(eventStore)),
             NO_SUBSCRIBER,
             eventStore);
@@ -51,15 +53,17 @@ public class EventsourcingConfigurationManagement {
     }
 
     @VisibleForTesting
-    Optional<CassandraMailQueueViewConfiguration> load() {
-        return ConfigurationAggregate
-            .load(CONFIGURATION_AGGREGATE_ID, eventStore.getEventsOfAggregate(CONFIGURATION_AGGREGATE_ID))
-            .getCurrentConfiguration();
+    Mono<CassandraMailQueueViewConfiguration> load() {
+        return Mono.from(eventStore.getEventsOfAggregate(CONFIGURATION_AGGREGATE_ID))
+            .map(history -> ConfigurationAggregate
+                .load(CONFIGURATION_AGGREGATE_ID, history)
+                .getCurrentConfiguration())
+            .handle(publishIfPresent());
     }
 
     public void registerConfiguration(CassandraMailQueueViewConfiguration newConfiguration) {
         Preconditions.checkNotNull(newConfiguration);
 
-        eventSourcingSystem.dispatch(new RegisterConfigurationCommand(newConfiguration, CONFIGURATION_AGGREGATE_ID));
+        Mono.from(eventSourcingSystem.dispatch(new RegisterConfigurationCommand(newConfiguration, CONFIGURATION_AGGREGATE_ID))).block();
     }
 }

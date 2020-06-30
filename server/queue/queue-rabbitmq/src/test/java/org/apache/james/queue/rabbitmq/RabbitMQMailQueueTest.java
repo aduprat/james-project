@@ -23,6 +23,8 @@ import static java.time.temporal.ChronoUnit.HOURS;
 import static org.apache.james.queue.api.Mails.defaultMail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.awaitility.Awaitility.await;
+import static org.awaitility.Duration.FIVE_SECONDS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -77,7 +79,7 @@ class RabbitMQMailQueueTest {
     private static final int THREE_BUCKET_COUNT = 3;
     private static final int UPDATE_BROWSE_START_PACE = 2;
     private static final Duration ONE_HOUR_SLICE_WINDOW = Duration.ofHours(1);
-    private static final String SPOOL = "spool";
+    private static final org.apache.james.queue.api.MailQueueName SPOOL = org.apache.james.queue.api.MailQueueName.of("spool");
     private static final Instant IN_SLICE_1 = Instant.parse("2007-12-03T10:15:30.00Z");
     private static final Instant IN_SLICE_2 = IN_SLICE_1.plus(1, HOURS);
     private static final Instant IN_SLICE_3 = IN_SLICE_1.plus(2, HOURS);
@@ -88,7 +90,7 @@ class RabbitMQMailQueueTest {
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraModule.aggregateModules(
         CassandraBlobModule.MODULE,
         CassandraMailQueueViewModule.MODULE,
-        CassandraEventStoreModule.MODULE,
+        CassandraEventStoreModule.MODULE(),
         CassandraSchemaVersionModule.MODULE));
 
     @RegisterExtension
@@ -196,10 +198,10 @@ class RabbitMQMailQueueTest {
 
         @Test
         void mailQueueShouldBeInitializedWhenCreating(CassandraCluster cassandra) {
-            String name = "myQueue";
+            org.apache.james.queue.api.MailQueueName name = org.apache.james.queue.api.MailQueueName.of("myQueue");
             mailQueueFactory.createQueue(name);
 
-            boolean initialized = CassandraMailQueueViewTestFactory.isInitialized(cassandra.getConf(), MailQueueName.fromString(name));
+            boolean initialized = CassandraMailQueueViewTestFactory.isInitialized(cassandra.getConf(), MailQueueName.fromString(name.asString()));
             assertThat(initialized).isTrue();
         }
 
@@ -242,6 +244,34 @@ class RabbitMQMailQueueTest {
             getMailQueue().enQueue(defaultMail()
                 .name(name3)
                 .build());
+
+            List<MailQueue.MailQueueItem> items = dequeueFlux.take(3).collectList().block(Duration.ofSeconds(10));
+
+            assertThat(items)
+                .extracting(item -> item.getMail().getName())
+                .containsExactly(name1, name2, name3);
+        }
+
+        @Test
+        void messagesShouldSurviveRabbitMQRestart() throws Exception {
+            String name1 = "myMail1";
+            String name2 = "myMail2";
+            String name3 = "myMail3";
+            Flux<MailQueue.MailQueueItem> dequeueFlux = Flux.from(getMailQueue().deQueue());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name1)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name2)
+                .build());
+
+            getMailQueue().enQueue(defaultMail()
+                .name(name3)
+                .build());
+
+            rabbitMQExtension.getRabbitMQ().restart();
 
             List<MailQueue.MailQueueItem> items = dequeueFlux.take(3).collectList().block(Duration.ofSeconds(10));
 
@@ -306,7 +336,7 @@ class RabbitMQMailQueueTest {
         RabbitMQMailQueueFactory.PrivateFactory factory = new RabbitMQMailQueueFactory.PrivateFactory(
             metricTestSystem.getMetricFactory(),
             metricTestSystem.getSpyGaugeRegistry(),
-            rabbitMQExtension.getRabbitChannelPool(),
+            rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(),
             mimeMessageStoreFactory,
             BLOB_ID_FACTORY,
             mailQueueViewFactory,
@@ -314,7 +344,7 @@ class RabbitMQMailQueueTest {
             new RawMailQueueItemDecoratorFactory(),
             configuration);
         mqManagementApi = new RabbitMQMailQueueManagement(rabbitMQExtension.managementAPI());
-        mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getRabbitChannelPool(), mqManagementApi, factory);
+        mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getSender(), mqManagementApi, factory);
         mailQueue = mailQueueFactory.createQueue(SPOOL);
     }
 }

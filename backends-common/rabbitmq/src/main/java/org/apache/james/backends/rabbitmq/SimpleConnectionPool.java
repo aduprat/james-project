@@ -19,6 +19,8 @@
 
 package org.apache.james.backends.rabbitmq;
 
+import static org.apache.james.util.ReactorUtils.publishIfPresent;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
@@ -33,6 +35,7 @@ import com.rabbitmq.client.Connection;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 public class SimpleConnectionPool implements AutoCloseable {
     private final AtomicReference<Connection> connectionReference;
@@ -54,11 +57,10 @@ public class SimpleConnectionPool implements AutoCloseable {
     }
 
     public Mono<Connection> getResilientConnection() {
-        int numRetries = 100;
+        int numRetries = 10;
         Duration initialDelay = Duration.ofMillis(100);
-        Duration forever = Duration.ofMillis(Long.MAX_VALUE);
         return Mono.defer(this::getOpenConnection)
-            .retryBackoff(numRetries, initialDelay, forever, Schedulers.elastic());
+            .retryWhen(Retry.backoff(numRetries, initialDelay).scheduler(Schedulers.elastic()));
     }
 
     private Mono<Connection> getOpenConnection() {
@@ -79,13 +81,21 @@ public class SimpleConnectionPool implements AutoCloseable {
         }
     }
 
-    public boolean tryConnection() {
-        try {
-            return getOpenConnection()
-                .blockOptional(Duration.ofSeconds(1))
-                .isPresent();
-        } catch (Throwable t) {
-            return false;
-        }
+    public Mono<Boolean> tryConnection() {
+        return getOpenConnection()
+            .timeout(Duration.ofSeconds(1))
+            .hasElement()
+            .onErrorResume(any -> Mono.just(false));
+    }
+
+    public Mono<RabbitMQServerVersion> version() {
+        return getOpenConnection()
+            .map(Connection::getServerProperties)
+            .map(serverProperties -> Optional.ofNullable(serverProperties.get("version")))
+            .handle(publishIfPresent())
+            .map(Object::toString)
+            .map(RabbitMQServerVersion::of)
+            .timeout(Duration.ofSeconds(1))
+            .onErrorResume(any -> Mono.empty());
     }
 }

@@ -19,6 +19,8 @@
 
 package org.apache.james.queue.rabbitmq.view.cassandra;
 
+import static org.apache.james.util.FunctionalUtils.negate;
+
 import javax.inject.Inject;
 
 import org.apache.james.queue.api.ManageableMailQueue;
@@ -32,6 +34,7 @@ import org.apache.james.queue.rabbitmq.view.cassandra.configuration.Eventsourcin
 import org.apache.james.queue.rabbitmq.view.cassandra.model.EnqueuedItemWithSlicingContext;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class CassandraMailQueueView implements MailQueueView {
 
@@ -89,13 +92,17 @@ public class CassandraMailQueueView implements MailQueueView {
     public ManageableMailQueue.MailQueueIterator browse() {
         return new CassandraMailQueueBrowser.CassandraMailQueueIterator(
             cassandraMailQueueBrowser.browse(mailQueueName)
+                .subscribeOn(Schedulers.elastic())
                 .toIterable()
                 .iterator());
     }
 
     @Override
     public long getSize() {
-        return cassandraMailQueueBrowser.browseReferences(mailQueueName).count().block();
+        return cassandraMailQueueBrowser.browseReferences(mailQueueName)
+            .count()
+            .subscribeOn(Schedulers.elastic())
+            .block();
     }
 
     @Override
@@ -115,6 +122,7 @@ public class CassandraMailQueueView implements MailQueueView {
             .flatMap(mailReference -> cassandraMailQueueMailDelete.considerDeleted(mailReference.getEnqueueId(), mailQueueName))
             .count()
             .doOnNext(ignored -> cassandraMailQueueMailDelete.updateBrowseStart(mailQueueName))
+            .subscribeOn(Schedulers.elastic())
             .block();
     }
 
@@ -125,6 +133,6 @@ public class CassandraMailQueueView implements MailQueueView {
     @Override
     public Mono<Boolean> isPresent(EnqueueId id) {
         return cassandraMailQueueMailDelete.isDeleted(id, mailQueueName)
-                .map(bool -> !bool);
+                .map(negate());
     }
 }

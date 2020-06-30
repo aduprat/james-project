@@ -18,6 +18,8 @@
  ****************************************************************/
 package org.apache.james.mailbox.model;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.james.core.quota.QuotaLimitValue;
@@ -33,6 +35,10 @@ public class Quota<T extends QuotaLimitValue<T>, U extends QuotaUsageValue<U, T>
         Domain,
         Global,
         User
+    }
+
+    public static List<Scope> allScopes() {
+        return Arrays.asList(Quota.Scope.User, Quota.Scope.Domain, Quota.Scope.Global);
     }
 
     public static <T extends QuotaLimitValue<T>,  U extends QuotaUsageValue<U, T>> Builder<T, U> builder() {
@@ -72,7 +78,7 @@ public class Quota<T extends QuotaLimitValue<T>, U extends QuotaUsageValue<U, T>
         public Quota<T, U> build() {
             Preconditions.checkState(used != null);
             Preconditions.checkState(computedLimit != null);
-            return new Quota<T, U>(used, computedLimit, limitsByScope.build());
+            return new Quota<>(used, computedLimit, limitsByScope.build());
         }
 
     }
@@ -107,7 +113,7 @@ public class Quota<T extends QuotaLimitValue<T>, U extends QuotaUsageValue<U, T>
     }
 
     public Quota<T, U> addValueToQuota(U value) {
-        return new Quota<T, U>(used.add(value), limit, limitByScope);
+        return new Quota<>(used.add(value), limit, limitByScope);
     }
 
     /**
@@ -131,7 +137,7 @@ public class Quota<T extends QuotaLimitValue<T>, U extends QuotaUsageValue<U, T>
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || ! (o instanceof  Quota)) {
+        if (!(o instanceof Quota)) {
             return false;
         }
         Quota<?, ?> other = (Quota<?, ?>) o;

@@ -20,25 +20,37 @@
 package org.apache.james;
 
 import org.apache.james.data.LdapUsersRepositoryModule;
+import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
+import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
 import org.apache.james.modules.server.JMXServerModule;
-import org.apache.james.server.core.configuration.Configuration;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
-public class CassandraRabbitMQLdapJamesServerMain {
+public class CassandraRabbitMQLdapJamesServerMain implements JamesServerMain {
     public static final Module MODULES = Modules
         .override(CassandraRabbitMQJamesServerMain.MODULES)
         .with(new LdapUsersRepositoryModule());
 
     public static void main(String[] args) throws Exception {
-        Configuration configuration = Configuration.builder()
+        CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
             .useWorkingDirectoryEnvProperty()
             .build();
 
-        GuiceJamesServer server = GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MODULES, new JMXServerModule());
+        LOGGER.info("Loading configuration {}", configuration.toString());
+        GuiceJamesServer server = createServer(configuration)
+            .combineWith(new JMXServerModule());
 
-        server.start();
+        JamesServerMain.main(server);
+    }
+
+    public static GuiceJamesServer createServer(CassandraRabbitMQJamesConfiguration configuration) {
+        BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
+
+        return GuiceJamesServer.forConfiguration(configuration)
+            .combineWith(MODULES)
+            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
+            .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration));
     }
 }

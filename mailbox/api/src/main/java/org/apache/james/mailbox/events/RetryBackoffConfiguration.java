@@ -28,21 +28,21 @@ import com.google.common.base.Preconditions;
 public class RetryBackoffConfiguration {
 
     @FunctionalInterface
-    interface RequireMaxRetries {
+    public interface RequireMaxRetries {
         RequireFirstBackoff maxRetries(int maxRetries);
     }
 
     @FunctionalInterface
-    interface RequireFirstBackoff {
+    public interface RequireFirstBackoff {
         RequireJitterFactor firstBackoff(Duration firstBackoff);
     }
 
     @FunctionalInterface
-    interface RequireJitterFactor {
+    public interface RequireJitterFactor {
         ReadyToBuild jitterFactor(double jitterFactor);
     }
 
-    static class ReadyToBuild {
+    public static class ReadyToBuild {
         private final int maxRetries;
         private final Duration firstBackoff;
         private final double jitterFactor;
@@ -53,17 +53,17 @@ public class RetryBackoffConfiguration {
             this.jitterFactor = jitterFactor;
         }
 
-        RetryBackoffConfiguration build() {
+        public RetryBackoffConfiguration build() {
             return new RetryBackoffConfiguration(maxRetries, firstBackoff, jitterFactor);
         }
     }
 
-    static RequireMaxRetries builder() {
+    public static RequireMaxRetries builder() {
         return maxRetries -> firstBackoff -> jitterFactor -> new ReadyToBuild(maxRetries, firstBackoff, jitterFactor);
     }
 
     static final double DEFAULT_JITTER_FACTOR = 0.5;
-    static final int DEFAULT_MAX_RETRIES = 3;
+    static final int DEFAULT_MAX_RETRIES = 8;
     static final Duration DEFAULT_FIRST_BACKOFF = Duration.ofMillis(100);
     public static final RetryBackoffConfiguration DEFAULT = new RetryBackoffConfiguration(
         DEFAULT_MAX_RETRIES,

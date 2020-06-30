@@ -24,6 +24,9 @@ import java.util.List;
 import org.apache.james.eventsourcing.CommandHandler;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
+import org.reactivestreams.Publisher;
+
+import reactor.core.publisher.Mono;
 
 class RegisterConfigurationCommandHandler implements CommandHandler<RegisterConfigurationCommand> {
 
@@ -39,9 +42,10 @@ class RegisterConfigurationCommandHandler implements CommandHandler<RegisterConf
     }
 
     @Override
-    public List<? extends Event> handle(RegisterConfigurationCommand command) {
-        return ConfigurationAggregate
-            .load(command.getAggregateId(), eventStore.getEventsOfAggregate(command.getAggregateId()))
-            .registerConfiguration(command.getConfiguration());
+    public Publisher<List<? extends Event>> handle(RegisterConfigurationCommand command) {
+        return Mono.from(eventStore.getEventsOfAggregate(command.getAggregateId()))
+            .map(history -> ConfigurationAggregate
+                .load(command.getAggregateId(), history)
+                .registerConfiguration(command.getConfiguration()));
     }
 }

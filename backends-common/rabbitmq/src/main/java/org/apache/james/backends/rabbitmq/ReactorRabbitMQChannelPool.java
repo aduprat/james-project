@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.BiConsumer;
 
 import javax.annotation.PreDestroy;
-import javax.inject.Inject;
 
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
@@ -50,6 +49,7 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
+import reactor.util.retry.Retry;
 
 public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
 
@@ -83,7 +83,7 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
             return Mono.fromCallable(connection::openChannel)
                 .map(maybeChannel ->
                     maybeChannel.orElseThrow(() -> new RuntimeException("RabbitMQ reached to maximum opened channels, cannot get more channels")))
-                .retryBackoff(MAX_RETRIES, RETRY_FIRST_BACK_OFF, FOREVER, Schedulers.elastic())
+                .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_FIRST_BACK_OFF).scheduler(Schedulers.elastic()))
                 .doOnError(throwable -> LOGGER.error("error when creating new channel", throwable));
         }
 
@@ -103,17 +103,15 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReactorRabbitMQChannelPool.class);
     private static final long MAXIMUM_BORROW_TIMEOUT_IN_MS = Duration.ofSeconds(5).toMillis();
-    private static final int MAX_CHANNELS_NUMBER = 5;
+    private static final int MAX_CHANNELS_NUMBER = 3;
     private static final int MAX_BORROW_RETRIES = 3;
     private static final Duration MIN_BORROW_DELAY = Duration.ofMillis(50);
-    private static final Duration FOREVER = Duration.ofMillis(Long.MAX_VALUE);
 
     private final Mono<Connection> connectionMono;
     private final GenericObjectPool<Channel> pool;
     private final ConcurrentSkipListSet<Channel> borrowedChannels;
     private Sender sender;
 
-    @Inject
     public ReactorRabbitMQChannelPool(SimpleConnectionPool simpleConnectionPool) {
         this(simpleConnectionPool.getResilientConnection(), MAX_CHANNELS_NUMBER);
     }
@@ -140,28 +138,22 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
         return RabbitFlux.createReceiver(new ReceiverOptions().connectionMono(connectionMono));
     }
 
-    public Mono<Connection> getConnectionMono() {
-        return connectionMono;
-    }
-
     @Override
     public Mono<? extends Channel> getChannelMono() {
-        return Mono.fromCallable(this::borrow);
+        return borrow();
     }
 
-    private Channel borrow() {
-        Channel channel = tryBorrowFromPool();
-        borrowedChannels.add(channel);
-        return channel;
-    }
-
-    private Channel tryBorrowFromPool() {
-        return Mono.fromCallable(this::borrowFromPool)
+    private Mono<Channel> borrow() {
+        return tryBorrowFromPool()
             .doOnError(throwable -> LOGGER.warn("Cannot borrow channel", throwable))
-            .retryBackoff(MAX_BORROW_RETRIES, MIN_BORROW_DELAY, FOREVER, Schedulers.elastic())
+            .retryWhen(Retry.backoff(MAX_BORROW_RETRIES, MIN_BORROW_DELAY).scheduler(Schedulers.elastic()))
             .onErrorMap(this::propagateException)
             .subscribeOn(Schedulers.elastic())
-            .block();
+            .doOnNext(borrowedChannels::add);
+    }
+
+    private Mono<Channel> tryBorrowFromPool() {
+        return Mono.fromCallable(this::borrowFromPool);
     }
 
     private Throwable propagateException(Throwable throwable) {
@@ -222,18 +214,16 @@ public class ReactorRabbitMQChannelPool implements ChannelPool, Startable {
         pool.close();
     }
 
-    public boolean tryChannel() {
-        Channel channel = null;
-        try {
-            channel = borrow();
-            return channel.isOpen();
-        } catch (Throwable t) {
-            return false;
-        } finally {
-            if (channel != null) {
-                borrowedChannels.remove(channel);
-                pool.returnObject(channel);
-            }
-        }
+    public Mono<Boolean> tryChannel() {
+        return Mono.usingWhen(borrow(),
+            channel -> Mono.just(channel.isOpen()),
+            channel -> {
+                if (channel != null) {
+                    borrowedChannels.remove(channel);
+                    pool.returnObject(channel);
+                }
+                return Mono.empty();
+            })
+            .onErrorResume(any -> Mono.just(false));
     }
 }

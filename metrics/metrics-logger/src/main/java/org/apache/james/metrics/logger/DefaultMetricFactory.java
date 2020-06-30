@@ -18,11 +18,17 @@
  ****************************************************************/
 package org.apache.james.metrics.logger;
 
+import static org.apache.james.metrics.api.TimeMetric.ExecutionResult.DEFAULT_100_MS_THRESHOLD;
+
 import org.apache.james.metrics.api.Metric;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.api.TimeMetric;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class DefaultMetricFactory implements MetricFactory {
 
@@ -38,4 +44,17 @@ public class DefaultMetricFactory implements MetricFactory {
         return new DefaultTimeMetric(name);
     }
 
+    @Override
+    public <T> Publisher<T> decoratePublisherWithTimerMetric(String name, Publisher<T> publisher) {
+        return Mono.fromCallable(() -> timer(name))
+            .flatMapMany(timer ->  Flux.from(publisher)
+                .doOnComplete(timer::stopAndPublish));
+    }
+
+    @Override
+    public <T> Publisher<T> decoratePublisherWithTimerMetricLogP99(String name, Publisher<T> publisher) {
+        return Mono.fromCallable(() -> timer(name))
+            .flatMapMany(timer ->  Flux.from(publisher)
+                .doOnComplete(() -> timer.stopAndPublish().logWhenExceedP99(DEFAULT_100_MS_THRESHOLD)));
+    }
 }

@@ -27,10 +27,9 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import org.apache.james.mailbox.model.Attachment;
 import org.apache.james.mailbox.model.Cid;
-import org.apache.james.mailbox.model.MessageAttachment;
-import org.apache.james.mime4j.MimeException;
+import org.apache.james.mailbox.model.ContentType;
+import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.dom.Body;
 import org.apache.james.mime4j.dom.Entity;
@@ -57,7 +56,7 @@ public class MessageParser {
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String CONTENT_ID = "Content-ID";
     private static final String CONTENT_DISPOSITION = "Content-Disposition";
-    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
+    private static final ContentType DEFAULT_CONTENT_TYPE = ContentType.of("application/octet-stream");
     private static final List<String> ATTACHMENT_CONTENT_DISPOSITIONS = ImmutableList.of(
             ContentDispositionField.DISPOSITION_TYPE_ATTACHMENT.toLowerCase(Locale.US),
             ContentDispositionField.DISPOSITION_TYPE_INLINE.toLowerCase(Locale.US));
@@ -76,7 +75,7 @@ public class MessageParser {
             .unwrap();
     }
 
-    public List<MessageAttachment> retrieveAttachments(InputStream fullContent) throws MimeException, IOException {
+    public List<ParsedAttachment> retrieveAttachments(InputStream fullContent) throws IOException {
         DefaultMessageBuilder defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
@@ -99,13 +98,13 @@ public class MessageParser {
         }
     }
 
-    private Stream<MessageAttachment> listAttachments(Multipart multipart, Context context) {
+    private Stream<ParsedAttachment> listAttachments(Multipart multipart, Context context) {
         return multipart.getBodyParts()
             .stream()
             .flatMap(entity -> listAttachments(entity, context));
     }
 
-    private Stream<MessageAttachment> listAttachments(Entity entity, Context context) {
+    private Stream<ParsedAttachment> listAttachments(Entity entity, Context context) {
         if (isMultipart(entity)) {
             return listAttachments((Multipart) entity.getBody(), Context.fromEntity(entity));
         }
@@ -121,23 +120,22 @@ public class MessageParser {
         return Stream.empty();
     }
 
-    private MessageAttachment retrieveAttachment(Entity entity) throws IOException {
+    private ParsedAttachment retrieveAttachment(Entity entity) throws IOException {
         Optional<ContentTypeField> contentTypeField = getContentTypeField(entity);
         Optional<ContentDispositionField> contentDispositionField = getContentDispositionField(entity);
-        Optional<String> contentType = contentType(contentTypeField);
+        Optional<ContentType> contentType = contentTypeField.map(ContentTypeField::getBody)
+            .filter(string -> !string.isEmpty())
+            .map(ContentType::of);
         Optional<String> name = name(contentTypeField, contentDispositionField);
         Optional<Cid> cid = cid(readHeader(entity, CONTENT_ID, ContentIdField.class));
         boolean isInline = isInline(readHeader(entity, CONTENT_DISPOSITION, ContentDispositionField.class)) && cid.isPresent();
 
-        return MessageAttachment.builder()
-                .attachment(Attachment.builder()
-                    .bytes(getBytes(entity.getBody()))
-                    .type(contentType.orElse(DEFAULT_CONTENT_TYPE))
-                    .build())
-                .name(name.orElse(null))
-                .cid(cid.orElse(null))
-                .isInline(isInline)
-                .build();
+        return ParsedAttachment.builder()
+                .contentType(contentType.orElse(DEFAULT_CONTENT_TYPE))
+                .content(getContent(entity.getBody()))
+                .name(name)
+                .cid(cid)
+                .inline(isInline);
     }
 
     private <T extends ParsedField> Optional<T> readHeader(Entity entity, String headerName, Class<T> clazz) {
@@ -158,10 +156,6 @@ public class MessageParser {
             return Optional.empty();
         }
         return Optional.of((U) field);
-    }
-
-    private Optional<String> contentType(Optional<ContentTypeField> contentTypeField) {
-        return contentTypeField.map(ContentTypeField::getMimeType);
     }
 
     private Optional<String> name(Optional<ContentTypeField> contentTypeField, Optional<ContentDispositionField> contentDispositionField) {
@@ -221,7 +215,7 @@ public class MessageParser {
         return readHeader(part, CONTENT_ID, ContentIdField.class).isPresent();
     }
 
-    private byte[] getBytes(Body body) throws IOException {
+    private byte[] getContent(Body body) throws IOException {
         DefaultMessageWriter messageWriter = new DefaultMessageWriter();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         messageWriter.writeBody(body, out);

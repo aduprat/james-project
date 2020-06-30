@@ -66,14 +66,14 @@ class MessageMetadataViewFactoryTest {
         message1 = bobInbox.appendMessage(MessageManager.AppendCommand.builder()
                 .withFlags(new Flags(Flags.Flag.SEEN))
                 .build("header: value\r\n\r\nbody"),
-            session);
+            session).getId();
 
         testee = new MessageMetadataViewFactory(resources.getBlobManager(), messageIdManager);
     }
 
     @Test
     void fromMessageResultsShouldReturnCorrectView() throws Exception {
-        MessageMetadataView actual = testee.fromMessageIds(ImmutableList.of(message1.getMessageId()), session).get(0);
+        MessageMetadataView actual = testee.fromMessageIds(ImmutableList.of(message1.getMessageId()), session).collectList().block().get(0);
         SoftAssertions.assertSoftly(softly -> {
            softly.assertThat(actual.getId()).isEqualTo(message1.getMessageId());
            softly.assertThat(actual.getMailboxIds()).containsExactly(bobInbox.getId());
@@ -89,7 +89,7 @@ class MessageMetadataViewFactoryTest {
         messageIdManager.setInMailboxes(message1.getMessageId(), ImmutableList.of(bobInbox.getId(), bobMailbox.getId()), session);
         bobMailbox.setFlags(new Flags(Flags.Flag.FLAGGED), MessageManager.FlagsUpdateMode.REPLACE, MessageRange.all(), session);
 
-        MessageMetadataView actual = testee.fromMessageIds(ImmutableList.of(message1.getMessageId()), session).get(0);
+        MessageMetadataView actual = testee.fromMessageIds(ImmutableList.of(message1.getMessageId()), session).collectList().block().get(0);
         SoftAssertions.assertSoftly(softly -> {
            softly.assertThat(actual.getId()).isEqualTo(message1.getMessageId());
            softly.assertThat(actual.getKeywords()).isEqualTo(Keywords.strictFactory().from(Keyword.SEEN, Keyword.FLAGGED).asMap());

@@ -20,7 +20,6 @@
 package org.apache.james.mailbox.inmemory.mail;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -36,7 +35,6 @@ import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.model.Mailbox;
-import org.apache.james.mailbox.model.MailboxCounters;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageRange;
@@ -100,18 +98,6 @@ public class InMemoryMessageMapper extends AbstractMessageMapper {
     }
 
     @Override
-    public List<MailboxCounters> getMailboxCounters(Collection<Mailbox> mailboxes) {
-        return mailboxes.stream()
-            .map(Mailbox::getMailboxId)
-            .map(id -> MailboxCounters.builder()
-                .mailboxId(id)
-                .count(countMessagesInMailbox(id))
-                .unseen(countUnseenMessagesInMailbox(id))
-                .build())
-            .collect(Guavate.toImmutableList());
-    }
-
-    @Override
     public void delete(Mailbox mailbox, MailboxMessage message) {
         getMembershipByUidForMailbox(mailbox).remove(message.getUid());
     }
@@ -128,11 +114,7 @@ public class InMemoryMessageMapper extends AbstractMessageMapper {
     @Override
     public Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange set, FetchType ftype, int max) {
         List<MailboxMessage> results = new ArrayList<>(getMembershipByUidForMailbox(mailbox).values());
-        for (Iterator<MailboxMessage> it = results.iterator(); it.hasNext();) {
-            if (!set.includes(it.next().getUid())) {
-                it.remove();
-            }
-        }
+        results.removeIf(mailboxMessage -> !set.includes(mailboxMessage.getUid()));
         
         Collections.sort(results);
 

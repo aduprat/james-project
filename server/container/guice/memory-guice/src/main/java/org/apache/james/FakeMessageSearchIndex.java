@@ -24,6 +24,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
+import javax.mail.Flags;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
@@ -38,6 +40,9 @@ import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 public class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
     private static class FakeMessageSearchIndexGroup extends Group {
 
@@ -50,22 +55,22 @@ public class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public void add(MailboxSession session, Mailbox mailbox, MailboxMessage message) throws Exception {
+    public Mono<Void> add(MailboxSession session, Mailbox mailbox, MailboxMessage message) {
         throw new NotImplementedException("not implemented");
     }
 
     @Override
-    public void delete(MailboxSession session, Mailbox mailbox, Collection<MessageUid> expungedUids) throws Exception {
+    public Mono<Void> delete(MailboxSession session, Mailbox mailbox, Collection<MessageUid> expungedUids) {
         throw new NotImplementedException("not implemented");
     }
 
     @Override
-    public void deleteAll(MailboxSession session, MailboxId mailboxId) throws Exception {
+    public Mono<Void> deleteAll(MailboxSession session, MailboxId mailboxId) {
         throw new NotImplementedException("not implemented");
     }
 
     @Override
-    public void update(MailboxSession session, Mailbox mailbox, List<UpdatedFlags> updatedFlagsList) throws Exception {
+    public Mono<Void> update(MailboxSession session, Mailbox mailbox, List<UpdatedFlags> updatedFlagsList) {
         throw new NotImplementedException("not implemented");
     }
 
@@ -80,7 +85,7 @@ public class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
     }
 
     @Override
-    public List<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) throws MailboxException {
+    public Flux<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) {
         throw new NotImplementedException("not implemented");
     }
 
@@ -91,6 +96,11 @@ public class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
 
     @Override
     public ExecutionMode getExecutionMode() {
+        throw new NotImplementedException("not implemented");
+    }
+
+    @Override
+    public Mono<Flags> retrieveIndexedFlags(Mailbox mailbox, MessageUid uid) {
         throw new NotImplementedException("not implemented");
     }
 }

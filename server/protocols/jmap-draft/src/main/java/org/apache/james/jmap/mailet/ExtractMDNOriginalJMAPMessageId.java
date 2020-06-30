@@ -21,6 +21,7 @@ package org.apache.james.jmap.mailet;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +53,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
+
+import reactor.core.publisher.Flux;
+import scala.util.Try;
 
 /**
  * This mailet handles MDN messages and define a header X-JAMES-MDN-JMAP-MESSAGE-ID referencing
@@ -102,12 +106,12 @@ public class ExtractMDNOriginalJMAPMessageId extends GenericMailet {
     private Optional<MessageId> findMessageIdForRFC822MessageId(String messageId, MailAddress recipient) {
         LOGGER.debug("Searching message {} for recipient {}", messageId, recipient.asPrettyString());
         try {
-            MailboxSession session = mailboxManager.createSystemSession(usersRepository.getUser(recipient));
+            MailboxSession session = mailboxManager.createSystemSession(usersRepository.getUsername(recipient));
             int limit = 1;
             MultimailboxesSearchQuery searchByRFC822MessageId = MultimailboxesSearchQuery
-                .from(new SearchQuery(SearchQuery.mimeMessageID(messageId)))
+                .from(SearchQuery.of(SearchQuery.mimeMessageID(messageId)))
                 .build();
-            return mailboxManager.search(searchByRFC822MessageId, session, limit).stream().findFirst();
+            return Flux.from(mailboxManager.search(searchByRFC822MessageId, session, limit)).toStream().findFirst();
         } catch (MailboxException | UsersRepositoryException e) {
             LOGGER.error("unable to find message with Message-Id: " + messageId, e);
         }
@@ -116,8 +120,14 @@ public class ExtractMDNOriginalJMAPMessageId extends GenericMailet {
 
     private Optional<MDNReport> parseReport(Entity report) {
         LOGGER.debug("Parsing report");
-        try {
-            return new MDNReportParser().parse(((SingleBody)report.getBody()).getInputStream(), report.getCharset());
+        try (InputStream inputStream = ((SingleBody) report.getBody()).getInputStream()) {
+            Try<MDNReport> result = MDNReportParser.parse(inputStream, report.getCharset());
+            if (result.isSuccess()) {
+                return Optional.of(result.get());
+            } else {
+                LOGGER.error("unable to parse MESSAGE_DISPOSITION_NOTIFICATION part", result.failed().get());
+                return Optional.empty();
+            }
         } catch (IOException e) {
             LOGGER.error("unable to parse MESSAGE_DISPOSITION_NOTIFICATION part", e);
             return Optional.empty();

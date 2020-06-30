@@ -21,11 +21,13 @@ package org.apache.james.jmap.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.Preview;
@@ -64,6 +66,7 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class ComputeMessageFastViewProjectionListenerTest {
@@ -102,10 +105,17 @@ class ComputeMessageFastViewProjectionListenerTest {
     @BeforeEach
     void setup() throws Exception {
         eventDeadLetters = new MemoryEventDeadLetters();
+        // Default RetryBackoffConfiguration leads each events to be re-executed for 30s which is too long
+        // Reducing the wait time for the event bus allow a faster test suite execution without harming test correctness
+        RetryBackoffConfiguration backoffConfiguration = RetryBackoffConfiguration.builder()
+            .maxRetries(2)
+            .firstBackoff(Duration.ofMillis(1))
+            .jitterFactor(0.5)
+            .build();
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
             .preProvisionnedFakeAuthenticator()
             .fakeAuthorizator()
-            .eventBus(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.DEFAULT, eventDeadLetters))
+            .eventBus(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), backoffConfiguration, eventDeadLetters))
             .defaultAnnotationLimits()
             .defaultMessageParser()
             .scanningSearchIndex()
@@ -154,7 +164,7 @@ class ComputeMessageFastViewProjectionListenerTest {
         ComposedMessageId composedId = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(previewMessage()),
-            mailboxSession);
+            mailboxSession).getId();
 
         assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
             .isEqualTo(PRECOMPUTED_PROPERTIES_PREVIEW);
@@ -165,7 +175,7 @@ class ComputeMessageFastViewProjectionListenerTest {
         ComposedMessageId composedId = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(emptyMessage()),
-            mailboxSession);
+            mailboxSession).getId();
 
         assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
             .isEqualTo(PRECOMPUTED_PROPERTIES_EMPTY);
@@ -176,7 +186,7 @@ class ComputeMessageFastViewProjectionListenerTest {
         ComposedMessageId composedId = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(ClassLoaderUtils.getSystemResourceAsSharedStream("fullMessage.eml")),
-            mailboxSession);
+            mailboxSession).getId();
 
         assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
             .isEqualTo(PRECOMPUTED_PROPERTIES_PREVIEW_HAS_ATTACHMENT);
@@ -187,7 +197,7 @@ class ComputeMessageFastViewProjectionListenerTest {
         ComposedMessageId composedId = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(ClassLoaderUtils.getSystemResourceAsSharedStream("emptyBodyMessageWithOneAttachment.eml")),
-            mailboxSession);
+            mailboxSession).getId();
 
         assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
             .isEqualTo(PRECOMPUTED_PROPERTIES_HAS_ATTACHMENT);
@@ -198,12 +208,12 @@ class ComputeMessageFastViewProjectionListenerTest {
         ComposedMessageId composedId1 = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(previewMessage()),
-            mailboxSession);
+            mailboxSession).getId();
 
         ComposedMessageId composedId2 = inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()
                 .build(emptyMessage()),
-            mailboxSession);
+            mailboxSession).getId();
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(Mono.from(messageFastViewProjection.retrieve(composedId1.getMessageId())).block())
@@ -258,9 +268,8 @@ class ComputeMessageFastViewProjectionListenerTest {
 
     @Test
     void shouldStoreEventInDeadLettersWhenGetMessagesException() throws Exception {
-        doThrow(new MailboxException())
-            .when(messageIdManager)
-            .getMessages(any(), any(), any());
+        doReturn(Flux.error(new MailboxException("mock exception")))
+            .when(messageIdManager).getMessagesReactive(any(), any(), any());
 
         inboxMessageManager.appendMessage(
             MessageManager.AppendCommand.builder()

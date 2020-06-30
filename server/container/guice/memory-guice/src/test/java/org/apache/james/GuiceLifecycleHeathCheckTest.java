@@ -29,7 +29,6 @@ import java.util.concurrent.CountDownLatch;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminConfiguration;
 import org.apache.james.webadmin.WebAdminServer;
@@ -47,10 +46,8 @@ import reactor.core.scheduler.Schedulers;
 
 class GuiceLifecycleHeathCheckTest {
     private static JamesServerBuilder extensionBuilder() {
-        return new JamesServerBuilder()
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-                .overrideWith(TestJMAPServerModule.limitToTenMessages())
+        return new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+            .server(configuration -> MemoryJamesServerMain.createServer(configuration)
                 .overrideWith(binder -> binder.bind(WebAdminConfiguration.class)
                     .toInstance(WebAdminConfiguration.TEST_CONFIGURATION)));
     }

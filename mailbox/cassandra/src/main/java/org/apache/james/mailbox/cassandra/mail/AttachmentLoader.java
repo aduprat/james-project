@@ -22,8 +22,9 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.james.mailbox.model.Attachment;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.AttachmentMetadata;
+import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
@@ -42,12 +43,13 @@ public class AttachmentLoader {
         this.attachmentMapper = attachmentMapper;
     }
 
-    public Mono<MailboxMessage> addAttachmentToMessage(Pair<MessageWithoutAttachment, Stream<MessageAttachmentRepresentation>> messageRepresentation, MessageMapper.FetchType fetchType) {
-        return loadAttachments(messageRepresentation.getRight(), fetchType)
-            .map(attachments -> messageRepresentation.getLeft().toMailboxMessage(attachments));
+    public Mono<MailboxMessage> addAttachmentToMessage(Pair<ComposedMessageIdWithMetaData, MessageRepresentation> messageRepresentation,
+                                                       MessageMapper.FetchType fetchType) {
+        return loadAttachments(messageRepresentation.getRight().getAttachments().stream(), fetchType)
+            .map(attachments -> messageRepresentation.getRight().toMailboxMessage(messageRepresentation.getLeft(), attachments));
     }
 
-    private Mono<List<MessageAttachment>> loadAttachments(Stream<MessageAttachmentRepresentation> messageAttachmentRepresentations, MessageMapper.FetchType fetchType) {
+    private Mono<List<MessageAttachmentMetadata>> loadAttachments(Stream<MessageAttachmentRepresentation> messageAttachmentRepresentations, MessageMapper.FetchType fetchType) {
         if (fetchType == MessageMapper.FetchType.Body || fetchType == MessageMapper.FetchType.Full) {
             return getAttachments(messageAttachmentRepresentations.collect(Guavate.toImmutableList()));
         } else {
@@ -56,7 +58,7 @@ public class AttachmentLoader {
     }
 
     @VisibleForTesting
-    Mono<List<MessageAttachment>> getAttachments(List<MessageAttachmentRepresentation> attachmentRepresentations) {
+    Mono<List<MessageAttachmentMetadata>> getAttachments(List<MessageAttachmentRepresentation> attachmentRepresentations) {
         return Flux.fromIterable(attachmentRepresentations)
                 .flatMapSequential(attachmentRepresentation ->
                         attachmentMapper.getAttachmentsAsMono(attachmentRepresentation.getAttachmentId())
@@ -64,8 +66,8 @@ public class AttachmentLoader {
                 .collect(Guavate.toImmutableList());
     }
 
-    private MessageAttachment constructMessageAttachment(Attachment attachment, MessageAttachmentRepresentation messageAttachmentRepresentation) {
-        return MessageAttachment.builder()
+    private MessageAttachmentMetadata constructMessageAttachment(AttachmentMetadata attachment, MessageAttachmentRepresentation messageAttachmentRepresentation) {
+        return MessageAttachmentMetadata.builder()
                 .attachment(attachment)
                 .name(messageAttachmentRepresentation.getName().orElse(null))
                 .cid(messageAttachmentRepresentation.getCid())

@@ -32,7 +32,7 @@
 
     <groupId>org.apache.james</groupId>
     <artifactId>james-project</artifactId>
-    <version>3.5.0-SNAPSHOT</version>
+    <version>3.6.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Apache James Project</name>
@@ -577,7 +577,7 @@
             otherwise the set values are used by default.
         -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <target.jdk>8</target.jdk>
+        <target.jdk>11</target.jdk>
         <james-skin.version>1.9-SNAPSHOT</james-skin.version>
         <!--
             This property contains the directory where to deploy when running using "-Psite-reports" profile
@@ -592,11 +592,12 @@
         <apache.openjpa.version>3.1.0</apache.openjpa.version>
         <camel.version>2.24.1</camel.version>
         <derby.version>10.14.2.0</derby.version>
+        <log4j2.version>2.13.1</log4j2.version>
         <javax.inject.version>1</javax.inject.version>
         <javax.activation.groupId>javax.activation</javax.activation.groupId>
         <javax.activation.artifactId>activation</javax.activation.artifactId>
         <jsieve.version>0.7</jsieve.version>
-        <spring.version>3.2.18.RELEASE</spring.version>
+        <spring.version>4.3.25.RELEASE</spring.version>
         <activmq-artemis.version>2.9.0</activmq-artemis.version>
         <apache-jspf-resolver.version>1.0.1</apache-jspf-resolver.version>
         <javamail.version>1.5.4</javamail.version>
@@ -610,15 +611,12 @@
         <concurrent.version>1.3.4</concurrent.version>
         <xbean-spring.version>4.9</xbean-spring.version>
         <netty.version>3.10.6.Final</netty.version>
-        <spring-osgi-extender.version>1.2.1</spring-osgi-extender.version>
-        <org.osgi.core.version>5.0.0</org.osgi.core.version>
         <cucumber.version>2.4.0</cucumber.version>
 
         <pax-logging-api.version>1.6.4</pax-logging-api.version>
         <jackson.version>2.9.9</jackson.version>
         <feign.version>10.3.0</feign.version>
         <feign-form.version>3.8.0</feign-form.version>
-        <jetty.version>9.4.19.v20190610</jetty.version>
         <metrics.version>4.1.0</metrics.version>
         <testcontainers.version>1.12.0</testcontainers.version>
         <assertj.version>3.3.0</assertj.version>
@@ -627,7 +625,6 @@
         <guava.version>25.1-jre</guava.version>
 
         <jutf7.version>1.0.0</jutf7.version>
-        <httpclient-osgi.version>4.5.1</httpclient-osgi.version>
         <apache.httpcomponents.version>4.5.9</apache.httpcomponents.version>
         <!-- maven-mailetdocs-plugin artifacts -->
         <maven-artifact.version>3.0-alpha-1</maven-artifact.version>
@@ -650,7 +647,7 @@
 
         <scala.base>2.13</scala.base>
         <scala.version>${scala.base}.1</scala.version>
-
+        <scalatestplus-play.version>5.0.0</scalatestplus-play.version>
         <doclint>none</doclint>
     </properties>
 
@@ -659,9 +656,14 @@
             <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-bom</artifactId>
-                <version>Dysprosium-RELEASE</version>
+                <version>Dysprosium-SR6</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-scala-extensions_${scala.base}</artifactId>
+                <version>0.5.1</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
@@ -923,6 +925,17 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-mailbox-tools-quota-recompute</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-mailbox-tools-quota-recompute</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
                 <artifactId>apache-james-mpt-antlib</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -1110,12 +1123,23 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
+                <artifactId>blob-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
                 <artifactId>blob-export-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>blob-export-file</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>blob-export-file</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -1452,12 +1476,12 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-jmap-draft</artifactId>
+                <artifactId>james-server-guice-jmap</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-jmap-draft</artifactId>
+                <artifactId>james-server-guice-jmap</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
@@ -1505,12 +1529,17 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-jetty</artifactId>
+                <artifactId>james-server-jmap</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-jmap-draft</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-jmap-rfc-8621</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -1940,11 +1969,6 @@
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-joda</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
@@ -2014,6 +2038,7 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+
             <dependency>
                 <groupId>com.rabbitmq</groupId>
                 <artifactId>amqp-client</artifactId>
@@ -2061,9 +2086,14 @@
                 <version>${qdox.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.typesafe.play</groupId>
+                <artifactId>play-json_${scala.base}</artifactId>
+                <version>2.8.1</version>
+            </dependency>
+            <dependency>
                 <groupId>commons-beanutils</groupId>
                 <artifactId>commons-beanutils</artifactId>
-                <version>1.9.3</version>
+                <version>1.9.4</version>
             </dependency>
             <dependency>
                 <groupId>commons-cli</groupId>
@@ -2172,6 +2202,11 @@
                 <version>${netty.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.vavr</groupId>
+                <artifactId>vavr</artifactId>
+                <version>0.9.0</version>
+            </dependency>
+            <dependency>
                 <groupId>javax.activation</groupId>
                 <artifactId>activation</artifactId>
                 <version>${javax-activation.version}</version>
@@ -2277,7 +2312,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-configuration2</artifactId>
-                <version>2.5</version>
+                <version>2.7</version>
                 <exclusions>
                     <exclusion>
                         <groupId>commons-logging</groupId>
@@ -2298,7 +2333,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-text</artifactId>
-                <version>1.7</version>
+                <version>1.8</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.derby</groupId>
@@ -2312,14 +2347,8 @@
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
-                <artifactId>httpclient-osgi</artifactId>
-                <version>${apache.httpcomponents.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>commons-logging</groupId>
-                        <artifactId>commons-logging</artifactId>
-                    </exclusion>
-                </exclusions>
+                <artifactId>httpclient</artifactId>
+                <version>4.5.10</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.james.jspf</groupId>
@@ -2405,6 +2434,17 @@
                 <type>test-jar</type>
             </dependency>
             <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
+                <version>${log4j2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j</artifactId>
+                <version>${log4j2.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.maven</groupId>
                 <artifactId>maven-plugin-api</artifactId>
                 <version>${maven-plugin-api.version}</version>
@@ -2481,21 +2521,6 @@
                 <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-http</artifactId>
-                <version>${jetty.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-server</artifactId>
-                <version>${jetty.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-servlet</artifactId>
-                <version>${jetty.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.hamcrest</groupId>
                 <artifactId>java-hamcrest</artifactId>
                 <version>2.0.0.0</version>
@@ -2538,17 +2563,12 @@
             <dependency>
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
-                <version>1.12.2</version>
+                <version>1.13.1</version>
             </dependency>
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>3.0.0</version>
-            </dependency>
-            <dependency>
-                <groupId>org.osgi</groupId>
-                <artifactId>org.osgi.core</artifactId>
-                <version>${org.osgi.core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -2559,6 +2579,16 @@
                 <groupId>org.scala-lang.modules</groupId>
                 <artifactId>scala-java8-compat_${scala.base}</artifactId>
                 <version>0.9.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scalacheck</groupId>
+                <artifactId>scalacheck_${scala.base}</artifactId>
+                <version>1.14.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest_${scala.base}</artifactId>
+                <version>3.1.1</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -2573,11 +2603,6 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
                 <version>${slf4j.version}</version>
             </dependency>
             <dependency>
@@ -2654,29 +2679,6 @@
                 <version>${spring.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.springframework.osgi</groupId>
-                <artifactId>spring-osgi-extender</artifactId>
-                <version>${spring-osgi-extender.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>org.springframework.core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>org.springframework.aop</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>org.springframework.context</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>org.springframework.beans</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
                 <groupId>org.subethamail</groupId>
                 <artifactId>subethasmtp</artifactId>
                 <version>3.1.7</version>
@@ -2729,6 +2731,24 @@
                     <groupId>com.google.cloud.tools</groupId>
                     <artifactId>jib-maven-plugin</artifactId>
                     <version>1.5.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.scalatest</groupId>
+                    <artifactId>scalatest-maven-plugin</artifactId>
+                    <version>2.0.0</version>
+                    <configuration>
+                        <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                        <junitxml>.</junitxml>
+                        <filereports>WDF TestSuite.txt</filereports>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>test</id>
+                            <goals>
+                                <goal>test</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>net.alchim31.maven</groupId>
@@ -2800,7 +2820,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
-                    <version>3.1.1</version>
+                    <version>3.1.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -3381,7 +3401,6 @@
             </build>
         </profile>
     </profiles>
-
     <reporting>
         <plugins>
             <!-- Order matters. First project-info-reports, second jxr. -->

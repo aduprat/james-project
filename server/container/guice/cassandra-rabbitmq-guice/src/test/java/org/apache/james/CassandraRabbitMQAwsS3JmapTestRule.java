@@ -22,14 +22,11 @@ package org.apache.james;
 import java.io.IOException;
 
 import org.apache.james.backends.rabbitmq.DockerRabbitMQSingleton;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestDockerESMetricReporterModule;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.TestRabbitMQModule;
-import org.apache.james.modules.blobstore.BlobStoreChoosingConfiguration;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.objectstorage.aws.s3.DockerAwsS3TestRule;
-import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.webadmin.WebAdminConfiguration;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
@@ -62,18 +59,15 @@ public class CassandraRabbitMQAwsS3JmapTestRule implements TestRule {
     }
 
     public GuiceJamesServer jmapServer(Module... additionals) throws IOException {
-        Configuration configuration = Configuration.builder()
+        CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
             .workingDirectory(temporaryFolder.newFolder())
             .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
             .build();
 
-        return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
+        return CassandraRabbitMQJamesServerMain.createServer(configuration)
             .overrideWith(new TestRabbitMQModule(DockerRabbitMQSingleton.SINGLETON))
-            .overrideWith(binder -> binder.bind(BlobStoreChoosingConfiguration.class)
-                .toInstance(BlobStoreChoosingConfiguration.objectStorage()))
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(new TestDockerESMetricReporterModule(dockerElasticSearchRule.getDockerEs().getHttpHost()))
             .overrideWith(guiceModuleTestRule.getModule())
             .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))

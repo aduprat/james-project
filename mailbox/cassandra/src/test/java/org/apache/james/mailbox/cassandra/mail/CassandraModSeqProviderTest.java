@@ -18,15 +18,23 @@
  ****************************************************************/
 package org.apache.james.mailbox.cassandra.mail;
 
+import static org.apache.james.backends.cassandra.Scenario.Builder.awaitOn;
+import static org.apache.james.backends.cassandra.Scenario.Builder.executeNormally;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageModseqTable.MAILBOX_ID;
+import static org.apache.james.mailbox.cassandra.table.CassandraMessageModseqTable.TABLE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.LongStream;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
+import org.apache.james.backends.cassandra.Scenario.Barrier;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.ModSeq;
@@ -34,12 +42,16 @@ import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.modules.CassandraModSeqModule;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.github.fge.lambdas.Throwing;
+
+import reactor.core.scheduler.Schedulers;
 
 class CassandraModSeqProviderTest {
     private static final CassandraId CASSANDRA_ID = new CassandraId.Factory().fromString("e22b3ac0-a80b-11e7-bb00-777268d65503");
@@ -55,7 +67,7 @@ class CassandraModSeqProviderTest {
     void setUp(CassandraCluster cassandra) {
         modSeqProvider = new CassandraModSeqProvider(cassandra.getConf(), CassandraConfiguration.DEFAULT_CONFIGURATION);
         MailboxPath path = new MailboxPath("gsoc", Username.of("ieugen"), "Trash");
-        mailbox = new Mailbox(path, 1234, CASSANDRA_ID);
+        mailbox = new Mailbox(path, UidValidity.of(1234), CASSANDRA_ID);
     }
 
     @Test
@@ -80,6 +92,48 @@ class CassandraModSeqProviderTest {
                 ModSeq result = modSeqProvider.nextModSeq(mailbox);
                 assertThat(result.asLong()).isEqualTo(value);
             }));
+    }
+
+    @Test
+    void failedInsertsShouldBeRetried(CassandraCluster cassandra) throws Exception {
+        Barrier insertBarrier = new Barrier(2);
+        Barrier retryBarrier = new Barrier(1);
+        cassandra.getConf()
+            .registerScenario(
+                executeNormally()
+                    .times(2)
+                    .whenQueryStartsWith("SELECT nextModseq FROM modseq WHERE mailboxId=:mailboxId;"),
+                awaitOn(insertBarrier)
+                    .thenExecuteNormally()
+                    .times(2)
+                    .whenQueryStartsWith("INSERT INTO modseq (nextModseq,mailboxId) VALUES (:nextModseq,:mailboxId) IF NOT EXISTS;"),
+                awaitOn(retryBarrier)
+                    .thenExecuteNormally()
+                    .times(1)
+                    .whenQueryStartsWith("SELECT nextModseq FROM modseq WHERE mailboxId=:mailboxId;"));
+
+        CompletableFuture<ModSeq> operation1 = modSeqProvider.nextModSeq(CASSANDRA_ID)
+            .subscribeOn(Schedulers.elastic())
+            .toFuture();
+        CompletableFuture<ModSeq> operation2 = modSeqProvider.nextModSeq(CASSANDRA_ID)
+            .subscribeOn(Schedulers.elastic())
+            .toFuture();
+
+        insertBarrier.awaitCaller();
+        insertBarrier.releaseCaller();
+
+        retryBarrier.awaitCaller();
+        retryBarrier.releaseCaller();
+
+        // Artificially fail the insert failure
+        cassandra.getConf()
+            .execute(QueryBuilder.delete().from(TABLE_NAME)
+                .where(QueryBuilder.eq(MAILBOX_ID, CASSANDRA_ID.asUuid())));
+
+        retryBarrier.releaseCaller();
+
+        assertThatCode(() -> operation1.get(1, TimeUnit.SECONDS)).doesNotThrowAnyException();
+        assertThatCode(() -> operation2.get(1, TimeUnit.SECONDS)).doesNotThrowAnyException();
     }
 
     @Test

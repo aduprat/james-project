@@ -23,12 +23,12 @@ import javax.inject.Inject;
 
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.backends.cassandra.utils.CassandraUtils;
+import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.cassandra.mail.CassandraACLMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraAnnotationMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraApplicableFlagDAO;
-import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentDAO;
 import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentDAOV2;
 import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
 import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMessageIdDAO;
@@ -51,7 +51,6 @@ import org.apache.james.mailbox.cassandra.mail.CassandraModSeqProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUidProvider;
 import org.apache.james.mailbox.cassandra.mail.CassandraUserMailboxRightsDAO;
 import org.apache.james.mailbox.cassandra.user.CassandraSubscriptionMapper;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.mail.AnnotationMapper;
 import org.apache.james.mailbox.store.mail.AttachmentMapper;
@@ -84,7 +83,6 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     private final CassandraMailboxPathV2DAO mailboxPathV2DAO;
     private final CassandraFirstUnseenDAO firstUnseenDAO;
     private final CassandraApplicableFlagDAO applicableFlagDAO;
-    private final CassandraAttachmentDAO attachmentDAO;
     private final CassandraAttachmentDAOV2 attachmentDAOV2;
     private final CassandraDeletedMessageDAO deletedMessageDAO;
     private final BlobStore blobStore;
@@ -92,6 +90,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     private final CassandraAttachmentOwnerDAO ownerDAO;
     private final CassandraACLMapper aclMapper;
     private final CassandraUserMailboxRightsDAO userMailboxRightsDAO;
+    private final CassandraSchemaVersionManager versionManager;
     private final CassandraUtils cassandraUtils;
     private final CassandraConfiguration cassandraConfiguration;
 
@@ -101,10 +100,11 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
                                                 CassandraMessageIdDAO messageIdDAO, CassandraMessageIdToImapUidDAO imapUidDAO,
                                                 CassandraMailboxCounterDAO mailboxCounterDAO, CassandraMailboxRecentsDAO mailboxRecentsDAO, CassandraMailboxDAO mailboxDAO,
                                                 CassandraMailboxPathDAOImpl mailboxPathDAO, CassandraMailboxPathV2DAO mailboxPathV2DAO, CassandraFirstUnseenDAO firstUnseenDAO, CassandraApplicableFlagDAO applicableFlagDAO,
-                                                CassandraAttachmentDAO attachmentDAO, CassandraAttachmentDAOV2 attachmentDAOV2, CassandraDeletedMessageDAO deletedMessageDAO,
+                                                CassandraAttachmentDAOV2 attachmentDAOV2, CassandraDeletedMessageDAO deletedMessageDAO,
                                                 BlobStore blobStore, CassandraAttachmentMessageIdDAO attachmentMessageIdDAO,
                                                 CassandraAttachmentOwnerDAO ownerDAO, CassandraACLMapper aclMapper,
                                                 CassandraUserMailboxRightsDAO userMailboxRightsDAO,
+                                                CassandraSchemaVersionManager versionManager,
                                                 CassandraUtils cassandraUtils, CassandraConfiguration cassandraConfiguration) {
         this.uidProvider = uidProvider;
         this.modSeqProvider = modSeqProvider;
@@ -118,7 +118,6 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
         this.mailboxPathDAO = mailboxPathDAO;
         this.mailboxPathV2DAO = mailboxPathV2DAO;
         this.firstUnseenDAO = firstUnseenDAO;
-        this.attachmentDAO = attachmentDAO;
         this.attachmentDAOV2 = attachmentDAOV2;
         this.deletedMessageDAO = deletedMessageDAO;
         this.applicableFlagDAO = applicableFlagDAO;
@@ -126,6 +125,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
         this.attachmentMessageIdDAO = attachmentMessageIdDAO;
         this.aclMapper = aclMapper;
         this.userMailboxRightsDAO = userMailboxRightsDAO;
+        this.versionManager = versionManager;
         this.cassandraUtils = cassandraUtils;
         this.ownerDAO = ownerDAO;
         this.cassandraConfiguration = cassandraConfiguration;
@@ -156,7 +156,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     }
 
     @Override
-    public MessageIdMapper createMessageIdMapper(MailboxSession mailboxSession) throws MailboxException {
+    public MessageIdMapper createMessageIdMapper(MailboxSession mailboxSession) {
         return new CassandraMessageIdMapper(getMailboxMapper(mailboxSession), mailboxDAO,
                 createAttachmentMapper(mailboxSession),
                 imapUidDAO, messageIdDAO, messageDAO, indexTableHandler, modSeqProvider,
@@ -165,12 +165,12 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
 
     @Override
     public MailboxMapper createMailboxMapper(MailboxSession mailboxSession) {
-        return new CassandraMailboxMapper(mailboxDAO, mailboxPathDAO, mailboxPathV2DAO, userMailboxRightsDAO, aclMapper);
+        return new CassandraMailboxMapper(mailboxDAO, mailboxPathDAO, mailboxPathV2DAO, userMailboxRightsDAO, aclMapper, versionManager);
     }
 
     @Override
     public CassandraAttachmentMapper createAttachmentMapper(MailboxSession mailboxSession) {
-        return new CassandraAttachmentMapper(attachmentDAO, attachmentDAOV2, blobStore, attachmentMessageIdDAO, ownerDAO);
+        return new CassandraAttachmentMapper(attachmentDAOV2, blobStore, attachmentMessageIdDAO, ownerDAO);
     }
 
     @Override
@@ -189,8 +189,7 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
     }
 
     @Override
-    public AnnotationMapper createAnnotationMapper(MailboxSession mailboxSession)
-            throws MailboxException {
+    public AnnotationMapper createAnnotationMapper(MailboxSession mailboxSession) {
         return new CassandraAnnotationMapper(session, cassandraUtils);
     }
 
@@ -202,5 +201,11 @@ public class CassandraMailboxSessionMapperFactory extends MailboxSessionMapperFa
             session.getAttributes().put(ATTACHMENTMAPPER, mapper);
         }
         return mapper;
+    }
+
+    public DeleteMessageListener deleteMessageListener() {
+        return new DeleteMessageListener(imapUidDAO, messageIdDAO, messageDAO, attachmentDAOV2, ownerDAO,
+            attachmentMessageIdDAO, aclMapper, userMailboxRightsDAO, applicableFlagDAO, firstUnseenDAO, deletedMessageDAO,
+            mailboxCounterDAO, mailboxRecentsDAO);
     }
 }

@@ -22,6 +22,9 @@ package org.apache.james.mailbox.cassandra;
 import static org.mockito.Mockito.mock;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
+import org.apache.james.mailbox.AttachmentContentLoader;
+import org.apache.james.mailbox.Authenticator;
+import org.apache.james.mailbox.Authorizator;
 import org.apache.james.mailbox.acl.SimpleGroupMembershipResolver;
 import org.apache.james.mailbox.acl.UnionMailboxACLResolver;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
@@ -31,13 +34,13 @@ import org.apache.james.mailbox.cassandra.quota.CassandraPerDomainMaxQuotaDao;
 import org.apache.james.mailbox.cassandra.quota.CassandraPerUserMaxQuotaDao;
 import org.apache.james.mailbox.cassandra.quota.CassandraPerUserMaxQuotaManager;
 import org.apache.james.mailbox.events.EventBus;
+import org.apache.james.mailbox.events.EventBusTestFixture;
 import org.apache.james.mailbox.events.InVMEventBus;
+import org.apache.james.mailbox.events.MemoryEventDeadLetters;
 import org.apache.james.mailbox.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.QuotaManager;
-import org.apache.james.mailbox.store.Authenticator;
-import org.apache.james.mailbox.store.Authorizator;
 import org.apache.james.mailbox.store.MailboxManagerConfiguration;
 import org.apache.james.mailbox.store.NoMailboxPathLocker;
 import org.apache.james.mailbox.store.PreDeletionHooks;
@@ -54,28 +57,30 @@ import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 
-class CassandraTestSystemFixture {
+public class CassandraTestSystemFixture {
 
-    static CassandraMailboxSessionMapperFactory createMapperFactory(CassandraCluster cassandra) {
+    public static CassandraMailboxSessionMapperFactory createMapperFactory(CassandraCluster cassandra) {
         CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
 
         return TestCassandraMailboxSessionMapperFactory.forTests(cassandra, messageIdFactory);
     }
 
-    static CassandraMailboxManager createMailboxManager(CassandraMailboxSessionMapperFactory mapperFactory) {
-        InVMEventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()));
+    public static CassandraMailboxManager createMailboxManager(CassandraMailboxSessionMapperFactory mapperFactory) {
+        InVMEventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, new MemoryEventDeadLetters());
         StoreRightManager storeRightManager = new StoreRightManager(mapperFactory, new UnionMailboxACLResolver(), new SimpleGroupMembershipResolver(), eventBus);
         StoreMailboxAnnotationManager annotationManager = new StoreMailboxAnnotationManager(mapperFactory, storeRightManager);
 
         SessionProviderImpl sessionProvider = new SessionProviderImpl(mock(Authenticator.class), mock(Authorizator.class));
 
         QuotaComponents quotaComponents = QuotaComponents.disabled(sessionProvider, mapperFactory);
-        MessageSearchIndex index = new SimpleMessageSearchIndex(mapperFactory, mapperFactory, new DefaultTextExtractor());
+        AttachmentContentLoader attachmentContentLoader = null;
+        MessageSearchIndex index = new SimpleMessageSearchIndex(mapperFactory, mapperFactory, new DefaultTextExtractor(), attachmentContentLoader);
         CassandraMailboxManager cassandraMailboxManager = new CassandraMailboxManager(mapperFactory, sessionProvider,
             new NoMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory(),
             eventBus, annotationManager, storeRightManager, quotaComponents, index, MailboxManagerConfiguration.DEFAULT, PreDeletionHooks.NO_PRE_DELETION_HOOK);
 
         eventBus.register(new MailboxAnnotationListener(mapperFactory, sessionProvider));
+        eventBus.register(mapperFactory.deleteMessageListener());
 
         return cassandraMailboxManager;
     }
@@ -87,7 +92,6 @@ class CassandraTestSystemFixture {
             mailboxManager,
             mapperFactory,
             eventBus,
-            new CassandraMessageId.Factory(),
             quotaManager,
             new DefaultUserQuotaRootResolver(mailboxManager.getSessionProvider(), mapperFactory),
             preDeletionHooks);
@@ -100,7 +104,7 @@ class CassandraTestSystemFixture {
             new CassandraGlobalMaxQuotaDao(cassandra.getConf()));
     }
 
-    static CurrentQuotaManager createCurrentQuotaManager(CassandraCluster cassandra) {
+    public static CurrentQuotaManager createCurrentQuotaManager(CassandraCluster cassandra) {
         return new CassandraCurrentQuotaManager(cassandra.getConf());
     }
 

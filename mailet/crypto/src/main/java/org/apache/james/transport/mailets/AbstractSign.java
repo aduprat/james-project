@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.Enumeration;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.inject.Inject;
 import javax.mail.MessagingException;
@@ -161,9 +162,9 @@ public abstract class AbstractSign extends GenericMailet {
     
     /**
      * Gets the expected init parameters.
-     * @return An array containing the parameter names allowed for this mailet.
+     * @return A set containing the parameter names allowed for this mailet.
      */
-    protected abstract String[] getAllowedInitParameters();
+    protected abstract Set<String> getAllowedInitParameters();
     
     /* ******************************************************************** */
     /* ****************** Begin of setters and getters ******************** */
@@ -259,7 +260,7 @@ public abstract class AbstractSign extends GenericMailet {
     protected void initKeyHolder() throws Exception {
         Constructor<?> keyHolderConstructor;
         try {
-            keyHolderConstructor = keyHolderClass.getConstructor(new Class[] {String.class, String.class, String.class, String.class, String.class});
+            keyHolderConstructor = keyHolderClass.getConstructor(String.class, String.class, String.class, String.class, String.class);
         } catch (NoSuchMethodException nsme) {
             throw new MessagingException("The needed constructor does not exist: "
                     + keyHolderClass + "(String, String, String, String, String)");
@@ -610,7 +611,7 @@ public abstract class AbstractSign extends GenericMailet {
 
     private Username getUsername(MailAddress mailAddress) {
         try {
-            return usersRepository.getUser(mailAddress);
+            return usersRepository.getUsername(mailAddress);
         } catch (UsersRepositoryException e) {
             throw new RuntimeException(e);
         }
@@ -713,7 +714,7 @@ public abstract class AbstractSign extends GenericMailet {
             int fromIndex = 0;
             int index;
             while ((index = template.indexOf(pattern, fromIndex)) >= 0) {
-                sb.append(template.substring(fromIndex, index));
+                sb.append(template, fromIndex, index);
                 sb.append(actual);
                 fromIndex = index + pattern.length();
             }

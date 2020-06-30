@@ -33,6 +33,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.MessageMapper.FetchType;
@@ -47,7 +48,7 @@ public abstract class MessageMoveTest {
     private static final char DELIMITER = '.';
     private static final int LIMIT = 10;
     private static final int BODY_START = 16;
-    private static final int UID_VALIDITY = 42;
+    private static final UidValidity UID_VALIDITY = UidValidity.of(42);
 
     private MapperProvider mapperProvider;
     private MessageMapper messageMapper;
@@ -117,8 +118,8 @@ public abstract class MessageMoveTest {
 
         messageMapper.move(benwaWorkMailbox, message1);
 
-        assertThat(messageMapper.countUnseenMessagesInMailbox(benwaInboxMailbox)).isEqualTo(0);
-        assertThat(messageMapper.countUnseenMessagesInMailbox(benwaWorkMailbox)).isEqualTo(1);
+        assertThat(messageMapper.getMailboxCounters(benwaInboxMailbox).getUnseen()).isEqualTo(0);
+        assertThat(messageMapper.getMailboxCounters(benwaWorkMailbox).getUnseen()).isEqualTo(1);
     }
 
     @Test
@@ -129,12 +130,12 @@ public abstract class MessageMoveTest {
 
         messageMapper.move(benwaWorkMailbox, message1);
 
-        assertThat(messageMapper.countUnseenMessagesInMailbox(benwaInboxMailbox)).isEqualTo(0);
-        assertThat(messageMapper.countUnseenMessagesInMailbox(benwaWorkMailbox)).isEqualTo(0);
+        assertThat(messageMapper.getMailboxCounters(benwaInboxMailbox).getUnseen()).isEqualTo(0);
+        assertThat(messageMapper.getMailboxCounters(benwaWorkMailbox).getUnseen()).isEqualTo(0);
     }
 
-    private Mailbox createMailbox(MailboxPath mailboxPath) throws MailboxException {
-        return mailboxMapper.create(mailboxPath, UID_VALIDITY);
+    private Mailbox createMailbox(MailboxPath mailboxPath) {
+        return mailboxMapper.create(mailboxPath, UID_VALIDITY).block();
     }
 
     private MailboxMessage retrieveMessageFromStorage(Mailbox mailbox, MailboxMessage message) throws MailboxException {

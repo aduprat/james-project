@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.apache.james</groupId>
         <artifactId>james-project</artifactId>
-        <version>3.5.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>apache-james-mailbox</artifactId>
@@ -71,7 +71,7 @@
         <module>tools/copier</module>
         <module>tools/indexer</module>
         <module>tools/jpa-migrator</module>
-        <module>tools/maildir-utils</module>
+        <module>tools/quota-recompute</module>
     </modules>
 
     <issueManagement>

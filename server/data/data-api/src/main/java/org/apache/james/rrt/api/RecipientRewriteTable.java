@@ -30,7 +30,6 @@ import org.apache.james.rrt.lib.Mappings;
 import org.apache.james.rrt.lib.MappingsImpl;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Interface which should be implemented of classes which map recipients.
@@ -53,7 +52,8 @@ public interface RecipientRewriteTable {
         Mapping.Type.Forward,
         Mapping.Type.Address,
         Mapping.Type.Alias,
-        Mapping.Type.Domain);
+        Mapping.Type.Domain,
+        Mapping.Type.DomainAlias);
 
     void addMapping(MappingSource source, Mapping mapping) throws RecipientRewriteTableException;
 
@@ -71,9 +71,13 @@ public interface RecipientRewriteTable {
 
     void removeErrorMapping(MappingSource source, String error) throws RecipientRewriteTableException;
 
-    void addAliasDomainMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
+    void addDomainMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
 
-    void removeAliasDomainMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
+    void removeDomainMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
+
+    void addDomainAliasMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
+
+    void removeDomainAliasMapping(MappingSource source, Domain realDomain) throws RecipientRewriteTableException;
 
     void addForwardMapping(MappingSource source, String address) throws RecipientRewriteTableException;
 
@@ -122,6 +126,8 @@ public interface RecipientRewriteTable {
      */
     Map<MappingSource, Mappings> getAllMappings() throws RecipientRewriteTableException;
 
+    RecipientRewriteTableConfiguration getConfiguration();
+
     default Stream<MappingSource> listSources(Mapping mapping) throws RecipientRewriteTableException {
         Preconditions.checkArgument(listSourcesSupportedType.contains(mapping.getType()),
             "Not supported mapping of type %s", mapping.getType());
@@ -141,12 +147,13 @@ public interface RecipientRewriteTable {
     }
 
     default Stream<Mapping> getMappingsForType(Mapping.Type type) throws RecipientRewriteTableException {
-        return ImmutableSet.copyOf(getAllMappings()
+        return getAllMappings()
             .values().stream()
             .map(mappings -> mappings.select(type))
-            .reduce(Mappings::union)
-            .orElse(MappingsImpl.empty()))
-            .stream();
+            .reduce(MappingsImpl.builder(), MappingsImpl.Builder::addAll, (builder1, builder2) -> builder1.addAll(builder2.build()))
+            .build()
+            .asStream()
+            .distinct();
     }
 
 }

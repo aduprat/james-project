@@ -102,7 +102,8 @@ class DeletedMessageVaultHookTest {
     private ComposedMessageId appendMessage(MessageManager messageManager) throws Exception {
         return messageManager.appendMessage(MessageManager.AppendCommand.builder()
                 .withInternalDate(INTERNAL_DATE)
-                .build(mailContent), aliceSession);
+                .build(mailContent), aliceSession)
+            .getId();
     }
 
     @BeforeEach
@@ -136,8 +137,7 @@ class DeletedMessageVaultHookTest {
             .setDate(INTERNAL_DATE)
             .build();
 
-        searchQuery = new SearchQuery();
-        searchQuery.andCriteria(SearchQuery.internalDateOn(INTERNAL_DATE, SearchQuery.DateResolution.Second));
+        searchQuery = SearchQuery.of(SearchQuery.internalDateOn(INTERNAL_DATE, SearchQuery.DateResolution.Second));
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         bobSession = mailboxManager.createSystemSession(BOB);

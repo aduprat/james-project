@@ -25,80 +25,100 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.incr;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.select;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.update;
+import static org.apache.james.mailbox.cassandra.table.CassandraCurrentQuota.MESSAGE_COUNT;
+import static org.apache.james.mailbox.cassandra.table.CassandraCurrentQuota.QUOTA_ROOT;
+import static org.apache.james.mailbox.cassandra.table.CassandraCurrentQuota.STORAGE;
+import static org.apache.james.mailbox.cassandra.table.CassandraCurrentQuota.TABLE_NAME;
 
 import javax.inject.Inject;
 
+import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeUsage;
 import org.apache.james.mailbox.cassandra.table.CassandraCurrentQuota;
-import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.CurrentQuotas;
+import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
-import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
 
 import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
-import com.google.common.base.Preconditions;
 
-public class CassandraCurrentQuotaManager implements StoreCurrentQuotaManager {
+import reactor.core.publisher.Mono;
 
-    private final Session session;
+public class CassandraCurrentQuotaManager implements CurrentQuotaManager {
+
+    private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final PreparedStatement increaseStatement;
     private final PreparedStatement decreaseStatement;
     private final PreparedStatement getCurrentMessageCountStatement;
     private final PreparedStatement getCurrentStorageStatement;
+    private final PreparedStatement getCurrentQuotasStatement;
 
     @Inject
     public CassandraCurrentQuotaManager(Session session) {
-        this.session = session;
-        this.increaseStatement = session.prepare(update(CassandraCurrentQuota.TABLE_NAME)
-            .with(incr(CassandraCurrentQuota.MESSAGE_COUNT, bindMarker()))
-            .and(incr(CassandraCurrentQuota.STORAGE, bindMarker()))
-            .where(eq(CassandraCurrentQuota.QUOTA_ROOT, bindMarker())));
-        this.decreaseStatement = session.prepare(update(CassandraCurrentQuota.TABLE_NAME)
-            .with(decr(CassandraCurrentQuota.MESSAGE_COUNT, bindMarker()))
-            .and(decr(CassandraCurrentQuota.STORAGE, bindMarker()))
-            .where(eq(CassandraCurrentQuota.QUOTA_ROOT, bindMarker())));
-        this.getCurrentMessageCountStatement = session.prepare(select(CassandraCurrentQuota.MESSAGE_COUNT)
-            .from(CassandraCurrentQuota.TABLE_NAME)
-            .where(eq(CassandraCurrentQuota.QUOTA_ROOT, bindMarker())));
-        this.getCurrentStorageStatement = session.prepare(select(CassandraCurrentQuota.STORAGE)
-            .from(CassandraCurrentQuota.TABLE_NAME)
-            .where(eq(CassandraCurrentQuota.QUOTA_ROOT, bindMarker())));
+        this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
+        this.increaseStatement = session.prepare(update(TABLE_NAME)
+            .with(incr(MESSAGE_COUNT, bindMarker()))
+            .and(incr(STORAGE, bindMarker()))
+            .where(eq(QUOTA_ROOT, bindMarker())));
+        this.decreaseStatement = session.prepare(update(TABLE_NAME)
+            .with(decr(MESSAGE_COUNT, bindMarker()))
+            .and(decr(STORAGE, bindMarker()))
+            .where(eq(QUOTA_ROOT, bindMarker())));
+        this.getCurrentMessageCountStatement = session.prepare(select(MESSAGE_COUNT)
+            .from(TABLE_NAME)
+            .where(eq(QUOTA_ROOT, bindMarker())));
+        this.getCurrentStorageStatement = session.prepare(select(STORAGE)
+            .from(TABLE_NAME)
+            .where(eq(QUOTA_ROOT, bindMarker())));
+        this.getCurrentQuotasStatement = session.prepare(select(MESSAGE_COUNT, STORAGE)
+            .from(TABLE_NAME)
+            .where(eq(QUOTA_ROOT, bindMarker())));
     }
 
     @Override
-    public void increase(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        checkArguments(count, size);
-        session.execute(increaseStatement.bind(count, size, quotaRoot.getValue()));
+    public Mono<Void> increase(QuotaOperation quotaOperation) {
+        return cassandraAsyncExecutor.executeVoid(increaseStatement.bind(quotaOperation.count().asLong(),
+            quotaOperation.size().asLong(),
+            quotaOperation.quotaRoot().getValue()));
     }
 
     @Override
-    public void decrease(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        checkArguments(count, size);
-        session.execute(decreaseStatement.bind(count, size, quotaRoot.getValue()));
+    public Mono<Void> decrease(QuotaOperation quotaOperation) {
+        return cassandraAsyncExecutor.executeVoid(decreaseStatement.bind(quotaOperation.count().asLong(),
+            quotaOperation.size().asLong(),
+            quotaOperation.quotaRoot().getValue()));
     }
 
     @Override
-    public QuotaCountUsage getCurrentMessageCount(QuotaRoot quotaRoot) throws MailboxException {
-        ResultSet resultSet = session.execute(getCurrentMessageCountStatement.bind(quotaRoot.getValue()));
-        if (resultSet.isExhausted()) {
-            return QuotaCountUsage.count(0L);
-        }
-        return QuotaCountUsage.count(resultSet.one().getLong(CassandraCurrentQuota.MESSAGE_COUNT));
+    public Mono<QuotaCountUsage> getCurrentMessageCount(QuotaRoot quotaRoot) {
+        return cassandraAsyncExecutor.executeSingleRow(getCurrentMessageCountStatement.bind(quotaRoot.getValue()))
+            .map(row -> QuotaCountUsage.count(row.getLong(CassandraCurrentQuota.MESSAGE_COUNT)))
+            .defaultIfEmpty(QuotaCountUsage.count(0L));
     }
 
     @Override
-    public QuotaSizeUsage getCurrentStorage(QuotaRoot quotaRoot) throws MailboxException {
-        ResultSet resultSet = session.execute(getCurrentStorageStatement.bind(quotaRoot.getValue()));
-        if (resultSet.isExhausted()) {
-            return QuotaSizeUsage.size(0L);
-        }
-        return QuotaSizeUsage.size(resultSet.one().getLong(CassandraCurrentQuota.STORAGE));
+    public Mono<QuotaSizeUsage> getCurrentStorage(QuotaRoot quotaRoot) {
+        return cassandraAsyncExecutor.executeSingleRow(getCurrentStorageStatement.bind(quotaRoot.getValue()))
+            .map(row -> QuotaSizeUsage.size(row.getLong(CassandraCurrentQuota.STORAGE)))
+            .defaultIfEmpty(QuotaSizeUsage.size(0L));
     }
 
-    private void checkArguments(long count, long size) {
-        Preconditions.checkArgument(count > 0, "Count should be positive");
-        Preconditions.checkArgument(size > 0, "Size should be positive");
+    @Override
+    public Mono<CurrentQuotas> getCurrentQuotas(QuotaRoot quotaRoot) {
+        return cassandraAsyncExecutor.executeSingleRow(getCurrentQuotasStatement.bind(quotaRoot.getValue()))
+            .map(row -> new CurrentQuotas(
+                QuotaCountUsage.count(row.getLong(MESSAGE_COUNT)),
+                QuotaSizeUsage.size(row.getLong(STORAGE))))
+            .defaultIfEmpty(CurrentQuotas.emptyQuotas());
+    }
+
+    @Override
+    public Mono<Void> setCurrentQuotas(QuotaOperation quotaOperation) {
+        return getCurrentQuotas(quotaOperation.quotaRoot())
+            .filter(storedQuotas -> !storedQuotas.equals(CurrentQuotas.from(quotaOperation)))
+            .flatMap(storedQuotas -> decrease(new QuotaOperation(quotaOperation.quotaRoot(), storedQuotas.count(), storedQuotas.size()))
+                .then(increase(quotaOperation)));
     }
 }

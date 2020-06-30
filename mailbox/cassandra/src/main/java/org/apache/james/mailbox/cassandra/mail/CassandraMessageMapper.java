@@ -19,7 +19,9 @@
 
 package org.apache.james.mailbox.cassandra.mail;
 
-import java.util.Collection;
+import static org.apache.james.util.ReactorUtils.publishIfPresent;
+
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -29,9 +31,11 @@ import java.util.Optional;
 import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.backends.cassandra.init.configuration.CassandraConfiguration;
 import org.apache.james.mailbox.ApplicableFlagBuilder;
 import org.apache.james.mailbox.FlagsBuilder;
+import org.apache.james.mailbox.MessageManager.FlagsUpdateMode;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -49,7 +53,6 @@ import org.apache.james.mailbox.store.FlagsUpdateCalculator;
 import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
-import org.apache.james.util.OptionalUtils;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.streams.Limit;
 import org.slf4j.Logger;
@@ -62,9 +65,14 @@ import com.google.common.collect.ImmutableList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 public class CassandraMessageMapper implements MessageMapper {
     public static final Logger LOGGER = LoggerFactory.getLogger(CassandraMessageMapper.class);
+
+    private static final int MAX_RETRY = 5;
+    private static final Duration MIN_RETRY_BACKOFF = Duration.ofMillis(10);
+    private static final Duration MAX_RETRY_BACKOFF = Duration.ofMillis(1000);
 
     private final CassandraModSeqProvider modSeqProvider;
     private final CassandraUidProvider uidProvider;
@@ -103,12 +111,10 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     @Override
-    public Iterator<MessageUid> listAllMessageUids(Mailbox mailbox) {
+    public Flux<MessageUid> listAllMessageUids(Mailbox mailbox) {
         CassandraId cassandraId = (CassandraId) mailbox.getMailboxId();
-        return messageIdDAO.retrieveMessages(cassandraId, MessageRange.all())
-            .map(metaData -> metaData.getComposedMessageId().getUid())
-            .toIterable()
-            .iterator();
+        return messageIdDAO.retrieveMessages(cassandraId, MessageRange.all(), Limit.unlimited())
+            .map(metaData -> metaData.getComposedMessageId().getUid());
     }
 
     @Override
@@ -117,16 +123,12 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     @Override
-    public long countUnseenMessagesInMailbox(Mailbox mailbox) {
-        return getMailboxCounters(mailbox).getUnseen();
+    public MailboxCounters getMailboxCounters(Mailbox mailbox) {
+        return getMailboxCountersReactive(mailbox).block();
     }
 
     @Override
-    public MailboxCounters getMailboxCounters(Mailbox mailbox) {
-        return getMailboxCountersAsMono(mailbox).block();
-    }
-
-    private Mono<MailboxCounters> getMailboxCountersAsMono(Mailbox mailbox) {
+    public Mono<MailboxCounters> getMailboxCountersReactive(Mailbox mailbox) {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
         return mailboxCounterDAO.retrieveMailboxCounters(mailboxId)
             .defaultIfEmpty(MailboxCounters.builder()
@@ -137,58 +139,53 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     @Override
-    public List<MailboxCounters> getMailboxCounters(Collection<Mailbox> mailboxes) {
-        return Flux.fromIterable(mailboxes)
-            .publishOn(Schedulers.elastic())
-            .concatMap(this::getMailboxCountersAsMono)
-            .toStream()
-            .collect(Guavate.toImmutableList());
-    }
-
-    @Override
     public void delete(Mailbox mailbox, MailboxMessage message) {
-        deleteAsFuture(message)
+        ComposedMessageIdWithMetaData metaData = message.getComposedMessageIdWithMetaData();
+
+        deleteAndHandleIndexUpdates(metaData)
             .block();
     }
 
-    private Mono<Void> deleteAsFuture(MailboxMessage message) {
-        ComposedMessageIdWithMetaData composedMessageIdWithMetaData = message.getComposedMessageIdWithMetaData();
+    private Mono<Void> deleteAndHandleIndexUpdates(ComposedMessageIdWithMetaData composedMessageIdWithMetaData) {
+        ComposedMessageId composedMessageId = composedMessageIdWithMetaData.getComposedMessageId();
+        CassandraId mailboxId = (CassandraId) composedMessageId.getMailboxId();
 
-        return deleteUsingMailboxId(composedMessageIdWithMetaData);
+        return delete(composedMessageIdWithMetaData)
+             .then(indexTableHandler.updateIndexOnDelete(composedMessageIdWithMetaData, mailboxId));
     }
 
-    private Mono<Void> deleteUsingMailboxId(ComposedMessageIdWithMetaData composedMessageIdWithMetaData) {
+    private Mono<Void> delete(ComposedMessageIdWithMetaData composedMessageIdWithMetaData) {
         ComposedMessageId composedMessageId = composedMessageIdWithMetaData.getComposedMessageId();
         CassandraMessageId messageId = (CassandraMessageId) composedMessageId.getMessageId();
         CassandraId mailboxId = (CassandraId) composedMessageId.getMailboxId();
         MessageUid uid = composedMessageId.getUid();
+
         return Flux.merge(
                 imapUidDAO.delete(messageId, mailboxId),
                 messageIdDAO.delete(mailboxId, uid))
-            .then(indexTableHandler.updateIndexOnDelete(composedMessageIdWithMetaData, mailboxId));
+                .then();
     }
 
     @Override
     public Iterator<MailboxMessage> findInMailbox(Mailbox mailbox, MessageRange messageRange, FetchType ftype, int max) {
-        CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-        return retrieveMessages(retrieveMessageIds(mailboxId, messageRange), ftype, Limit.from(max))
-            .map(MailboxMessage.class::cast)
-            .sort(Comparator.comparing(MailboxMessage::getUid))
+        return findInMailboxReactive(mailbox, messageRange, ftype, max)
             .toIterable()
             .iterator();
     }
 
-    private List<ComposedMessageIdWithMetaData> retrieveMessageIds(CassandraId mailboxId, MessageRange messageRange) {
-        return messageIdDAO.retrieveMessages(mailboxId, messageRange)
-            .collect(Guavate.toImmutableList())
-            .block();
+    @Override
+    public Flux<MailboxMessage> findInMailboxReactive(Mailbox mailbox, MessageRange messageRange, FetchType ftype, int limitAsInt) {
+        CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
+
+        Limit limit = Limit.from(limitAsInt);
+        return limit.applyOnFlux(messageIdDAO.retrieveMessages(mailboxId, messageRange, limit))
+            .flatMap(id -> retrieveMessage(id, ftype), cassandraConfiguration.getMessageReadChunkSize())
+            .sort(Comparator.comparing(MailboxMessage::getUid));
     }
 
-    private Flux<MailboxMessage> retrieveMessages(List<ComposedMessageIdWithMetaData> messageIds, FetchType fetchType, Limit limit) {
-        return messageDAO.retrieveMessages(messageIds, fetchType, limit)
-            .filter(CassandraMessageDAO.MessageResult::isFound)
-            .map(CassandraMessageDAO.MessageResult::message)
-            .flatMap(stream -> attachmentLoader.addAttachmentToMessage(stream, fetchType));
+    private Mono<MailboxMessage> retrieveMessage(ComposedMessageIdWithMetaData messageId, FetchType fetchType) {
+        return messageDAO.retrieveMessage(messageId, fetchType)
+            .flatMap(messageRepresentation -> attachmentLoader.addAttachmentToMessage(Pair.of(messageId, messageRepresentation), fetchType));
     }
 
     @Override
@@ -220,27 +217,20 @@ public class CassandraMessageMapper implements MessageMapper {
     public Map<MessageUid, MessageMetaData> deleteMessages(Mailbox mailbox, List<MessageUid> uids) {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
 
-        return Flux.fromStream(uids.stream())
-            .flatMap(messageUid -> expungeOne(mailboxId, messageUid), cassandraConfiguration.getExpungeChunkSize())
-            .collect(Guavate.<SimpleMailboxMessage, MessageUid, MessageMetaData>toImmutableMap(MailboxMessage::getUid, MailboxMessage::metaData))
+        return Flux.fromIterable(MessageRange.toRanges(uids))
+            .concatMap(range -> messageIdDAO.retrieveMessages(mailboxId, range, Limit.unlimited()))
+            .flatMap(this::expungeOne, cassandraConfiguration.getExpungeChunkSize())
+            .collect(Guavate.toImmutableMap(MailboxMessage::getUid, MailboxMessage::metaData))
+            .flatMap(messageMap -> indexTableHandler.updateIndexOnDelete(mailboxId, messageMap.values())
+                .thenReturn(messageMap))
+            .subscribeOn(Schedulers.elastic())
             .block();
     }
 
-    private Flux<SimpleMailboxMessage> expungeOne(CassandraId mailboxId, MessageUid messageUid) {
-        return retrieveComposedId(mailboxId, messageUid)
-            .flatMap(idWithMetadata -> deleteUsingMailboxId(idWithMetadata).thenReturn(idWithMetadata))
-            .flatMapMany(idWithMetadata ->
-                messageDAO.retrieveMessages(ImmutableList.of(idWithMetadata), FetchType.Metadata, Limit.unlimited()))
-            .filter(CassandraMessageDAO.MessageResult::isFound)
-            .map(CassandraMessageDAO.MessageResult::message)
-            .map(pair -> pair.getKey().toMailboxMessage(ImmutableList.of()));
-    }
-
-    private Mono<ComposedMessageIdWithMetaData> retrieveComposedId(CassandraId mailboxId, MessageUid uid) {
-        return messageIdDAO.retrieve(mailboxId, uid)
-            .doOnNext(optional -> OptionalUtils.executeIfEmpty(optional,
-                () -> LOGGER.warn("Could not retrieve message {} {}", mailboxId, uid)))
-            .handle((t, sink) -> t.ifPresent(sink::next));
+    private Mono<SimpleMailboxMessage> expungeOne(ComposedMessageIdWithMetaData metaData) {
+        return delete(metaData)
+            .then(messageDAO.retrieveMessage(metaData, FetchType.Metadata)
+                .map(pair -> pair.toMailboxMessage(metaData, ImmutableList.of())));
     }
 
     @Override
@@ -248,7 +238,7 @@ public class CassandraMessageMapper implements MessageMapper {
         ComposedMessageIdWithMetaData composedMessageIdWithMetaData = original.getComposedMessageIdWithMetaData();
 
         MessageMetaData messageMetaData = copy(destinationMailbox, original);
-        deleteUsingMailboxId(composedMessageIdWithMetaData).block();
+        deleteAndHandleIndexUpdates(composedMessageIdWithMetaData).block();
 
         return messageMetaData;
     }
@@ -267,13 +257,13 @@ public class CassandraMessageMapper implements MessageMapper {
     public MessageMetaData add(Mailbox mailbox, MailboxMessage message) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
 
-        save(mailbox, addUidAndModseq(message, mailboxId))
-            .thenEmpty(indexTableHandler.updateIndexOnAdd(message, mailboxId))
-            .block();
-        return message.metaData();
+        return block(addUidAndModseq(message, mailboxId)
+            .flatMap(Throwing.function(messageWithUidAndModSeq -> save(mailbox, messageWithUidAndModSeq)
+                .thenReturn(messageWithUidAndModSeq)))
+            .map(MailboxMessage::metaData));
     }
 
-    private MailboxMessage addUidAndModseq(MailboxMessage message, CassandraId mailboxId) throws MailboxException {
+    private Mono<MailboxMessage> addUidAndModseq(MailboxMessage message, CassandraId mailboxId) {
         Mono<MessageUid> messageUidMono = uidProvider
             .nextUid(mailboxId)
             .switchIfEmpty(Mono.error(() -> new MailboxException("Can not find a UID to save " + message.getMessageId() + " in " + mailboxId)));
@@ -281,34 +271,55 @@ public class CassandraMessageMapper implements MessageMapper {
         Mono<ModSeq> nextModSeqMono = modSeqProvider.nextModSeq(mailboxId)
             .switchIfEmpty(Mono.error(() -> new MailboxException("Can not find a MODSEQ to save " + message.getMessageId() + " in " + mailboxId)));
 
-        try {
-            Mono.zip(messageUidMono, nextModSeqMono)
+        return Mono.zip(messageUidMono, nextModSeqMono)
                 .doOnNext(tuple -> {
                     message.setUid(tuple.getT1());
                     message.setModSeq(tuple.getT2());
                 })
-                .block();
+                .thenReturn(message);
+    }
+
+    private <T> T block(Mono<T> mono) throws MailboxException {
+        try {
+            return mono.block();
         } catch (RuntimeException e) {
             if (e.getCause() instanceof MailboxException) {
-                throw (MailboxException)e.getCause();
+                throw (MailboxException) e.getCause();
             }
             throw e;
         }
-        return message;
     }
 
     @Override
     public Iterator<UpdatedFlags> updateFlags(Mailbox mailbox, FlagsUpdateCalculator flagUpdateCalculator, MessageRange range) {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
 
-        Flux<ComposedMessageIdWithMetaData> toBeUpdated = messageIdDAO.retrieveMessages(mailboxId, range);
+        Flux<ComposedMessageIdWithMetaData> toBeUpdated = messageIdDAO.retrieveMessages(mailboxId, range, Limit.unlimited());
 
+        return updateFlags(flagUpdateCalculator, mailboxId, toBeUpdated).iterator();
+    }
+
+    private List<UpdatedFlags> updateFlags(FlagsUpdateCalculator flagUpdateCalculator, CassandraId mailboxId, Flux<ComposedMessageIdWithMetaData> toBeUpdated) {
         FlagsUpdateStageResult firstResult = runUpdateStage(mailboxId, toBeUpdated, flagUpdateCalculator).block();
         FlagsUpdateStageResult finalResult = handleUpdatesStagedRetry(mailboxId, flagUpdateCalculator, firstResult);
         if (finalResult.containsFailedResults()) {
             LOGGER.error("Can not update following UIDs {} for mailbox {}", finalResult.getFailed(), mailboxId.asUuid());
         }
-        return finalResult.getSucceeded().iterator();
+        return finalResult.getSucceeded();
+    }
+
+    @Override
+    public List<UpdatedFlags> resetRecent(Mailbox mailbox) {
+        CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
+
+        Flux<ComposedMessageIdWithMetaData> toBeUpdated = mailboxRecentDAO.getRecentMessageUidsInMailbox(mailboxId)
+            .collectList()
+            .flatMapMany(uids -> Flux.fromIterable(MessageRange.toRanges(uids)))
+            .concatMap(range -> messageIdDAO.retrieveMessages(mailboxId, range, Limit.unlimited()))
+            .filter(message -> message.getFlags().contains(Flag.RECENT));
+        FlagsUpdateCalculator calculator = new FlagsUpdateCalculator(new Flags(Flag.RECENT), FlagsUpdateMode.REMOVE);
+
+        return updateFlags(calculator, mailboxId, toBeUpdated);
     }
 
     private FlagsUpdateStageResult handleUpdatesStagedRetry(CassandraId mailboxId, FlagsUpdateCalculator flagUpdateCalculator, FlagsUpdateStageResult firstResult) {
@@ -326,7 +337,7 @@ public class CassandraMessageMapper implements MessageMapper {
         if (!failed.isEmpty()) {
             Flux<ComposedMessageIdWithMetaData> toUpdate = Flux.fromIterable(failed)
                 .flatMap(uid -> messageIdDAO.retrieve(mailboxId, uid))
-                .handle((t, sink) -> t.ifPresent(sink::next));
+                .handle(publishIfPresent());
             return runUpdateStage(mailboxId, toUpdate, flagsUpdateCalculator);
         } else {
             return Mono.empty();
@@ -334,9 +345,9 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     private Mono<FlagsUpdateStageResult> runUpdateStage(CassandraId mailboxId, Flux<ComposedMessageIdWithMetaData> toBeUpdated, FlagsUpdateCalculator flagsUpdateCalculator) {
-        Mono<ModSeq> newModSeq = computeNewModSeq(mailboxId);
-        return toBeUpdated
-            .concatMap(metadata -> newModSeq.flatMap(modSeq -> tryFlagsUpdate(flagsUpdateCalculator, modSeq, metadata)))
+        return computeNewModSeq(mailboxId)
+            .flatMapMany(newModSeq -> toBeUpdated
+            .concatMap(metadata -> tryFlagsUpdate(flagsUpdateCalculator, newModSeq, metadata)))
             .reduce(FlagsUpdateStageResult.none(), FlagsUpdateStageResult::merge)
             .flatMap(result -> updateIndexesForUpdatesResult(mailboxId, result));
     }
@@ -347,14 +358,12 @@ public class CassandraMessageMapper implements MessageMapper {
     }
 
     private Mono<FlagsUpdateStageResult> updateIndexesForUpdatesResult(CassandraId mailboxId, FlagsUpdateStageResult result) {
-        return Flux.fromIterable(result.getSucceeded())
-            .flatMap(Throwing
-                .function((UpdatedFlags updatedFlags) -> indexTableHandler.updateIndexOnFlagsUpdate(mailboxId, updatedFlags))
-                .fallbackTo(failedIndex -> {
-                    LOGGER.error("Could not update flag indexes for mailboxId {} UID {}. This will lead to inconsistencies across Cassandra tables", mailboxId, failedIndex.getUid());
-                    return Mono.empty();
-                }))
-            .then(Mono.just(result));
+        return indexTableHandler.updateIndexOnFlagsUpdate(mailboxId, result.getSucceeded())
+            .onErrorResume(e -> {
+                LOGGER.error("Could not update flag indexes for mailboxId {}. This will lead to inconsistencies across Cassandra tables", mailboxId, e);
+                return Mono.empty();
+            })
+            .thenReturn(result);
     }
 
     @Override
@@ -384,11 +393,10 @@ public class CassandraMessageMapper implements MessageMapper {
 
     private MessageMetaData setInMailbox(Mailbox mailbox, MailboxMessage message) throws MailboxException {
         CassandraId mailboxId = (CassandraId) mailbox.getMailboxId();
-
-        insertIds(addUidAndModseq(message, mailboxId), mailboxId)
-                .thenEmpty(indexTableHandler.updateIndexOnAdd(message, mailboxId))
-                .block();
-        return message.metaData();
+        return block(addUidAndModseq(message, mailboxId)
+            .flatMap(messageWithUidAndModseq -> insertIds(messageWithUidAndModseq, mailboxId)
+                .thenReturn(messageWithUidAndModseq))
+            .map(MailboxMessage::metaData));
     }
 
     private Mono<Void> save(Mailbox mailbox, MailboxMessage message) throws MailboxException {
@@ -403,10 +411,12 @@ public class CassandraMessageMapper implements MessageMapper {
                 .flags(message.createFlags())
                 .modSeq(message.getModSeq())
                 .build();
-        return Flux.merge(
-                messageIdDAO.insert(composedMessageIdWithMetaData),
-                imapUidDAO.insert(composedMessageIdWithMetaData))
-            .then();
+        return imapUidDAO.insert(composedMessageIdWithMetaData)
+            .then(Flux.merge(
+                messageIdDAO.insert(composedMessageIdWithMetaData)
+                    .retryWhen(Retry.backoff(MAX_RETRY, MIN_RETRY_BACKOFF).maxBackoff(MAX_RETRY_BACKOFF)),
+                indexTableHandler.updateIndexOnAdd(message, mailboxId))
+            .then());
     }
 
 

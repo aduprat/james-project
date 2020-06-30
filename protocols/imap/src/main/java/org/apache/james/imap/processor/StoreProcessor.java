@@ -46,9 +46,10 @@ import org.apache.james.imap.message.response.FetchResponse;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MessageManager.MetaData;
+import org.apache.james.mailbox.MessageManager.MailboxMetaData;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
+import org.apache.james.mailbox.NullableMessageSequenceNumber;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MessageRangeException;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -76,19 +77,19 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
 
     @Override
     protected void processRequest(StoreRequest request, ImapSession session, Responder responder) {
-        final IdRange[] idSet = request.getIdSet();
-        final boolean useUids = request.isUseUids();
-        final long unchangedSince = request.getUnchangedSince();
-        ImapCommand imapCommand = request.getCommand();
-        
+        IdRange[] idSet = request.getIdSet();
+        boolean useUids = request.isUseUids();
+        long unchangedSince = request.getUnchangedSince();
+
         try {
-            final MessageManager mailbox = getSelectedMailbox(session);
-            final MailboxSession mailboxSession = session.getMailboxSession();
-            final Flags flags = request.getFlags();
-            
+            MessageManager mailbox = getSelectedMailbox(session)
+                .orElseThrow(() -> new MailboxException("Session not in SELECTED state"));
+            MailboxSession mailboxSession = session.getMailboxSession();
+            Flags flags = request.getFlags();
+
             if (unchangedSince != -1) {
-                MetaData metaData = mailbox.getMetaData(false, mailboxSession, MetaData.FetchGroup.NO_COUNT);
-                if (metaData.isModSeqPermanent() == false) {
+                MailboxMetaData metaData = mailbox.getMetaData(false, mailboxSession, MailboxMetaData.FetchGroup.NO_COUNT);
+                if (!metaData.isModSeqPermanent()) {
                     // Check if the mailbox did not support modsequences. If so return a tagged bad response.
                     // See RFC4551 3.1.2. NOMODSEQ Response Code 
                     taggedBad(request, responder, HumanReadableText.NO_MOD_SEQ);
@@ -111,7 +112,7 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
               
             } 
             final List<MessageUid> failed = new ArrayList<>();
-            List<Long> failedMsns = new ArrayList<>();
+            List<NullableMessageSequenceNumber> failedMsns = new ArrayList<>();
             final List<String> userFlags = Arrays.asList(flags.getUserFlags());
             for (IdRange range : idSet) {
                 final SelectedMailbox selected = session.getSelected();
@@ -119,9 +120,6 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
                 if (messageSet != null) {
 
                     if (unchangedSince != -1) {
-                        // Ok we have a CONDSTORE option so use the CONDSTORE_COMMAND
-                        imapCommand = CONDSTORE_COMMAND;
-
                         List<MessageUid> uids = new ArrayList<>();
 
                         MessageResultIterator results = mailbox.getMessages(messageSet, FetchGroup.MINIMAL, mailboxSession);
@@ -157,7 +155,7 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
                                 if (useUids) {
                                     failed.add(uid);
                                 } else {
-                                    failedMsns.add((long)selected.msn(uid));
+                                    failedMsns.add(selected.msn(uid));
                                 }
                             }
                         }
@@ -198,10 +196,10 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
                     responder.respond(response);
                 } else {
                     List<IdRange> ranges = new ArrayList<>();
-                    for (long msn: failedMsns) {
-                        ranges.add(new IdRange(msn));
+                    for (NullableMessageSequenceNumber msn: failedMsns) {
+                        msn.ifPresent(id -> ranges.add(new IdRange(id.asInt())));
                     }
-                    IdRange[] failedRanges = IdRange.mergeRanges(ranges).toArray(new IdRange[0]);
+                    IdRange[] failedRanges = IdRange.mergeRanges(ranges).toArray(IdRange[]::new);
                     // See RFC4551 3.2. STORE and UID STORE Commands
                     final StatusResponse response = getStatusResponseFactory().taggedOk(request.getTag(), request.getCommand(), HumanReadableText.FAILED, ResponseCode.condStore(failedRanges));
                     responder.respond(response);
@@ -235,7 +233,7 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
         // See IMAP-303
         if (selected.hasNewApplicableFlags()) {
             flags(responder, selected);
-            permanentFlags(responder, mailbox.getMetaData(false, mailboxSession, MetaData.FetchGroup.NO_COUNT), selected);
+            permanentFlags(responder, mailbox.getMetaData(false, mailboxSession, MailboxMetaData.FetchGroup.NO_COUNT), selected);
             selected.resetNewApplicableFlags();
         }
         
@@ -264,55 +262,56 @@ public class StoreProcessor extends AbstractMailboxProcessor<StoreRequest> {
             
             for (Map.Entry<MessageUid, Flags> entry : flagsByUid.entrySet()) {
                 final MessageUid uid = entry.getKey();
-                final int msn = selected.msn(uid);
 
-                if (msn == SelectedMailbox.NO_SUCH_MESSAGE) {
+                selected.msn(uid).fold(() -> {
                     LOGGER.debug("No message found with uid {} in the uid<->msn mapping for mailbox {}. This may be because it was deleted by a concurrent session. So skip it..", uid, selected.getPath().asString());
                     // skip this as it was not found in the mapping
                     // 
                     // See IMAP-346
-                    continue;
-                }
+                    return null;
+                }, msn -> {
 
-                final Flags resultFlags = entry.getValue();
-                final MessageUid resultUid;
-                
-                // Check if we need to include the uid. T
-                //
-                // This is the case if one of these is true:
-                //      - FETCH (UID...)  was used
-                //      - QRESYNC was enabled via ENABLE QRESYNC
-                if (useUids || qresyncEnabled) {
-                    resultUid = uid;
-                } else {
-                    resultUid = null;
-                }
+                    final Flags resultFlags = entry.getValue();
+                    final MessageUid resultUid;
 
-                if (selected.isRecent(uid)) {
-                    resultFlags.add(Flags.Flag.RECENT);
-                }
-               
-                final FetchResponse response;
-                // For more information related to the FETCH response see
-                //
-                // RFC4551 3.2. STORE and UID STORE Commands
-                if (silent && (unchangedSince != -1 || qresyncEnabled || condstoreEnabled)) {
-                    // We need to return an FETCH response which contains the mod-sequence of the message even if FLAGS.SILENT was used
-                    response = new FetchResponse(msn, null, resultUid, modSeqs.get(uid), null, null, null, null, null, null);
-                } else if (!silent && (unchangedSince != -1 || qresyncEnabled || condstoreEnabled)) {
+                    // Check if we need to include the uid. T
                     //
-                    // Use a FETCH response which contains the mod-sequence and the flags
-                    response = new FetchResponse(msn, resultFlags, resultUid, modSeqs.get(uid), null, null, null, null, null, null);
-                } else {
-                    // Use a FETCH response which only contains the flags as no CONDSTORE was used
-                    response = new FetchResponse(msn, resultFlags, resultUid, null, null, null, null, null, null, null);
-                }
-                responder.respond(response);
+                    // This is the case if one of these is true:
+                    //      - FETCH (UID...)  was used
+                    //      - QRESYNC was enabled via ENABLE QRESYNC
+                    if (useUids || qresyncEnabled) {
+                        resultUid = uid;
+                    } else {
+                        resultUid = null;
+                    }
+
+                    if (selected.isRecent(uid)) {
+                        resultFlags.add(Flags.Flag.RECENT);
+                    }
+
+                    final FetchResponse response;
+                    // For more information related to the FETCH response see
+                    //
+                    // RFC4551 3.2. STORE and UID STORE Commands
+                    if (silent && (unchangedSince != -1 || qresyncEnabled || condstoreEnabled)) {
+                        // We need to return an FETCH response which contains the mod-sequence of the message even if FLAGS.SILENT was used
+                        response = new FetchResponse(msn, null, resultUid, modSeqs.get(uid), null, null, null, null, null, null);
+                    } else if (!silent && (unchangedSince != -1 || qresyncEnabled || condstoreEnabled)) {
+                        //
+                        // Use a FETCH response which contains the mod-sequence and the flags
+                        response = new FetchResponse(msn, resultFlags, resultUid, modSeqs.get(uid), null, null, null, null, null, null);
+                    } else {
+                        // Use a FETCH response which only contains the flags as no CONDSTORE was used
+                        response = new FetchResponse(msn, resultFlags, resultUid, null, null, null, null, null, null, null);
+                    }
+                    responder.respond(response);
+                    return null;
+                });
             }
 
             if (unchangedSince != -1) {
                 // Enable CONDSTORE as this is a CONDSTORE enabling command
-                condstoreEnablingCommand(session, responder,  mailbox.getMetaData(false, mailboxSession, MetaData.FetchGroup.NO_COUNT), true);
+                condstoreEnablingCommand(session, responder,  mailbox.getMetaData(false, mailboxSession, MailboxMetaData.FetchGroup.NO_COUNT), true);
                                   
             }
         }

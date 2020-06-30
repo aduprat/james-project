@@ -38,6 +38,7 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageUid;
+import org.apache.james.mailbox.NullableMessageSequenceNumber;
 import org.apache.james.mailbox.events.Event;
 import org.apache.james.mailbox.events.EventBus;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
@@ -50,6 +51,9 @@ import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.UpdatedFlags;
 
 import com.github.steveash.guavate.Guavate;
+
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Default implementation of {@link SelectedMailbox}
@@ -74,7 +78,7 @@ public class SelectedMailboxImpl implements SelectedMailbox, MailboxListener {
     private final Flags applicableFlags;
     private boolean applicableFlagsChanged;
 
-    public SelectedMailboxImpl(MailboxManager mailboxManager, EventBus eventBus, ImapSession session, MailboxPath path) throws MailboxException {
+    public SelectedMailboxImpl(MailboxManager mailboxManager, EventBus eventBus, ImapSession session, MessageManager messageManager) throws MailboxException {
         this.session = session;
         this.sessionId = session.getMailboxSession().getSessionId();
         this.mailboxManager = mailboxManager;
@@ -86,13 +90,14 @@ public class SelectedMailboxImpl implements SelectedMailbox, MailboxListener {
 
         uidMsnConverter = new UidMsnConverter();
 
-        MessageManager messageManager = mailboxManager.getMailbox(path, mailboxSession);
         mailboxId = messageManager.getId();
 
-        registration = eventBus.register(this, new MailboxIdRegistrationKey(mailboxId));
+        registration = Mono.from(eventBus.register(this, new MailboxIdRegistrationKey(mailboxId)))
+            .subscribeOn(Schedulers.elastic())
+            .block();
 
         applicableFlags = messageManager.getApplicableFlags(mailboxSession);
-        try (Stream<MessageUid> stream = messageManager.search(new SearchQuery(SearchQuery.all()), mailboxSession)) {
+        try (Stream<MessageUid> stream = messageManager.search(SearchQuery.of(SearchQuery.all()), mailboxSession)) {
             uidMsnConverter.addAll(stream.collect(Guavate.toImmutableList()));
         }
     }
@@ -184,8 +189,8 @@ public class SelectedMailboxImpl implements SelectedMailbox, MailboxListener {
     }
 
     @Override
-    public synchronized  int remove(MessageUid uid) {
-        final int result = msn(uid);
+    public synchronized NullableMessageSequenceNumber remove(MessageUid uid) {
+        NullableMessageSequenceNumber result = msn(uid);
         uidMsnConverter.remove(uid);
         return result;
     }
@@ -392,8 +397,8 @@ public class SelectedMailboxImpl implements SelectedMailbox, MailboxListener {
     }
 
     @Override
-    public synchronized int msn(MessageUid uid) {
-        return uidMsnConverter.getMsn(uid).orElse(NO_SUCH_MESSAGE);
+    public synchronized NullableMessageSequenceNumber msn(MessageUid uid) {
+        return uidMsnConverter.getMsn(uid);
     }
 
     @Override

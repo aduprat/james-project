@@ -25,13 +25,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 class CassandraLdapJmapJamesServerTest implements JmapJamesServerContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new LdapTestExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraLdapJamesServerMain.MODULES)
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
+        .server(configuration -> CassandraLdapJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
         .build();
 }

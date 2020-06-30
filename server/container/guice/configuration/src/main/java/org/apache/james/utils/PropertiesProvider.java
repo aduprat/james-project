@@ -34,7 +34,9 @@ import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.filesystem.api.FileSystem;
-import org.apache.james.util.OptionalUtils;
+import org.apache.james.server.core.configuration.Configuration.ConfigurationPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -42,22 +44,23 @@ import com.google.common.base.Strings;
 
 public class PropertiesProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("org.apache.james.CONFIGURATION");
     private static final char COMMA = ',';
     private static final String COMMA_STRING = ",";
 
     private final FileSystem fileSystem;
-    private final String configurationPrefix;
+    private final ConfigurationPath configurationPrefix;
 
     @Inject
-    public PropertiesProvider(FileSystem fileSystem, org.apache.james.server.core.configuration.Configuration configuration) {
+    public PropertiesProvider(FileSystem fileSystem, ConfigurationPath configurationPrefix) {
         this.fileSystem = fileSystem;
-        this.configurationPrefix = configuration.configurationPath();
+        this.configurationPrefix = configurationPrefix;
     }
 
     public Configuration getConfigurations(String... filenames) throws FileNotFoundException, ConfigurationException {
         File file = Arrays.stream(filenames)
             .map(this::getConfigurationFile)
-            .flatMap(OptionalUtils::toStream)
+            .flatMap(Optional::stream)
             .findFirst()
             .orElseThrow(() -> new FileNotFoundException(Joiner.on(",").join(filenames) + " not found"));
 
@@ -85,7 +88,9 @@ public class PropertiesProvider {
 
     private Optional<File> getConfigurationFile(String fileName) {
         try {
-            return Optional.of(fileSystem.getFile(configurationPrefix + fileName + ".properties"))
+            File file = fileSystem.getFile(configurationPrefix.asString() + fileName + ".properties");
+            LOGGER.info("Load configuration file {}", file.getAbsolutePath());
+            return Optional.of(file)
                 .filter(File::exists);
         } catch (FileNotFoundException e) {
             return Optional.empty();

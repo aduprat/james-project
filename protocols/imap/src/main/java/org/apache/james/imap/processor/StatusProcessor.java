@@ -36,6 +36,7 @@ import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.MDCBuilder;
 import org.slf4j.Logger;
@@ -58,7 +59,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         try {
             LOGGER.debug("Status called on mailbox named {}", mailboxPath);
 
-            MessageManager.MetaData metaData = retrieveMetadata(mailboxPath, statusDataItems, mailboxSession);
+            MessageManager.MailboxMetaData metaData = retrieveMetadata(mailboxPath, statusDataItems, mailboxSession);
             MailboxStatusResponse response = computeStatusResponse(request, statusDataItems, metaData);
 
             // Enable CONDSTORE as this is a CONDSTORE enabling command
@@ -75,31 +76,31 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
 
-    private MessageManager.MetaData retrieveMetadata(MailboxPath mailboxPath, StatusDataItems statusDataItems, MailboxSession mailboxSession) throws MailboxException {
+    private MessageManager.MailboxMetaData retrieveMetadata(MailboxPath mailboxPath, StatusDataItems statusDataItems, MailboxSession mailboxSession) throws MailboxException {
         MessageManager mailbox = getMailboxManager().getMailbox(mailboxPath, mailboxSession);
-        MessageManager.MetaData.FetchGroup fetchGroup = computeFetchGroup(statusDataItems);
+        MessageManager.MailboxMetaData.FetchGroup fetchGroup = computeFetchGroup(statusDataItems);
         return mailbox.getMetaData(false, mailboxSession, fetchGroup);
     }
 
-    private MailboxStatusResponse computeStatusResponse(StatusRequest request, StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private MailboxStatusResponse computeStatusResponse(StatusRequest request, StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         Long messages = messages(statusDataItems, metaData);
         Long recent = recent(statusDataItems, metaData);
         MessageUid uidNext = uidNext(statusDataItems, metaData);
-        Long uidValidity = uidValidity(statusDataItems, metaData);
+        UidValidity uidValidity = uidValidity(statusDataItems, metaData);
         Long unseen = unseen(statusDataItems, metaData);
         ModSeq highestModSeq = highestModSeq(statusDataItems, metaData);
         return new MailboxStatusResponse(messages, recent, uidNext, highestModSeq, uidValidity, unseen, request.getMailboxName());
     }
 
-    private MessageManager.MetaData.FetchGroup computeFetchGroup(StatusDataItems statusDataItems) {
+    private MessageManager.MailboxMetaData.FetchGroup computeFetchGroup(StatusDataItems statusDataItems) {
         if (statusDataItems.isUnseen()) {
-            return MessageManager.MetaData.FetchGroup.UNSEEN_COUNT;
+            return MessageManager.MailboxMetaData.FetchGroup.UNSEEN_COUNT;
         } else {
-            return MessageManager.MetaData.FetchGroup.NO_UNSEEN;
+            return MessageManager.MailboxMetaData.FetchGroup.NO_UNSEEN;
         }
     }
 
-    private Long unseen(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private Long unseen(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isUnseen()) {
             return metaData.getUnseenCount();
         } else {
@@ -107,7 +108,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
 
-    private Long uidValidity(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private UidValidity uidValidity(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isUidValidity()) {
             return metaData.getUidValidity();
         } else {
@@ -115,7 +116,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
 
-    private ModSeq highestModSeq(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private ModSeq highestModSeq(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isHighestModSeq()) {
             return metaData.getHighestModSeq();
         } else {
@@ -123,7 +124,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
     
-    private MessageUid uidNext(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private MessageUid uidNext(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isUidNext()) {
             return metaData.getUidNext();
         } else {
@@ -131,7 +132,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
 
-    private Long recent(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private Long recent(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isRecent()) {
             return metaData.countRecent();
         } else {
@@ -139,7 +140,7 @@ public class StatusProcessor extends AbstractMailboxProcessor<StatusRequest> {
         }
     }
 
-    private Long messages(StatusDataItems statusDataItems, MessageManager.MetaData metaData) {
+    private Long messages(StatusDataItems statusDataItems, MessageManager.MailboxMetaData metaData) {
         if (statusDataItems.isMessages()) {
            return metaData.getMessageCount();
         } else {

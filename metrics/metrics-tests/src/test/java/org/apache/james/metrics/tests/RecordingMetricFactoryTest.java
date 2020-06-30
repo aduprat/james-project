@@ -22,6 +22,7 @@ package org.apache.james.metrics.tests;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.james.metrics.api.Metric;
@@ -29,8 +30,12 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.api.MetricFactoryContract;
 import org.apache.james.metrics.api.TimeMetric;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import reactor.core.publisher.Mono;
 
 class RecordingMetricFactoryTest implements MetricFactoryContract {
 
@@ -38,6 +43,7 @@ class RecordingMetricFactoryTest implements MetricFactoryContract {
     private static final String METRIC_NAME = "metric";
     private static final java.time.Duration ONE_SECOND = java.time.Duration.ofSeconds(1);
     private static final java.time.Duration FIVE_SECONDS = java.time.Duration.ofSeconds(5);
+    private static final ConditionFactory WAIT_AT_MOST = Awaitility.waitAtMost(5, TimeUnit.SECONDS);
 
     private RecordingMetricFactory testee;
 
@@ -78,7 +84,7 @@ class RecordingMetricFactoryTest implements MetricFactoryContract {
         AtomicInteger count = new AtomicInteger();
 
         ConcurrentTestRunner.builder()
-            .operation((threadNumber, step) -> testee.runPublishingTimerMetric(TIME_METRIC_NAME, count::incrementAndGet))
+            .operation((threadNumber, step) -> testee.decorateSupplierWithTimerMetric(TIME_METRIC_NAME, count::incrementAndGet))
             .threadCount(10)
             .operationCount(200)
             .runSuccessfullyWithin(Duration.ofSeconds(10));
@@ -117,5 +123,31 @@ class RecordingMetricFactoryTest implements MetricFactoryContract {
 
         assertThat(testee.countFor(METRIC_NAME))
             .isEqualTo(5);
+    }
+
+    @Test
+    void decoratePublisherWithTimerMetricShouldRecordANewValueForEachRetry() {
+        Duration duration = Duration.ofMillis(100);
+        Mono.from(testee.decoratePublisherWithTimerMetric("any", Mono.delay(duration)))
+            .repeat(5)
+            .blockLast();
+
+        WAIT_AT_MOST.untilAsserted(() ->
+            assertThat(testee.executionTimesFor("any"))
+                .hasSize(6)
+                .allSatisfy(timing -> assertThat(timing).isLessThan(duration.multipliedBy(2))));
+    }
+
+    @Test
+    void decoratePublisherWithTimerMetricLogP99ShouldRecordANewValueForEachRetry() {
+        Duration duration = Duration.ofMillis(100);
+        Mono.from(testee.decoratePublisherWithTimerMetricLogP99("any", Mono.delay(duration)))
+            .repeat(5)
+            .blockLast();
+
+        WAIT_AT_MOST.untilAsserted(() ->
+            assertThat(testee.executionTimesFor("any"))
+                .hasSize(6)
+                .allSatisfy(timing -> assertThat(timing).isLessThan(duration.multipliedBy(2))));
     }
 }

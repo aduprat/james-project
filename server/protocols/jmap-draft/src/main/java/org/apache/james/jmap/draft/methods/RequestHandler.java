@@ -26,18 +26,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
 import org.apache.james.core.Username;
-import org.apache.james.jmap.draft.JmapFieldNotSupportedException;
+import org.apache.james.jmap.draft.exceptions.JmapFieldNotSupportedException;
 import org.apache.james.jmap.draft.model.AuthenticatedRequest;
 import org.apache.james.jmap.draft.model.InvocationResponse;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.util.MDCBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class RequestHandler {
 
@@ -55,7 +57,7 @@ public class RequestHandler {
                 .collect(Collectors.toMap(Method::requestHandled, Function.identity()));
     }
 
-    public Stream<InvocationResponse> handle(AuthenticatedRequest request) throws IOException {
+    public Flux<InvocationResponse> handle(AuthenticatedRequest request) {
         Optional<MailboxSession> mailboxSession = Optional.ofNullable(request.getMailboxSession());
         try (Closeable closeable =
                  MDCBuilder.create()
@@ -67,25 +69,21 @@ public class RequestHandler {
                 .map(extractAndProcess(request))
                 .map(jmapResponseWriter::formatMethodResponse)
                 .orElseThrow(() -> new IllegalStateException("unknown method " + request.getMethodName()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
     
-    private Function<Method, Stream<JmapResponse>> extractAndProcess(AuthenticatedRequest request) {
+    private Function<Method, Flux<JmapResponse>> extractAndProcess(AuthenticatedRequest request) {
         MailboxSession mailboxSession = request.getMailboxSession();
-        return (Method method) -> {
-                    try {
-                        JmapRequest jmapRequest = jmapRequestParser.extractJmapRequest(request, method.requestType());
-                        return method.process(jmapRequest, request.getMethodCallId(), mailboxSession);
-                    } catch (IOException e) {
-                        LOGGER.error("Error occured while parsing the request.", e);
-                        if (e.getCause() instanceof JmapFieldNotSupportedException) {
-                            return errorNotImplemented((JmapFieldNotSupportedException) e.getCause(), request);
-                        }
-                        return error(request, generateInvalidArgumentError(e.getMessage()));
-                    } catch (JmapFieldNotSupportedException e) {
-                        return errorNotImplemented(e, request);
-                    }
-                };
+        return (Method method) ->
+            Mono.fromCallable(() -> jmapRequestParser.extractJmapRequest(request, method.requestType()))
+                .flatMapMany(jmapRequest -> method.process(jmapRequest, request.getMethodCallId(), mailboxSession))
+                .onErrorResume(JmapFieldNotSupportedException.class, e -> errorNotImplemented(e, request))
+                .onErrorResume(
+                    e -> e.getCause() instanceof JmapFieldNotSupportedException,
+                    e -> errorNotImplemented((JmapFieldNotSupportedException) e.getCause(), request))
+                .onErrorResume(IOException.class, e -> error(request, generateInvalidArgumentError(e.getMessage())));
     }
 
     public ErrorResponse generateInvalidArgumentError(String description) {
@@ -95,16 +93,16 @@ public class RequestHandler {
             .build();
     }
 
-    private Stream<JmapResponse> errorNotImplemented(JmapFieldNotSupportedException error, AuthenticatedRequest request) {
-        return Stream.of(
+    private Flux<JmapResponse> errorNotImplemented(JmapFieldNotSupportedException error, AuthenticatedRequest request) {
+        return Flux.just(
                 JmapResponse.builder()
                     .methodCallId(request.getMethodCallId())
                     .error(generateInvalidArgumentError("The field '" + error.getField() + "' of '" + error.getIssuer() + "' is not supported"))
                     .build());
     }
 
-    private Stream<JmapResponse> error(AuthenticatedRequest request, ErrorResponse error) {
-        return Stream.of(
+    private Flux<JmapResponse> error(AuthenticatedRequest request, ErrorResponse error) {
+        return Flux.just(
                 JmapResponse.builder()
                     .methodCallId(request.getMethodCallId())
                     .error(error)

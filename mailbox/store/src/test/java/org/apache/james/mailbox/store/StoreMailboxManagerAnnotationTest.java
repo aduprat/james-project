@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -53,6 +52,8 @@ import org.mockito.MockitoAnnotations;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+
+import reactor.core.publisher.Mono;
 
 class StoreMailboxManagerAnnotationTest {
     static final MailboxAnnotationKey PRIVATE_KEY = new MailboxAnnotationKey("/private/comment");
@@ -86,7 +87,7 @@ class StoreMailboxManagerAnnotationTest {
         when(mailboxSessionMapperFactory.getMailboxMapper(eq(session))).thenReturn(mailboxMapper);
         when(mailboxSessionMapperFactory.getAnnotationMapper(eq(session))).thenReturn(annotationMapper);
         when(mailbox.getMailboxId()).thenReturn(mailboxId);
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         when(annotationMapper.execute(any(Mapper.Transaction.class)))
             .thenAnswer(invocationOnMock -> {
                 Mapper.Transaction<?> transaction = (Mapper.Transaction<?>) invocationOnMock.getArguments()[0];
@@ -100,16 +101,16 @@ class StoreMailboxManagerAnnotationTest {
     }
 
     @Test
-    void updateAnnotationsShouldThrowExceptionWhenDoesNotLookupMailbox() throws Exception {
-        doThrow(MailboxException.class).when(mailboxMapper).findMailboxByPath(eq(mailboxPath));
+    void updateAnnotationsShouldThrowExceptionWhenDoesNotLookupMailbox() {
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.error(new MailboxException()));
 
         assertThatThrownBy(() -> annotationManager.updateAnnotations(mailboxPath, session, ImmutableList.of(PRIVATE_ANNOTATION)))
-            .isInstanceOf(MailboxException.class);
+            .hasCauseInstanceOf(MailboxException.class);
     }
 
     @Test
     void updateAnnotationsShouldCallAnnotationMapperToInsertAnnotation() throws Exception {
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         annotationManager.updateAnnotations(mailboxPath, session, ANNOTATIONS);
 
         verify(annotationMapper, times(2)).insertAnnotation(eq(mailboxId), any(MailboxAnnotation.class));
@@ -117,7 +118,7 @@ class StoreMailboxManagerAnnotationTest {
 
     @Test
     void updateAnnotationsShouldCallAnnotationMapperToDeleteAnnotation() throws Exception {
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         annotationManager.updateAnnotations(mailboxPath, session, ANNOTATIONS_WITH_NIL_ENTRY);
 
         verify(annotationMapper, times(1)).insertAnnotation(eq(mailboxId), eq(PRIVATE_ANNOTATION));
@@ -126,15 +127,15 @@ class StoreMailboxManagerAnnotationTest {
 
     @Test
     void getAllAnnotationsShouldThrowExceptionWhenDoesNotLookupMailbox() throws Exception {
-        doThrow(MailboxException.class).when(mailboxMapper).findMailboxByPath(eq(mailboxPath));
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.error(new MailboxException()));
 
         assertThatThrownBy(() -> annotationManager.getAllAnnotations(mailboxPath, session))
-            .isInstanceOf(MailboxException.class);
+            .hasCauseInstanceOf(MailboxException.class);
     }
 
     @Test
     void getAllAnnotationsShouldReturnEmptyForNonStoredAnnotation() throws Exception {
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         when(annotationMapper.getAllAnnotations(eq(mailboxId))).thenReturn(Collections.<MailboxAnnotation>emptyList());
 
         assertThat(annotationManager.getAllAnnotations(mailboxPath, session)).isEmpty();
@@ -142,23 +143,23 @@ class StoreMailboxManagerAnnotationTest {
 
     @Test
     void getAllAnnotationsShouldReturnStoredAnnotation() throws Exception {
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         when(annotationMapper.getAllAnnotations(eq(mailboxId))).thenReturn(ANNOTATIONS);
 
         assertThat(annotationManager.getAllAnnotations(mailboxPath, session)).isEqualTo(ANNOTATIONS);
     }
 
     @Test
-    void getAnnotationsByKeysShouldThrowExceptionWhenDoesNotLookupMailbox() throws Exception {
-        doThrow(MailboxException.class).when(mailboxMapper).findMailboxByPath(eq(mailboxPath));
+    void getAnnotationsByKeysShouldThrowExceptionWhenDoesNotLookupMailbox() {
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.error(new MailboxException()));
 
         assertThatThrownBy(() -> annotationManager.getAnnotationsByKeys(mailboxPath, session, KEYS))
-            .isInstanceOf(MailboxException.class);
+            .hasCauseInstanceOf(MailboxException.class);
     }
 
     @Test
     void getAnnotationsByKeysShouldRetrieveStoreAnnotationsByKey() throws Exception {
-        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(mailbox);
+        when(mailboxMapper.findMailboxByPath(eq(mailboxPath))).thenReturn(Mono.just(mailbox));
         when(annotationMapper.getAnnotationsByKeys(eq(mailboxId), eq(KEYS))).thenReturn(ANNOTATIONS);
 
         assertThat(annotationManager.getAnnotationsByKeys(mailboxPath, session, KEYS)).isEqualTo(ANNOTATIONS);

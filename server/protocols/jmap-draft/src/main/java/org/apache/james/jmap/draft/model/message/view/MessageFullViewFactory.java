@@ -46,7 +46,7 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.Cid;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mime4j.dom.Message;
@@ -56,11 +56,13 @@ import org.apache.james.util.mime.MessageContentExtractor.MessageContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -86,23 +88,28 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
     }
 
     @Override
-    public List<MessageFullView> fromMessageIds(List<MessageId> messageIds, MailboxSession mailboxSession) throws MailboxException {
-        List<MessageResult> messages = messageIdManager.getMessages(messageIds, FetchGroup.FULL_CONTENT, mailboxSession);
+    public Flux<MessageFullView> fromMessageIds(List<MessageId> messageIds, MailboxSession mailboxSession) {
+        Flux<MessageResult> messages = Flux.from(messageIdManager.getMessagesReactive(messageIds, FetchGroup.FULL_CONTENT, mailboxSession));
         return Helpers.toMessageViews(messages, this::fromMessageResults);
     }
 
-    public MessageFullView fromMetaDataWithContent(MetaDataWithContent message) throws IOException {
-        Message mimeMessage = Helpers.parse(message.getContent());
+    public Mono<MessageFullView> fromMetaDataWithContent(MetaDataWithContent message) {
+        return Mono.fromCallable(() -> Helpers.parse(message.getContent()))
+            .flatMap(Throwing.function(mimeMessage -> fromMetaDataWithContent(message, mimeMessage)));
+    }
+
+    private Mono<MessageFullView> fromMetaDataWithContent(MetaDataWithContent message, Message mimeMessage) throws IOException {
         MessageContent messageContent = messageContentExtractor.extract(mimeMessage);
         Optional<String> htmlBody = messageContent.getHtmlBody();
         Optional<String> mainTextContent = messageContent.extractMainTextContent(htmlTextExtractor);
         Optional<String> textBody = computeTextBodyIfNeeded(messageContent, mainTextContent);
 
-        MessageFastViewPrecomputedProperties messageProjection = retrieveProjection(
-            messageContent,
-            message.getMessageId(),
-            () -> MessageFullView.hasAttachment(getAttachments(message.getAttachments())));
+        return retrieveProjection(messageContent, message.getMessageId(),
+                () -> MessageFullView.hasAttachment(getAttachments(message.getAttachments())))
+            .map(messageProjection -> instanciateMessageFullView(message, mimeMessage, htmlBody, textBody, messageProjection));
+    }
 
+    private MessageFullView instanciateMessageFullView(MetaDataWithContent message, Message mimeMessage, Optional<String> htmlBody, Optional<String> textBody, MessageFastViewPrecomputedProperties messageProjection) {
         return MessageFullView.builder()
                 .id(message.getMessageId())
                 .blobId(BlobId.of(blobManager.toBlobId(message.getMessageId())))
@@ -126,13 +133,11 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
                 .build();
     }
 
-    private MessageFastViewPrecomputedProperties retrieveProjection(MessageContent messageContent,
+    private Mono<MessageFastViewPrecomputedProperties> retrieveProjection(MessageContent messageContent,
                                                                     MessageId messageId, Supplier<Boolean> hasAttachments) {
         return Mono.from(fastViewProjection.retrieve(messageId))
             .onErrorResume(throwable -> fallBackToCompute(messageContent, hasAttachments, throwable))
-            .switchIfEmpty(computeThenStoreAsync(messageContent, messageId, hasAttachments))
-            .subscribeOn(Schedulers.elastic())
-            .block();
+            .switchIfEmpty(computeThenStoreAsync(messageContent, messageId, hasAttachments));
     }
 
     private Mono<MessageFastViewPrecomputedProperties> fallBackToCompute(MessageContent messageContent,
@@ -155,7 +160,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
     private Mono<MessageFastViewPrecomputedProperties> computeProjection(MessageContent messageContent, Supplier<Boolean> hasAttachments) {
         return Mono.justOrEmpty(mainTextContent(messageContent))
             .map(Preview::compute)
-            .switchIfEmpty(Mono.just(Preview.EMPTY))
+            .defaultIfEmpty(Preview.EMPTY)
             .map(extractedPreview -> MessageFastViewPrecomputedProperties.builder()
                 .preview(extractedPreview)
                 .hasAttachment(hasAttachments.get())
@@ -168,8 +173,12 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
             .orElse(message.getInternalDate());
     }
 
-    public MessageFullView fromMessageResults(Collection<MessageResult> messageResults) throws MailboxException, IOException {
-        return fromMetaDataWithContent(toMetaDataWithContent(messageResults));
+    Mono<MessageFullView> fromMessageResults(Collection<MessageResult> messageResults) {
+        try {
+            return fromMetaDataWithContent(toMetaDataWithContent(messageResults));
+        } catch (MailboxException e) {
+            return Mono.error(e);
+        }
     }
 
     private MetaDataWithContent toMetaDataWithContent(Collection<MessageResult> messageResults) throws MailboxException {
@@ -200,13 +209,13 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
             .orElse(messageContent.getTextBody());
     }
     
-    private List<Attachment> getAttachments(List<MessageAttachment> attachments) {
+    private List<Attachment> getAttachments(List<MessageAttachmentMetadata> attachments) {
         return attachments.stream()
                 .map(this::fromMailboxAttachment)
                 .collect(Guavate.toImmutableList());
     }
 
-    private Attachment fromMailboxAttachment(MessageAttachment attachment) {
+    private Attachment fromMailboxAttachment(MessageAttachmentMetadata attachment) {
         return Attachment.builder()
                     .blobId(BlobId.of(attachment.getAttachmentId().getId()))
                     .type(attachment.getAttachment().getType())
@@ -243,7 +252,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
             private Instant internalDate;
             private InputStream content;
             private SharedInputStream sharedContent;
-            private List<MessageAttachment> attachments;
+            private List<MessageAttachmentMetadata> attachments;
             private Set<MailboxId> mailboxIds = Sets.newHashSet();
             private MessageId messageId;
 
@@ -277,7 +286,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
                 return this;
             }
             
-            public Builder attachments(List<MessageAttachment> attachments) {
+            public Builder attachments(List<MessageAttachmentMetadata> attachments) {
                 this.attachments = attachments;
                 return this;
             }
@@ -316,7 +325,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
         private final Instant internalDate;
         private final InputStream content;
         private final SharedInputStream sharedContent;
-        private final List<MessageAttachment> attachments;
+        private final List<MessageAttachmentMetadata> attachments;
         private final Set<MailboxId> mailboxIds;
         private final MessageId messageId;
 
@@ -326,7 +335,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
                                     Instant internalDate,
                                     InputStream content,
                                     SharedInputStream sharedContent,
-                                    List<MessageAttachment> attachments,
+                                    List<MessageAttachmentMetadata> attachments,
                                     Set<MailboxId> mailboxIds,
                                     MessageId messageId) {
             this.uid = uid;
@@ -365,7 +374,7 @@ public class MessageFullViewFactory implements MessageViewFactory<MessageFullVie
             return content;
         }
 
-        public List<MessageAttachment> getAttachments() {
+        public List<MessageAttachmentMetadata> getAttachments() {
             return attachments;
         }
 

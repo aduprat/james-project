@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 import javax.mail.Flags;
 
 import org.apache.james.CassandraExtension;
+import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.GuiceJamesServer;
@@ -68,6 +69,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.EventDeadLettersProbe;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.RabbitMQExtension;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.probe.DataProbe;
 import org.apache.james.task.TaskManager;
 import org.apache.james.utils.DataProbeImpl;
@@ -82,7 +84,6 @@ import org.apache.james.webadmin.routes.MailRepositoriesRoutes;
 import org.apache.james.webadmin.routes.TasksRoutes;
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRoutes;
 import org.apache.mailet.base.test.FakeMail;
-import org.assertj.core.api.Assertions;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,13 +98,17 @@ import io.restassured.http.ContentType;
 class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+        CassandraRabbitMQJamesConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
+            .build())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new RabbitMQExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
+        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
             .overrideWith(new WebadminIntegrationTestModule()))
         .build();
 
@@ -143,7 +148,7 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("type", is("full-reindexing"))
             .body("additionalInformation.successfullyReprocessedMailCount", is(0))
             .body("additionalInformation.failedReprocessedMailCount", is(0))
-            .body("additionalInformation.failures", is(anEmptyMap()));
+            .body("additionalInformation.messageFailures", is(anEmptyMap()));
     }
 
     @Test
@@ -333,7 +338,7 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("additionalInformation.successfullyReprocessedMailCount", is(0))
             .body("additionalInformation.failedReprocessedMailCount", is(0))
             .body("additionalInformation.username", is(USERNAME))
-            .body("additionalInformation.failures", is(anEmptyMap()));
+            .body("additionalInformation.messageFailures", is(anEmptyMap()));
     }
 
     @Test
@@ -433,7 +438,7 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("type", is("error-recovery-indexation"))
             .body("additionalInformation.successfullyReprocessedMailCount", is(0))
             .body("additionalInformation.failedReprocessedMailCount", is(0))
-            .body("additionalInformation.failures", is(anEmptyMap()));
+            .body("additionalInformation.messageFailures", is(anEmptyMap()));
     }
 
     @Test
@@ -664,7 +669,7 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("additionalInformation.successfullyReprocessedMailCount", is(0))
             .body("additionalInformation.failedReprocessedMailCount", is(0))
             .body("additionalInformation.mailboxId", is(mailboxId.serialize()))
-            .body("additionalInformation.failures", is(anEmptyMap()));
+            .body("additionalInformation.messageFailures", is(anEmptyMap()));
     }
 
     @Test
@@ -737,6 +742,47 @@ class RabbitMQWebAdminServerTaskSerializationIntegrationTest {
             .body("type", is("cassandra-mappings-solve-inconsistencies"))
             .body("additionalInformation.successfulMappingsCount", is(0))
             .body("additionalInformation.errorMappingsCount", is(0));
+    }
+
+    @Test
+    void recomputeMailboxCountersShouldComplete() {
+        String taskId = with()
+                .basePath("/mailboxes")
+                .queryParam("task", "RecomputeMailboxCounters")
+            .post()
+                .jsonPath()
+                .get("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("status", is("completed"))
+            .body("taskId", is(taskId))
+            .body("type", is("recompute-mailbox-counters"))
+            .body("additionalInformation.processedMailboxes", is(0));
+    }
+
+    @Test
+    void recomputeCurrentQuotasShouldComplete() {
+        String taskId = with()
+            .basePath("/quota/users")
+            .queryParam("task", "RecomputeCurrentQuotas")
+        .post()
+            .jsonPath()
+            .get("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("status", is("completed"))
+            .body("taskId", is(taskId))
+            .body("type", is("recompute-current-quotas"))
+            .body("additionalInformation.processedQuotaRoots", is(0))
+            .body("additionalInformation.failedQuotaRoots", empty());
     }
 
     private MailboxListener.MailboxAdded createMailboxAdded() {

@@ -24,6 +24,7 @@ import javax.inject.Inject;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
+import org.apache.james.eventsourcing.Command;
 import org.apache.james.eventsourcing.CommandHandler;
 import org.apache.james.eventsourcing.EventSourcingSystem;
 import org.apache.james.eventsourcing.Subscriber;
@@ -38,10 +39,13 @@ import org.apache.james.mailbox.quota.mailing.commands.DetectThresholdCrossingHa
 import org.apache.james.mailbox.quota.mailing.subscribers.QuotaThresholdMailer;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.mailet.MailetContext;
+import org.reactivestreams.Publisher;
 
 import com.google.common.collect.ImmutableSet;
 
-public class QuotaThresholdCrossingListener implements MailboxListener.GroupMailboxListener {
+import reactor.core.publisher.Mono;
+
+public class QuotaThresholdCrossingListener implements MailboxListener.ReactiveGroupMailboxListener {
     public static class QuotaThresholdCrossingListenerGroup extends Group {
 
     }
@@ -60,9 +64,9 @@ public class QuotaThresholdCrossingListener implements MailboxListener.GroupMail
     public QuotaThresholdCrossingListener(MailetContext mailetContext, UsersRepository usersRepository,
                                           FileSystem fileSystem, EventStore eventStore,
                                           QuotaMailingListenerConfiguration config) {
-        ImmutableSet<CommandHandler<?>> handlers = ImmutableSet.of(new DetectThresholdCrossingHandler(eventStore, config));
+        ImmutableSet<CommandHandler<? extends Command>> handlers = ImmutableSet.of(new DetectThresholdCrossingHandler(eventStore, config));
         ImmutableSet<Subscriber> subscribers = ImmutableSet.of(new QuotaThresholdMailer(mailetContext, usersRepository, fileSystem, config));
-        eventSourcingSystem = new EventSourcingSystem(handlers, subscribers, eventStore);
+        eventSourcingSystem = EventSourcingSystem.fromJava(handlers, subscribers, eventStore);
     }
 
     @Override
@@ -70,15 +74,17 @@ public class QuotaThresholdCrossingListener implements MailboxListener.GroupMail
         return GROUP;
     }
 
+
     @Override
-    public void event(Event event) {
+    public Publisher<Void> reactiveEvent(Event event) {
         if (event instanceof QuotaUsageUpdatedEvent) {
-            handleEvent(event.getUsername(), (QuotaUsageUpdatedEvent) event);
+            return handleEvent(event.getUsername(), (QuotaUsageUpdatedEvent) event);
         }
+        return Mono.empty();
     }
 
-    private void handleEvent(Username username, QuotaUsageUpdatedEvent event) {
-        eventSourcingSystem.dispatch(
-            new DetectThresholdCrossing(username, event.getCountQuota(), event.getSizeQuota(), event.getInstant()));
+    private Mono<Void> handleEvent(Username username, QuotaUsageUpdatedEvent event) {
+        return Mono.from(eventSourcingSystem.dispatch(
+            new DetectThresholdCrossing(username, event.getCountQuota(), event.getSizeQuota(), event.getInstant())));
     }
 }

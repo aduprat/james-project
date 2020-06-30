@@ -19,7 +19,8 @@
 
 package org.apache.james.mailbox.events;
 
-import static org.awaitility.Awaitility.await;
+import static org.apache.james.mailbox.events.RetryBackoffConfiguration.DEFAULT_JITTER_FACTOR;
+import static org.apache.james.mailbox.events.RetryBackoffConfiguration.DEFAULT_MAX_RETRIES;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,8 +34,6 @@ import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.TestId;
-import org.awaitility.Duration;
-import org.awaitility.core.ConditionFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -103,7 +102,6 @@ public interface EventBusTestFixture {
     MailboxListener.MailboxRenamed EVENT_UNSUPPORTED_BY_LISTENER = new MailboxListener.MailboxRenamed(SESSION_ID, USERNAME, MAILBOX_PATH, TEST_ID, MAILBOX_PATH, EVENT_ID_2);
 
     java.time.Duration ONE_SECOND = java.time.Duration.ofSeconds(1);
-    java.time.Duration THIRTY_SECONDS = java.time.Duration.ofSeconds(30);
     java.time.Duration FIVE_HUNDRED_MS = java.time.Duration.ofMillis(500);
     MailboxId ID_1 = TEST_ID;
     MailboxId ID_2 = TestId.of(24);
@@ -117,11 +115,24 @@ public interface EventBusTestFixture {
     GroupC GROUP_C = new GroupC();
     List<Group> ALL_GROUPS = ImmutableList.of(GROUP_A, GROUP_B, GROUP_C);
 
-    ConditionFactory WAIT_CONDITION = await().timeout(Duration.FIVE_SECONDS);
+    java.time.Duration DEFAULT_FIRST_BACKOFF = java.time.Duration.ofMillis(20);
+    //Retry backoff configuration for testing with a shorter first backoff to accommodate the shorter retry interval in tests
+    RetryBackoffConfiguration RETRY_BACKOFF_CONFIGURATION = RetryBackoffConfiguration.builder()
+        .maxRetries(DEFAULT_MAX_RETRIES)
+        .firstBackoff(DEFAULT_FIRST_BACKOFF)
+        .jitterFactor(DEFAULT_JITTER_FACTOR)
+        .build();
 
     static MailboxListener newListener() {
         MailboxListener listener = mock(MailboxListener.class);
         when(listener.getExecutionMode()).thenReturn(MailboxListener.ExecutionMode.SYNCHRONOUS);
+        when(listener.isHandling(any(MailboxListener.MailboxAdded.class))).thenReturn(true);
+        return listener;
+    }
+
+    static MailboxListener newAsyncListener() {
+        MailboxListener listener = mock(MailboxListener.class);
+        when(listener.getExecutionMode()).thenReturn(MailboxListener.ExecutionMode.ASYNCHRONOUS);
         when(listener.isHandling(any(MailboxListener.MailboxAdded.class))).thenReturn(true);
         return listener;
     }

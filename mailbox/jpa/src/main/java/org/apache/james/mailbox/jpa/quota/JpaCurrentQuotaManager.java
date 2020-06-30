@@ -28,14 +28,15 @@ import javax.persistence.EntityManagerFactory;
 import org.apache.james.backends.jpa.TransactionRunner;
 import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeUsage;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.jpa.quota.model.JpaCurrentQuota;
+import org.apache.james.mailbox.model.CurrentQuotas;
+import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
-import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
 
-import com.google.common.base.Preconditions;
+import reactor.core.publisher.Mono;
 
-public class JpaCurrentQuotaManager implements StoreCurrentQuotaManager {
+public class JpaCurrentQuotaManager implements CurrentQuotaManager {
 
     public static final long NO_MESSAGES = 0L;
     public static final long NO_STORED_BYTES = 0L;
@@ -50,51 +51,74 @@ public class JpaCurrentQuotaManager implements StoreCurrentQuotaManager {
     }
 
     @Override
-    public QuotaCountUsage getCurrentMessageCount(QuotaRoot quotaRoot) {
+    public Mono<QuotaCountUsage> getCurrentMessageCount(QuotaRoot quotaRoot) {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
-        return Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
+
+        return Mono.fromCallable(() -> Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
             .map(JpaCurrentQuota::getMessageCount)
-            .orElse(QuotaCountUsage.count(NO_STORED_BYTES));
+            .orElse(QuotaCountUsage.count(NO_STORED_BYTES)));
     }
 
     @Override
-    public QuotaSizeUsage getCurrentStorage(QuotaRoot quotaRoot) {
+    public Mono<QuotaSizeUsage> getCurrentStorage(QuotaRoot quotaRoot) {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
-        return Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
+
+        return Mono.fromCallable(() -> Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
             .map(JpaCurrentQuota::getSize)
-            .orElse(QuotaSizeUsage.size(NO_STORED_BYTES));
+            .orElse(QuotaSizeUsage.size(NO_STORED_BYTES)));
+    }
+
+    public Mono<CurrentQuotas> getCurrentQuotas(QuotaRoot quotaRoot) {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        return Mono.fromCallable(() ->  Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
+            .map(jpaCurrentQuota -> new CurrentQuotas(jpaCurrentQuota.getMessageCount(), jpaCurrentQuota.getSize()))
+            .orElse(CurrentQuotas.emptyQuotas()));
     }
 
     @Override
-    public void increase(QuotaRoot quotaRoot, long count, long size) {
-        Preconditions.checkArgument(count > 0, "Counts should be positive");
-        Preconditions.checkArgument(size > 0, "Size should be positive");
+    public Mono<Void> increase(QuotaOperation quotaOperation) {
+        return Mono.fromRunnable(() ->
+            transactionRunner.run(
+                entityManager -> {
+                    QuotaRoot quotaRoot = quotaOperation.quotaRoot();
 
-        transactionRunner.run(
-            entityManager -> {
-                JpaCurrentQuota jpaCurrentQuota = Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
-                    .orElse(new JpaCurrentQuota(quotaRoot.getValue(), NO_MESSAGES, NO_STORED_BYTES));
+                    JpaCurrentQuota jpaCurrentQuota = Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
+                        .orElse(new JpaCurrentQuota(quotaRoot.getValue(), NO_MESSAGES, NO_STORED_BYTES));
 
-                entityManager.merge(new JpaCurrentQuota(quotaRoot.getValue(),
-                    jpaCurrentQuota.getMessageCount().asLong() + count,
-                    jpaCurrentQuota.getSize().asLong() + size));
-            });
+                    entityManager.merge(new JpaCurrentQuota(quotaRoot.getValue(),
+                        jpaCurrentQuota.getMessageCount().asLong() + quotaOperation.count().asLong(),
+                        jpaCurrentQuota.getSize().asLong() + quotaOperation.size().asLong()));
+                }));
     }
 
     @Override
-    public void decrease(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        Preconditions.checkArgument(count > 0, "Counts should be positive");
-        Preconditions.checkArgument(size > 0, "Counts should be positive");
+    public Mono<Void> decrease(QuotaOperation quotaOperation) {
+        return Mono.fromRunnable(() ->
+            transactionRunner.run(
+                entityManager -> {
+                    QuotaRoot quotaRoot = quotaOperation.quotaRoot();
 
-        transactionRunner.run(
-            entityManager -> {
-                JpaCurrentQuota jpaCurrentQuota = Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
-                    .orElse(new JpaCurrentQuota(quotaRoot.getValue(), NO_MESSAGES, NO_STORED_BYTES));
+                    JpaCurrentQuota jpaCurrentQuota = Optional.ofNullable(retrieveUserQuota(entityManager, quotaRoot))
+                        .orElse(new JpaCurrentQuota(quotaRoot.getValue(), NO_MESSAGES, NO_STORED_BYTES));
 
-                entityManager.merge(new JpaCurrentQuota(quotaRoot.getValue(),
-                    jpaCurrentQuota.getMessageCount().asLong() - count,
-                    jpaCurrentQuota.getSize().asLong() - size));
-            });
+                    entityManager.merge(new JpaCurrentQuota(quotaRoot.getValue(),
+                        jpaCurrentQuota.getMessageCount().asLong() - quotaOperation.count().asLong(),
+                        jpaCurrentQuota.getSize().asLong() - quotaOperation.size().asLong()));
+                }));
+    }
+
+    @Override
+    public Mono<Void> setCurrentQuotas(QuotaOperation quotaOperation) {
+        return Mono.fromCallable(() -> getCurrentQuotas(quotaOperation.quotaRoot()))
+            .flatMap(storedQuotas -> Mono.fromRunnable(() ->
+                transactionRunner.run(
+                    entityManager -> {
+                        if (!storedQuotas.equals(CurrentQuotas.from(quotaOperation))) {
+                            entityManager.merge(new JpaCurrentQuota(quotaOperation.quotaRoot().getValue(),
+                                quotaOperation.count().asLong(),
+                                quotaOperation.size().asLong()));
+                        }
+                    })));
     }
 
     private JpaCurrentQuota retrieveUserQuota(EntityManager entityManager, QuotaRoot quotaRoot) {

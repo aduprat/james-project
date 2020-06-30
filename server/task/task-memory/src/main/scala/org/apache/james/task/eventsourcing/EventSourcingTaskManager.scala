@@ -25,13 +25,16 @@ import java.util
 import com.google.common.annotations.VisibleForTesting
 import javax.annotation.PreDestroy
 import javax.inject.Inject
+
 import org.apache.james.eventsourcing.eventstore.{EventStore, History}
-import org.apache.james.eventsourcing.{AggregateId, Subscriber}
+import org.apache.james.eventsourcing.{AggregateId, EventSourcingSystem, Subscriber}
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.task.TaskManager.ReachedTimeoutException
 import org.apache.james.task._
 import org.apache.james.task.eventsourcing.TaskCommand._
+
 import reactor.core.publisher.{Flux, Mono}
+import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 
 class EventSourcingTaskManager @Inject @VisibleForTesting private[eventsourcing](
@@ -52,8 +55,8 @@ class EventSourcingTaskManager @Inject @VisibleForTesting private[eventsourcing]
 
   import scala.jdk.CollectionConverters._
 
-  private val loadHistory: AggregateId => History = eventStore.getEventsOfAggregate _
-  private val eventSourcingSystem = ScalaEventSourcingSystem(
+  private val loadHistory: AggregateId => SMono[History] = aggregateId => SMono(eventStore.getEventsOfAggregate(aggregateId))
+  private val eventSourcingSystem = new EventSourcingSystem(
     handlers = Set(
       new CreateCommandHandler(loadHistory, hostname),
       new StartCommandHandler(loadHistory, hostname),
@@ -75,7 +78,7 @@ class EventSourcingTaskManager @Inject @VisibleForTesting private[eventsourcing]
   override def submit(task: Task): TaskId = {
     val taskId = TaskId.generateTaskId
     val command = Create(taskId, task)
-    eventSourcingSystem.dispatch(command)
+    SMono(eventSourcingSystem.dispatch(command)).block()
     taskId
   }
 
@@ -90,11 +93,10 @@ class EventSourcingTaskManager @Inject @VisibleForTesting private[eventsourcing]
 
   private def listScala: List[TaskExecutionDetails] = executionDetailsProjection
     .list
-    .flatMap(details => executionDetailsProjection.load(details.taskId))
 
   override def cancel(id: TaskId): Unit = {
     val command = RequestCancel(id)
-    eventSourcingSystem.dispatch(command)
+    SMono(eventSourcingSystem.dispatch(command)).block()
   }
 
   @throws(classOf[TaskNotFoundException])

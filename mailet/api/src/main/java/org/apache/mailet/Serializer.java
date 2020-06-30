@@ -55,10 +55,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 /** 
- * Controlled Json serialization/deserialization
+ * Controlled Json serialization/deserialization.
  * 
  * @since Mailet API v3.2
  */
+@SuppressWarnings("EqualsHashCode")
 public interface Serializer<T> {
     JsonNode serialize(T object);
 

@@ -27,7 +27,6 @@ import java.util.stream.Stream;
 
 import org.apache.james.lifecycle.api.StartUpCheck;
 import org.apache.james.modules.BlobExportImplChoice;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -112,10 +111,8 @@ class GuiceJamesServerStartUpCheckTest {
     }
 
     private static JamesServerBuilder extensionBuilder() {
-        return new JamesServerBuilder()
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-                .overrideWith(TestJMAPServerModule.limitToTenMessages()))
+        return new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+            .server(MemoryJamesServerMain::createServer)
             .disableAutoStart();
     }
 

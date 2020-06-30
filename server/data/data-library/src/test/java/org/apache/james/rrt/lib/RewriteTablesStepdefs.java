@@ -22,9 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.apache.james.core.Domain;
 import org.apache.james.rrt.api.RecipientRewriteTable.ErrorMappingException;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.api.RecipientRewriteTableException;
 
 import cucumber.api.java.en.Given;
@@ -33,8 +35,15 @@ import cucumber.api.java.en.When;
 
 public class RewriteTablesStepdefs {
 
-    public AbstractRecipientRewriteTable rewriteTable;
+    private Supplier<AbstractRecipientRewriteTable> recipientRewriteTableSupplier;
+    private AbstractRecipientRewriteTable rewriteTable;
     private Exception exception;
+
+    public void setUp(Supplier<AbstractRecipientRewriteTable> recipientRewriteTableSupplier) {
+        this.recipientRewriteTableSupplier = recipientRewriteTableSupplier;
+        this.rewriteTable = this.recipientRewriteTableSupplier.get();
+        this.rewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+    }
 
     @Given("store \"([^\"]*)\" regexp mapping for user \"([^\"]*)\" at domain \"([^\"]*)\"")
     public void storeRegexpMappingForUserAtDomain(String regexp, String user, String domain) throws Throwable {
@@ -73,9 +82,14 @@ public class RewriteTablesStepdefs {
         storeAddressMappingForUserAtDomain(address, MappingSource.fromDomain(Domain.of(domain)));
     }
 
-    @Given("store \"([^\"]*)\" alias domain mapping for domain \"([^\"]*)\"")
-    public void storeAliasDomainMappingForDomain(String aliasDomain, String domain) throws Throwable {
-        rewriteTable.addAliasDomainMapping(MappingSource.fromDomain(Domain.of(aliasDomain)), Domain.of(domain));
+    @Given("store \"([^\"]*)\" domain mapping for domain \"([^\"]*)\"")
+    public void storeDomainMappingForDomain(String aliasDomain, String domain) throws Throwable {
+        rewriteTable.addDomainMapping(MappingSource.fromDomain(Domain.of(aliasDomain)), Domain.of(domain));
+    }
+
+    @Given("store \"([^\"]*)\" domain alias for domain \"([^\"]*)\"")
+    public void storeDomainAliasMappingForDomain(String aliasDomain, String domain) throws Throwable {
+        rewriteTable.addDomainAliasMapping(MappingSource.fromDomain(Domain.of(aliasDomain)), Domain.of(domain));
     }
 
     @Given("store \"([^\"]*)\" forward mapping for user \"([^\"]*)\" at domain \"([^\"]*)\"")
@@ -98,12 +112,13 @@ public class RewriteTablesStepdefs {
 
     @Given("recursive mapping is disable")
     public void disableRecursiveMapping() {
-        rewriteTable.setRecursiveMapping(false);
+        this.rewriteTable = this.recipientRewriteTableSupplier.get();
+        this.rewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DISABLED);
     }
 
     @Given("recursive mapping is enable")
     public void enableRecursiveMapping() {
-        rewriteTable.setRecursiveMapping(true);
+        // default case
     }
 
     @When("user \"([^\"]*)\" at domain \"([^\"]*)\" removes a regexp mapping \"([^\"]*)\"")
@@ -151,9 +166,14 @@ public class RewriteTablesStepdefs {
         userAtDomainRemovesAddressMapping(address, MappingSource.fromDomain(Domain.of(domain)));
     }
 
-    @When("alias domain mapping \"([^\"]*)\" for \"([^\"]*)\" domain is removed")
-    public void removeAliasDomainMappingForDomain(String aliasdomain, String domain) throws Throwable {
-        rewriteTable.removeAliasDomainMapping(MappingSource.fromDomain(Domain.of(aliasdomain)), Domain.of(domain));
+    @When("domain mapping \"([^\"]*)\" for \"([^\"]*)\" domain is removed")
+    public void removeDomainMappingForDomain(String aliasdomain, String domain) throws Throwable {
+        rewriteTable.removeDomainMapping(MappingSource.fromDomain(Domain.of(aliasdomain)), Domain.of(domain));
+    }
+
+    @When("domain alias \"([^\"]*)\" for \"([^\"]*)\" domain is removed")
+    public void removeDomainAliasForDomain(String aliasdomain, String domain) throws Throwable {
+        rewriteTable.removeDomainAliasMapping(MappingSource.fromDomain(Domain.of(aliasdomain)), Domain.of(domain));
     }
 
     @Then("mappings should be empty")

@@ -19,6 +19,7 @@
 
 package org.apache.james.queue.rabbitmq;
 
+import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.queue.api.MailQueue.ENQUEUED_METRIC_NAME_PREFIX;
 
@@ -27,7 +28,6 @@ import java.time.Clock;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
-import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.blob.api.Store;
 import org.apache.james.blob.mail.MimeMessagePartsId;
 import org.apache.james.metrics.api.Metric;
@@ -38,6 +38,7 @@ import org.apache.mailet.Mail;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.fge.lambdas.Throwing;
+import com.rabbitmq.client.AMQP;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
@@ -52,11 +53,11 @@ class Enqueuer {
     private final MailQueueView mailQueueView;
     private final Clock clock;
 
-    Enqueuer(MailQueueName name, ReactorRabbitMQChannelPool reactorRabbitMQChannelPool, Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
+    Enqueuer(MailQueueName name, Sender sender, Store<MimeMessage, MimeMessagePartsId> mimeMessageStore,
              MailReferenceSerializer serializer, MetricFactory metricFactory,
              MailQueueView mailQueueView, Clock clock) {
         this.name = name;
-        this.sender = reactorRabbitMQChannelPool.getSender();
+        this.sender = sender;
         this.mimeMessageStore = mimeMessageStore;
         this.mailReferenceSerializer = serializer;
         this.mailQueueView = mailQueueView;
@@ -83,9 +84,16 @@ class Enqueuer {
     }
 
     private Mono<EnqueuedItem> publishReferenceToRabbit(MailReference mailReference) throws MailQueue.MailQueueException {
+        AMQP.BasicProperties basicProperties = new AMQP.BasicProperties.Builder()
+            .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
+            .priority(PERSISTENT_TEXT_PLAIN.getPriority())
+            .contentType(PERSISTENT_TEXT_PLAIN.getContentType())
+            .build();
+
         OutboundMessage data = new OutboundMessage(
             name.toRabbitExchangeName().asString(),
             EMPTY_ROUTING_KEY,
+            basicProperties,
             getMailReferenceBytes(mailReference));
         return sender.send(Mono.just(data))
             .then(Mono.just(

@@ -24,14 +24,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
-import java.util.List;
 
-import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
 import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreExtension;
 import org.apache.james.eventsourcing.eventstore.cassandra.JsonEventSerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import reactor.core.publisher.Mono;
 
 class EventsourcingConfigurationManagementTest {
 
@@ -71,7 +71,7 @@ class EventsourcingConfigurationManagementTest {
     void loadShouldReturnEmptyIfNoConfigurationStored(EventStore eventStore) {
         EventsourcingConfigurationManagement testee = createConfigurationManagement(eventStore);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .isEmpty();
     }
 
@@ -82,7 +82,7 @@ class EventsourcingConfigurationManagementTest {
         testee.registerConfiguration(SECOND_CONFIGURATION);
         testee.registerConfiguration(THIRD_CONFIGURATION);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(THIRD_CONFIGURATION);
     }
 
@@ -127,7 +127,7 @@ class EventsourcingConfigurationManagementTest {
             .build();
         testee.registerConfiguration(increaseOneBucketConfiguration);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(increaseOneBucketConfiguration);
     }
 
@@ -137,7 +137,7 @@ class EventsourcingConfigurationManagementTest {
 
         testee.registerConfiguration(FIRST_CONFIGURATION);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(FIRST_CONFIGURATION);
     }
 
@@ -191,7 +191,7 @@ class EventsourcingConfigurationManagementTest {
             .build();
         testee.registerConfiguration(decreaseTwiceSliceWindowConfiguration);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(decreaseTwiceSliceWindowConfiguration);
     }
 
@@ -211,7 +211,7 @@ class EventsourcingConfigurationManagementTest {
             .build();
         testee.registerConfiguration(decreaseTwiceSliceWindowConfiguration);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(decreaseTwiceSliceWindowConfiguration);
     }
 
@@ -231,7 +231,7 @@ class EventsourcingConfigurationManagementTest {
             .build();
         testee.registerConfiguration(decreaseTwiceSliceWindowConfiguration);
 
-        assertThat(testee.load())
+        assertThat(Mono.from(testee.load()).blockOptional())
             .contains(decreaseTwiceSliceWindowConfiguration);
     }
 
@@ -241,9 +241,9 @@ class EventsourcingConfigurationManagementTest {
         testee.registerConfiguration(FIRST_CONFIGURATION);
         testee.registerConfiguration(FIRST_CONFIGURATION);
 
-        List<Event> eventsStored = eventStore.getEventsOfAggregate(CONFIGURATION_AGGREGATE_ID)
-            .getEvents();
-        assertThat(eventsStored)
+        assertThat(Mono.from(eventStore.getEventsOfAggregate(CONFIGURATION_AGGREGATE_ID))
+            .block()
+            .getEventsJava())
             .hasSize(1);
     }
 }

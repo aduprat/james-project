@@ -29,9 +29,9 @@ import org.apache.james.core.Domain;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
-import org.apache.james.utils.IMAPMessageReader;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.SpoolerProbe;
+import org.apache.james.utils.TestIMAPClient;
 import org.awaitility.Awaitility;
 import org.awaitility.Duration;
 import org.awaitility.core.ConditionFactory;
@@ -49,17 +49,16 @@ class CassandraLdapJamesServerTest implements JamesServerContract {
     private IMAPClient imapClient = new IMAPClient();
 
     @RegisterExtension
-    IMAPMessageReader imapMessageReader = new IMAPMessageReader();
+    TestIMAPClient testIMAPClient = new TestIMAPClient();
     SMTPMessageSender messageSender = new SMTPMessageSender(Domain.LOCALHOST.asString());
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new LdapTestExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraLdapJamesServerMain.MODULES)
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
+        .server(configuration -> CassandraLdapJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(DOMAIN_LIST_CONFIGURATION_MODULE))
         .build();
 
@@ -77,7 +76,7 @@ class CassandraLdapJamesServerTest implements JamesServerContract {
 
         calmlyAwait.until(() -> server.getProbe(SpoolerProbe.class).processingFinished());
 
-        imapMessageReader.connect(JAMES_SERVER_HOST, server.getProbe(ImapGuiceProbe.class).getImapPort())
+        testIMAPClient.connect(JAMES_SERVER_HOST, server.getProbe(ImapGuiceProbe.class).getImapPort())
             .login(JAMES_USER, PASSWORD)
             .select("INBOX")
             .awaitMessage(calmlyAwait);

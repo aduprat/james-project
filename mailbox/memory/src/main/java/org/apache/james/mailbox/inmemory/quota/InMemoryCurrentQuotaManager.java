@@ -19,8 +19,8 @@
 
 package org.apache.james.mailbox.inmemory.quota;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
 import javax.inject.Inject;
 
@@ -29,90 +29,87 @@ import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeUsage;
 import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.CurrentQuotas;
+import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.store.quota.CurrentQuotaCalculator;
-import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
 
-import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
-public class InMemoryCurrentQuotaManager implements StoreCurrentQuotaManager {
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-    private final LoadingCache<QuotaRoot, Entry> quotaCache;
+public class InMemoryCurrentQuotaManager implements CurrentQuotaManager {
+
+    private final LoadingCache<QuotaRoot, AtomicReference<CurrentQuotas>> quotaCache;
 
     @Inject
     public InMemoryCurrentQuotaManager(CurrentQuotaCalculator quotaCalculator, SessionProvider sessionProvider) {
-        this.quotaCache = CacheBuilder.newBuilder().build(new CacheLoader<QuotaRoot, Entry>() {
+        this.quotaCache = CacheBuilder.newBuilder().build(new CacheLoader<>() {
             @Override
-            public Entry load(QuotaRoot quotaRoot) throws Exception {
-                return new Entry(quotaCalculator.recalculateCurrentQuotas(quotaRoot, sessionProvider.createSystemSession(Username.of(quotaRoot.getValue()))));
+            public AtomicReference<CurrentQuotas> load(QuotaRoot quotaRoot) {
+                return new AtomicReference<>(
+                    loadQuotas(quotaRoot, quotaCalculator, sessionProvider));
             }
         });
     }
 
-    @Override
-    public void increase(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        checkArguments(count, size);
-        doIncrease(quotaRoot, count, size);
+    public CurrentQuotas loadQuotas(QuotaRoot quotaRoot, CurrentQuotaCalculator quotaCalculator, SessionProvider sessionProvider) {
+        return quotaCalculator.recalculateCurrentQuotas(quotaRoot, sessionProvider.createSystemSession(Username.of(quotaRoot.getValue())))
+            .subscribeOn(Schedulers.elastic())
+            .block();
     }
 
     @Override
-    public void decrease(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        checkArguments(count, size);
-        doIncrease(quotaRoot, -count, -size);
+    public Mono<Void> increase(QuotaOperation quotaOperation) {
+        return updateQuota(quotaOperation.quotaRoot(), quota -> quota.increase(new CurrentQuotas(quotaOperation.count(), quotaOperation.size())));
     }
 
     @Override
-    public QuotaCountUsage getCurrentMessageCount(QuotaRoot quotaRoot) throws MailboxException {
-        try {
-            return QuotaCountUsage.count(quotaCache.get(quotaRoot).getCount().get());
-        } catch (ExecutionException e) {
-            throw new MailboxException("Exception caught", e);
-        }
+    public Mono<Void> decrease(QuotaOperation quotaOperation) {
+        return updateQuota(quotaOperation.quotaRoot(), quota -> quota.decrease(new CurrentQuotas(quotaOperation.count(), quotaOperation.size())));
     }
 
     @Override
-    public QuotaSizeUsage getCurrentStorage(QuotaRoot quotaRoot) throws MailboxException {
-        try {
-            return QuotaSizeUsage.size(quotaCache.get(quotaRoot).getSize().get());
-        } catch (ExecutionException e) {
-            throw new MailboxException("Exception caught", e);
-        }
+    public Mono<QuotaCountUsage> getCurrentMessageCount(QuotaRoot quotaRoot) {
+        return Mono.fromCallable(() -> quotaCache.get(quotaRoot).get().count())
+            .onErrorMap(this::wrapAsMailboxException)
+            .subscribeOn(Schedulers.elastic());
     }
 
-    private void doIncrease(QuotaRoot quotaRoot, long count, long size) throws MailboxException {
-        try {
-            Entry entry = quotaCache.get(quotaRoot);
-            entry.getCount().addAndGet(count);
-            entry.getSize().addAndGet(size);
-        } catch (ExecutionException e) {
-            throw new MailboxException("Exception caught", e);
-        }
-
+    @Override
+    public Mono<QuotaSizeUsage> getCurrentStorage(QuotaRoot quotaRoot) {
+        return Mono.fromCallable(() -> quotaCache.get(quotaRoot).get().size())
+            .onErrorMap(this::wrapAsMailboxException)
+            .subscribeOn(Schedulers.elastic());
     }
 
-    private void checkArguments(long count, long size) {
-        Preconditions.checkArgument(count > 0, "Count should be positive");
-        Preconditions.checkArgument(size > 0, "Size should be positive");
+    @Override
+    public Mono<CurrentQuotas> getCurrentQuotas(QuotaRoot quotaRoot) {
+        return Mono.fromCallable(() -> quotaCache.get(quotaRoot).get())
+            .onErrorMap(this::wrapAsMailboxException)
+            .subscribeOn(Schedulers.elastic());
     }
 
-    static class Entry {
-        private final AtomicLong count;
-        private final AtomicLong size;
+    @Override
+    public Mono<Void> setCurrentQuotas(QuotaOperation quotaOperation) {
+        return getCurrentQuotas(quotaOperation.quotaRoot())
+            .filter(storedQuotas -> !storedQuotas.equals(CurrentQuotas.from(quotaOperation)))
+            .flatMap(storedQuotas -> decrease(new QuotaOperation(quotaOperation.quotaRoot(), storedQuotas.count(), storedQuotas.size()))
+                .then(increase(quotaOperation)))
+            .subscribeOn(Schedulers.elastic());
+    }
 
-        public Entry(CurrentQuotaCalculator.CurrentQuotas currentQuotas) {
-            this.count = new AtomicLong(currentQuotas.getCount());
-            this.size = new AtomicLong(currentQuotas.getSize());
-        }
+    private Mono<Void> updateQuota(QuotaRoot quotaRoot, UnaryOperator<CurrentQuotas> quotaFunction) {
+        return Mono.fromCallable(() -> quotaCache.get(quotaRoot).updateAndGet(quotaFunction))
+            .onErrorMap(this::wrapAsMailboxException)
+            .then();
+    }
 
-        public AtomicLong getCount() {
-            return count;
-        }
-
-        public AtomicLong getSize() {
-            return size;
-        }
+    private Throwable wrapAsMailboxException(Throwable throwable) {
+        return new MailboxException("Exception caught", throwable);
     }
 }

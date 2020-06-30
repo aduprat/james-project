@@ -26,14 +26,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 
 public class MappingsImplTest {
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void fromRawStringShouldThrowWhenNull() {
-        MappingsImpl.fromRawString(null);
+        assertThatThrownBy(() -> MappingsImpl.fromRawString(null))
+            .isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -108,14 +109,18 @@ public class MappingsImplTest {
         MappingsImpl actual = MappingsImpl.fromRawString("error:test");
         assertThat(actual).containsOnly(Mapping.error("test"));
     }
-    
 
     @Test
     public void fromRawStringShouldNotUseColonDelimiterWhenValueStartsWithDomain() {
         MappingsImpl actual = MappingsImpl.fromRawString("domain:test");
         assertThat(actual).containsOnly(Mapping.domain(Domain.of("test")));
     }
-    
+
+    @Test
+    public void fromRawStringShouldNotUseColonDelimiterWhenValueStartsWithDomainAlias() {
+        MappingsImpl actual = MappingsImpl.fromRawString("domainAlias:test");
+        assertThat(actual).containsOnly(Mapping.domainAlias(Domain.of("test")));
+    }
 
     @Test
     public void fromRawStringShouldNotUseColonDelimiterWhenValueStartsWithRegex() {
@@ -153,10 +158,11 @@ public class MappingsImplTest {
     }
 
     
-    @Test(expected = NullPointerException.class)
+    @Test
     public void containsShouldThrowWhenNull() {
         MappingsImpl mappings = MappingsImpl.builder().add(Mapping.regex("toto")).build();
-        assertThat(mappings.contains((Mapping.Type)null));
+        assertThatThrownBy(() -> mappings.contains((Mapping.Type)null))
+            .isInstanceOf(NullPointerException.class);
     }
     
     @Test
@@ -185,10 +191,11 @@ public class MappingsImplTest {
     }
 
     
-    @Test(expected = NullPointerException.class)
+    @Test
     public void selectShouldThrowWhenNull() {
         MappingsImpl mappings = MappingsImpl.builder().add(Mapping.regex("toto")).build();
-        assertThat(mappings.select((Mapping.Type)null));
+        assertThatThrownBy(() -> mappings.select((Mapping.Type)null))
+            .isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -216,10 +223,11 @@ public class MappingsImplTest {
     }
 
     
-    @Test(expected = NullPointerException.class)
+    @Test
     public void excludeShouldThrowWhenNull() {
         MappingsImpl mappings = MappingsImpl.builder().add(Mapping.regex("toto")).build();
-        assertThat(mappings.exclude((Mapping.Type)null));
+        assertThatThrownBy(() -> mappings.exclude((Mapping.Type)null))
+            .isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -238,9 +246,10 @@ public class MappingsImplTest {
         assertThat(optional.isPresent()).isFalse();
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void unionShouldThrowWhenMappingsNull() {
-        MappingsImpl.empty().union(null);
+        assertThatThrownBy(() -> MappingsImpl.empty().union(null))
+            .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -328,7 +337,7 @@ public class MappingsImplTest {
     }
     
     @Test
-    public void builderShouldPutDomainAliasFirstThenForwardWhenVariousMappings() {
+    public void builderShouldPutDomainMappingFirstThenForwardWhenVariousMappings() {
         Mapping regexMapping = Mapping.regex("regex");
         Mapping forwardMapping = Mapping.forward("forward");
         Mapping domainMapping = Mapping.domain(Domain.of("domain"));
@@ -338,6 +347,19 @@ public class MappingsImplTest {
                 .add(domainMapping)
                 .build();
         assertThat(mappingsImpl).containsExactly(domainMapping, forwardMapping, regexMapping);
+    }
+
+    @Test
+    public void builderShouldPutDomainAliasFirstThenForwardWhenVariousMappings() {
+        Mapping regexMapping = Mapping.regex("regex");
+        Mapping forwardMapping = Mapping.forward("forward");
+        Mapping domainAlias = Mapping.domainAlias(Domain.of("domain"));
+        MappingsImpl mappingsImpl = MappingsImpl.builder()
+                .add(regexMapping)
+                .add(forwardMapping)
+                .add(domainAlias)
+                .build();
+        assertThat(mappingsImpl).containsExactly(domainAlias, forwardMapping, regexMapping);
     }
 
     @Test

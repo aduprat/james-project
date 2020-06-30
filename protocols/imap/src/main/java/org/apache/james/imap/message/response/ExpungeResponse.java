@@ -20,16 +20,17 @@
 package org.apache.james.imap.message.response;
 
 import org.apache.james.imap.api.message.response.ImapResponseMessage;
+import org.apache.james.mailbox.NullableMessageSequenceNumber;
 
 public final class ExpungeResponse implements ImapResponseMessage {
 
-    private final int messageSequenceNumber;
+    private final NullableMessageSequenceNumber messageSequenceNumber;
 
-    public ExpungeResponse(int messageSequenceNumber) {
+    public ExpungeResponse(NullableMessageSequenceNumber messageSequenceNumber) {
         this.messageSequenceNumber = messageSequenceNumber;
     }
 
-    public int getMessageSequenceNumber() {
+    public NullableMessageSequenceNumber getMessageSequenceNumber() {
         return messageSequenceNumber;
     }
 

@@ -32,6 +32,7 @@ import org.apache.james.imap.decode.ImapRequestLineReader;
 import org.apache.james.imap.decode.ImapRequestLineReader.StringMatcherCharacterValidator;
 import org.apache.james.imap.decode.base.AbstractImapCommandParser;
 import org.apache.james.imap.message.request.AbstractMailboxSelectionRequest;
+import org.apache.james.imap.message.request.AbstractMailboxSelectionRequest.ClientSpecifiedUidValidity;
 import org.apache.james.mailbox.MessageUid;
 
 public abstract class AbstractSelectionCommandParser extends AbstractImapCommandParser {
@@ -46,7 +47,7 @@ public abstract class AbstractSelectionCommandParser extends AbstractImapCommand
     protected ImapMessage decode(ImapRequestLineReader request, Tag tag, ImapSession session) throws DecodingException {
         final String mailboxName = request.mailbox();
         boolean condstore = false;
-        Long lastKnownUidValidity = null;
+        ClientSpecifiedUidValidity lastKnownUidValidity = ClientSpecifiedUidValidity.UNKNOWN;
         Long knownModSeq = null;
         UidRange[] uidSet = null;
         UidRange[] knownUidSet = null;
@@ -79,8 +80,9 @@ public abstract class AbstractSelectionCommandParser extends AbstractImapCommand
                 
                 // Consume enclosing paren
                 request.consumeChar('(');
-                lastKnownUidValidity = request.number();
-                
+                long uidValidityAsNumber = request.number();
+                lastKnownUidValidity = ClientSpecifiedUidValidity.of(uidValidityAsNumber);
+
                 // Consume the SP
                 request.consumeChar(' ');
                 knownModSeq = request.number(true);
@@ -128,7 +130,7 @@ public abstract class AbstractSelectionCommandParser extends AbstractImapCommand
         request.eol();
         return createRequest(mailboxName, condstore, lastKnownUidValidity, knownModSeq, uidSet, knownUidSet, knownSequenceSet, tag);
     }
-    
+
     /**
      * Check if the {@link IdRange}'s are formatted like stated in the QRESYNC RFC.
      * 
@@ -206,5 +208,5 @@ public abstract class AbstractSelectionCommandParser extends AbstractImapCommand
     /**
      * Create a new {@link AbstractMailboxSelectionRequest} for the given arguments
      */
-    protected abstract AbstractMailboxSelectionRequest createRequest(String mailboxName, boolean condstore, Long lastKnownUidValidity, Long knownModSeq, UidRange[] uidSet, UidRange[] knownUidSet, IdRange[] knownSequenceSet, Tag tag);
+    protected abstract AbstractMailboxSelectionRequest createRequest(String mailboxName, boolean condstore, ClientSpecifiedUidValidity lastKnownUidValidity, Long knownModSeq, UidRange[] uidSet, UidRange[] knownUidSet, IdRange[] knownSequenceSet, Tag tag);
 }

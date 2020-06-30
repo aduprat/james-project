@@ -27,6 +27,8 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.stream.Stream;
 
+import javax.inject.Inject;
+
 import org.apache.commons.compress.archivers.zip.ExtraFieldUtils;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
@@ -51,6 +53,7 @@ public class Zipper implements ArchiveService {
     private static final boolean AUTO_FLUSH = true;
     private static final Logger LOGGER = LoggerFactory.getLogger(Zipper.class);
 
+    @Inject
     public Zipper() {
         ExtraFieldUtils.register(SizeExtraField.class);
         ExtraFieldUtils.register(UidExtraField.class);
@@ -92,7 +95,7 @@ public class Zipper implements ArchiveService {
 
         archiveEntry.addExtraField(EntryTypeExtraField.TYPE_MAILBOX);
         archiveEntry.addExtraField(new MailboxIdExtraField(mailbox.getMailboxId().serialize()));
-        archiveEntry.addExtraField(new UidValidityExtraField(mailbox.getUidValidity()));
+        archiveEntry.addExtraField(new UidValidityExtraField(mailbox.getUidValidity().asLong()));
 
         archiveOutputStream.putArchiveEntry(archiveEntry);
         archiveOutputStream.closeArchiveEntry();

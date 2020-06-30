@@ -35,16 +35,16 @@ import static org.apache.mailet.base.MailAddressFixture.SENDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
 import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
-import org.apache.james.mailbox.model.Attachment;
+import org.apache.james.mailbox.model.AttachmentId;
+import org.apache.james.mailbox.model.AttachmentMetadata;
 import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.store.MessageBuilder;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
@@ -70,11 +70,12 @@ class DeletedMessageConverterTest {
 
     private static final Username EMPTY_OWNER = null;
 
-    private static final Collection<MessageAttachment> NO_ATTACHMENT = ImmutableList.of();
-    private static final Collection<MessageAttachment> ATTACHMENTS = ImmutableList.of(MessageAttachment.builder()
-        .attachment(Attachment.builder()
-            .bytes("content".getBytes(StandardCharsets.UTF_8))
+    private static final Collection<MessageAttachmentMetadata> NO_ATTACHMENT = ImmutableList.of();
+    private static final Collection<MessageAttachmentMetadata> ATTACHMENTS = ImmutableList.of(MessageAttachmentMetadata.builder()
+        .attachment(AttachmentMetadata.builder()
+            .attachmentId(AttachmentId.from("1"))
             .type("type")
+            .size(48)
             .build())
         .build());
 
@@ -90,7 +91,7 @@ class DeletedMessageConverterTest {
             .header(DATE_FIELD, "Thu, 30 Oct 2014 14:12:00 +0000 (GMT)");
     }
 
-    private MailboxMessage buildMessage(MessageBuilder messageBuilder, Collection<MessageAttachment> attachments) throws Exception {
+    private MailboxMessage buildMessage(MessageBuilder messageBuilder, Collection<MessageAttachmentMetadata> attachments) throws Exception {
         MailboxMessage mailboxMessage = messageBuilder
             .size(CONTENT.length)
             .build(MESSAGE_ID);

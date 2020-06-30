@@ -114,7 +114,7 @@ public class CommonProcessors {
                         .mailet(RemoteDelivery.class)
                         .addProperty("outgoingQueue", "outgoing")
                         .addProperty("delayTime", "5000, 100000, 500000")
-                        .addProperty("maxRetries", "25")
+                        .addProperty("maxRetries", "3")
                         .addProperty("maxDnsProblemRetries", "0")
                         .addProperty("deliveryThreads", "10")
                         .addProperty("sendpartial", "true")
@@ -143,7 +143,7 @@ public class CommonProcessors {
                 .build();
     }
 
-    public static final ProcessorConfiguration.Builder rrtErrorEnabledTransport() {
+    public static ProcessorConfiguration.Builder rrtErrorEnabledTransport() {
         return ProcessorConfiguration.transport()
             .addMailet(MailetConfiguration.builder()
                 .matcher(All.class)

@@ -20,6 +20,7 @@
 package org.apache.james.blob.api;
 
 import static org.apache.james.blob.api.DumbBlobStoreFixture.CUSTOM_BUCKET_NAME;
+import static org.apache.james.blob.api.DumbBlobStoreFixture.ELEVEN_KILOBYTES;
 import static org.apache.james.blob.api.DumbBlobStoreFixture.OTHER_TEST_BLOB_ID;
 import static org.apache.james.blob.api.DumbBlobStoreFixture.SHORT_BYTEARRAY;
 import static org.apache.james.blob.api.DumbBlobStoreFixture.SHORT_STRING;
@@ -35,6 +36,8 @@ import java.time.Duration;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.Test;
 
+import reactor.core.publisher.Mono;
+
 public interface BucketDumbBlobStoreContract {
 
     DumbBlobStore testee();
@@ -43,7 +46,7 @@ public interface BucketDumbBlobStoreContract {
     default void deleteBucketShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        assertThatThrownBy(() -> store.deleteBucket(null).block())
+        assertThatThrownBy(() -> Mono.from(store.deleteBucket(null)).block())
             .isInstanceOf(NullPointerException.class);
     }
 
@@ -51,8 +54,8 @@ public interface BucketDumbBlobStoreContract {
     default void deleteBucketShouldDeleteExistingBucketWithItsData() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
-        store.deleteBucket(TEST_BUCKET_NAME).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(store.deleteBucket(TEST_BUCKET_NAME)).block();
 
         assertThatThrownBy(() -> store.read(TEST_BUCKET_NAME, TEST_BLOB_ID).read())
             .isInstanceOf(ObjectNotFoundException.class);
@@ -62,10 +65,10 @@ public interface BucketDumbBlobStoreContract {
     default void deleteBucketShouldBeIdempotent() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
-        store.deleteBucket(TEST_BUCKET_NAME).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(store.deleteBucket(TEST_BUCKET_NAME)).block();
 
-        assertThatCode(() -> store.deleteBucket(TEST_BUCKET_NAME).block())
+        assertThatCode(() -> Mono.from(store.deleteBucket(TEST_BUCKET_NAME)).block())
             .doesNotThrowAnyException();
     }
 
@@ -73,7 +76,7 @@ public interface BucketDumbBlobStoreContract {
     default void saveBytesShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        assertThatThrownBy(() -> store.save(null, TEST_BLOB_ID, SHORT_BYTEARRAY).block())
+        assertThatThrownBy(() -> Mono.from(store.save(null, TEST_BLOB_ID, SHORT_BYTEARRAY)).block())
             .isInstanceOf(NullPointerException.class);
     }
 
@@ -81,7 +84,7 @@ public interface BucketDumbBlobStoreContract {
     default void saveStringShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        assertThatThrownBy(() -> store.save(null, TEST_BLOB_ID, SHORT_STRING).block())
+        assertThatThrownBy(() -> Mono.from(store.save(null, TEST_BLOB_ID, SHORT_STRING)).block())
             .isInstanceOf(NullPointerException.class);
     }
 
@@ -89,7 +92,7 @@ public interface BucketDumbBlobStoreContract {
     default void saveInputStreamShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        assertThatThrownBy(() -> store.save(null, TEST_BLOB_ID, new ByteArrayInputStream(SHORT_BYTEARRAY)).block())
+        assertThatThrownBy(() -> Mono.from(store.save(null, TEST_BLOB_ID, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
             .isInstanceOf(NullPointerException.class);
     }
 
@@ -97,7 +100,7 @@ public interface BucketDumbBlobStoreContract {
     default void readShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
         assertThatThrownBy(() -> store.read(null, TEST_BLOB_ID))
             .isInstanceOf(NullPointerException.class);
     }
@@ -106,8 +109,8 @@ public interface BucketDumbBlobStoreContract {
     default void readBytesShouldThrowWhenNullBucketName() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
-        assertThatThrownBy(() -> store.readBytes(null, TEST_BLOB_ID).block())
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        assertThatThrownBy(() -> Mono.from(store.readBytes(null, TEST_BLOB_ID)).block())
             .isInstanceOf(NullPointerException.class);
     }
 
@@ -115,18 +118,18 @@ public interface BucketDumbBlobStoreContract {
     default void readStreamShouldThrowWhenBucketDoesNotExist() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
         assertThatThrownBy(() -> store.read(CUSTOM_BUCKET_NAME, TEST_BLOB_ID).read())
             .isInstanceOf(ObjectNotFoundException.class);
     }
 
     @Test
-    default void readBytesShouldThrowWhenBucketDoesNotExist() {
+    default void readBytesShouldThrowWhenBucketDoesNotExistWithBigData() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThatThrownBy(() -> store.readBytes(CUSTOM_BUCKET_NAME, TEST_BLOB_ID).block())
+        assertThatThrownBy(() -> Mono.from(store.readBytes(CUSTOM_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isInstanceOf(ObjectNotFoundException.class);
     }
 
@@ -134,11 +137,11 @@ public interface BucketDumbBlobStoreContract {
     default void shouldBeAbleToSaveDataInMultipleBuckets() {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
-        store.save(CUSTOM_BUCKET_NAME, OTHER_TEST_BLOB_ID, SHORT_BYTEARRAY).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(store.save(CUSTOM_BUCKET_NAME, OTHER_TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        byte[] bytesDefault = store.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID).block();
-        byte[] bytesCustom = store.readBytes(CUSTOM_BUCKET_NAME, OTHER_TEST_BLOB_ID).block();
+        byte[] bytesDefault = Mono.from(store.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block();
+        byte[] bytesCustom = Mono.from(store.readBytes(CUSTOM_BUCKET_NAME, OTHER_TEST_BLOB_ID)).block();
 
         assertThat(bytesDefault).isEqualTo(bytesCustom);
     }
@@ -149,10 +152,10 @@ public interface BucketDumbBlobStoreContract {
 
         ConcurrentTestRunner.builder()
             .operation(((threadNumber, step) ->
-                store.save(
+                Mono.from(store.save(
                     TEST_BUCKET_NAME,
                     new TestBlobId("id-" + threadNumber + step),
-                    SHORT_STRING + threadNumber + step).block()))
+                    SHORT_STRING + threadNumber + step)).block()))
             .threadCount(10)
             .operationCount(10)
             .runSuccessfullyWithin(Duration.ofMinutes(1));
@@ -162,7 +165,7 @@ public interface BucketDumbBlobStoreContract {
     default void deleteBucketConcurrentlyShouldNotFail() throws Exception {
         DumbBlobStore store = testee();
 
-        store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY).block();
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         ConcurrentTestRunner.builder()
             .reactorOperation(((threadNumber, step) -> store.deleteBucket(TEST_BUCKET_NAME)))

@@ -38,7 +38,6 @@ class InMemoryMailboxManagerAttachmentTest extends AbstractMailboxManagerAttachm
     InMemoryMailboxManager mailboxManager;
     InMemoryMailboxManager parseFailingMailboxManager;
 
-
     @BeforeEach
     void setup() throws Exception {
         MessageParser failingMessageParser = mock(MessageParser.class);

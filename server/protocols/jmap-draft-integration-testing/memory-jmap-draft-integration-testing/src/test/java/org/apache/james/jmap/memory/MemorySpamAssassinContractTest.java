@@ -18,30 +18,19 @@
  ****************************************************************/
 package org.apache.james.jmap.memory;
 
-import static org.apache.james.modules.TestJMAPServerModule.LIMIT_TO_20_MESSAGES;
-
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.jmap.draft.methods.integration.SpamAssassinContract;
 import org.apache.james.jmap.draft.methods.integration.SpamAssassinModuleExtension;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.MessageSearchIndex;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
-import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class MemorySpamAssassinContractTest implements SpamAssassinContract {
-
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new SpamAssassinModuleExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(TestJMAPServerModule.maximumMessages(LIMIT_TO_20_MESSAGES))
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(binder -> binder.bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class)))
+        .server(configuration -> MemoryJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule()))
         .build();
 }

@@ -24,6 +24,9 @@ import java.util.List;
 import org.apache.james.eventsourcing.CommandHandler;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
+import org.reactivestreams.Publisher;
+
+import reactor.core.publisher.Mono;
 
 public class DefineRulesCommandHandler implements CommandHandler<DefineRulesCommand> {
 
@@ -39,14 +42,11 @@ public class DefineRulesCommandHandler implements CommandHandler<DefineRulesComm
     }
 
     @Override
-    public List<? extends Event> handle(DefineRulesCommand storeCommand) {
+    public Publisher<List<? extends Event>> handle(DefineRulesCommand storeCommand) {
         FilteringAggregateId aggregateId = new FilteringAggregateId(storeCommand.getUsername());
 
-        return FilteringAggregate
-            .load(
-                aggregateId,
-                eventStore.getEventsOfAggregate(aggregateId))
-            .defineRules(storeCommand.getRules());
+        return Mono.from(eventStore.getEventsOfAggregate(aggregateId))
+        .map(history -> FilteringAggregate.load(aggregateId, history).defineRules(storeCommand.getRules()));
     }
 
 }

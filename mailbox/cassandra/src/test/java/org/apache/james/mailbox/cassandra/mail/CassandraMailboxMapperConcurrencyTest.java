@@ -34,6 +34,7 @@ import org.apache.james.mailbox.cassandra.modules.CassandraAclModule;
 import org.apache.james.mailbox.cassandra.modules.CassandraMailboxModule;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 class CassandraMailboxMapperConcurrencyTest {
 
-    private static final int UID_VALIDITY = 52;
+    private static final UidValidity UID_VALIDITY = UidValidity.of(52);
     private static final MailboxPath MAILBOX_PATH = MailboxPath.forUser(Username.of("user"), "name");
     private static final int THREAD_COUNT = 10;
     private static final int OPERATION_COUNT = 10;
@@ -64,27 +65,27 @@ class CassandraMailboxMapperConcurrencyTest {
     @Test
     void createShouldBeThreadSafe() throws Exception {
         ConcurrentTestRunner.builder()
-            .operation((a, b) -> testee.create(MAILBOX_PATH, UID_VALIDITY))
+            .operation((a, b) -> testee.create(MAILBOX_PATH, UID_VALIDITY).block())
             .threadCount(THREAD_COUNT)
             .operationCount(OPERATION_COUNT)
             .runAcceptingErrorsWithin(Duration.ofMinutes(1));
 
-        assertThat(testee.list()).hasSize(1);
+        assertThat(testee.list().collectList().block()).hasSize(1);
     }
 
     @Test
     void renameWithUpdateShouldBeThreadSafe() throws Exception {
-        Mailbox mailbox = testee.create(MAILBOX_PATH, UID_VALIDITY);
+        Mailbox mailbox = testee.create(MAILBOX_PATH, UID_VALIDITY).block();
 
         mailbox.setName("newName");
 
         ConcurrentTestRunner.builder()
-            .operation((a, b) -> testee.rename(mailbox))
+            .operation((a, b) -> testee.rename(mailbox).block())
             .threadCount(THREAD_COUNT)
             .operationCount(OPERATION_COUNT)
             .runAcceptingErrorsWithin(Duration.ofMinutes(1));
 
-        List<Mailbox> list = testee.list();
+        List<Mailbox> list = testee.list().collectList().block();
         assertThat(list).hasSize(1);
         assertThat(list.get(0)).isEqualToComparingFieldByField(mailbox);
     }

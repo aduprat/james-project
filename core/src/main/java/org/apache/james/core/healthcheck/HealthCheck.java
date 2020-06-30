@@ -18,8 +18,10 @@
  ****************************************************************/
 package org.apache.james.core.healthcheck;
 
+import org.reactivestreams.Publisher;
+
 public interface HealthCheck {
     ComponentName componentName();
 
-    Result check();
+    Publisher<Result> check();
 }

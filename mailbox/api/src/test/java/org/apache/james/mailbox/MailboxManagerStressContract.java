@@ -45,6 +45,8 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableSet;
 
+import reactor.core.publisher.Mono;
+
 public interface MailboxManagerStressContract<T extends MailboxManager> {
 
     int APPEND_OPERATIONS = 200;
@@ -65,11 +67,12 @@ public interface MailboxManagerStressContract<T extends MailboxManager> {
         getManager().startProcessingRequest(session);
         MailboxPath path = MailboxPath.forUser(username, "INBOX");
         MailboxId mailboxId = getManager().createMailbox(path, session).get();
-        retrieveEventBus().register(
-            event -> {
+        Mono.from(retrieveEventBus()
+            .register(event -> {
                 MessageUid u = ((MailboxListener.Added) event).getUids().iterator().next();
                 uList.add(u);
-            }, new MailboxIdRegistrationKey(mailboxId));
+            }, new MailboxIdRegistrationKey(mailboxId)))
+            .block();
         getManager().endProcessingRequest(session);
         getManager().logout(session);
 
@@ -93,7 +96,7 @@ public interface MailboxManagerStressContract<T extends MailboxManager> {
                         MessageManager.AppendCommand
                             .from(Message.Builder.of()
                                 .setSubject("test")
-                                .setBody("testmail", StandardCharsets.UTF_8)), mailboxSession);
+                                .setBody("testmail", StandardCharsets.UTF_8)), mailboxSession).getId();
 
                     System.out.println("Append message with uid=" + messageId.getUid());
                     if (uids.put(messageId.getUid(), new Object()) != null) {

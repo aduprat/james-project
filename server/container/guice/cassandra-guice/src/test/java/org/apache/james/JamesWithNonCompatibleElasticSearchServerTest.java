@@ -19,15 +19,12 @@
 
 package org.apache.james;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.james.backends.es.DockerElasticSearch;
 import org.apache.james.lifecycle.api.StartUpCheck;
 import org.apache.james.lifecycle.api.StartUpCheck.CheckResult;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.mailbox.ElasticSearchStartUpCheck;
 import org.apache.james.util.docker.Images;
@@ -40,13 +37,11 @@ class JamesWithNonCompatibleElasticSearchServerTest {
     static DockerElasticSearch dockerES2 = new DockerElasticSearch.NoAuth(Images.ELASTICSEARCH_2);
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new DockerElasticSearchExtension(dockerES2))
         .extension(new CassandraExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.limitToTenMessages()))
+        .server(configuration -> CassandraJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule()))
         .disableAutoStart()
         .build();
 

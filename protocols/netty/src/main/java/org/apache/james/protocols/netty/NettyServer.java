@@ -100,7 +100,7 @@ public class NettyServer extends AbstractAsyncServer {
     }
     
     protected ChannelUpstreamHandler createCoreHandler() {
-        return new BasicChannelUpstreamHandler(protocol, secure);
+        return new BasicChannelUpstreamHandler(new ProtocolMDCContextFactory.Standard(), protocol, secure);
     }
     
     @Override
@@ -121,6 +121,7 @@ public class NettyServer extends AbstractAsyncServer {
             maxCurConnections,
             maxCurConnectionsPerIP,
             group,
+            secure != null ? secure.getEnabledCipherSuites() : null,
             eHandler,
             getFrameHandlerFactory(),
             hashedWheelTimer) {

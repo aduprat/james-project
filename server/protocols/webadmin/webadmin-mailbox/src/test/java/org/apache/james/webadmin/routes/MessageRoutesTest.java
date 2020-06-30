@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.apache.james.core.Username;
+import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
@@ -48,6 +49,7 @@ import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.mailbox.tools.indexer.MessageIdReIndexerImpl;
 import org.apache.mailbox.tools.indexer.MessageIdReIndexingTask;
+import org.apache.mailbox.tools.indexer.MessageIdReindexingTaskAdditionalInformationDTO;
 import org.apache.mailbox.tools.indexer.ReIndexerPerformer;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
@@ -55,8 +57,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
+import com.google.common.collect.ImmutableSet;
 
 import io.restassured.RestAssured;
+import reactor.core.publisher.Mono;
 
 class MessageRoutesTest {
     private static final Username USERNAME = Username.of("benwa@apache.org");
@@ -71,7 +77,9 @@ class MessageRoutesTest {
     void beforeEach() {
         taskManager = new MemoryTaskManager(new Hostname("foo"));
         mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        searchIndex = mock(ListeningMessageSearchIndex.class);
+        searchIndex = mock(ListeningMessageSearchIndex.class);;
+        Mockito.when(searchIndex.add(any(), any(), any())).thenReturn(Mono.empty());
+        Mockito.when(searchIndex.deleteAll(any(), any())).thenReturn(Mono.empty());
         ReIndexerPerformer reIndexerPerformer = new ReIndexerPerformer(
             mailboxManager,
             searchIndex,
@@ -79,11 +87,14 @@ class MessageRoutesTest {
         JsonTransformer jsonTransformer = new JsonTransformer();
 
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new TasksRoutes(taskManager, jsonTransformer),
+                new TasksRoutes(taskManager, jsonTransformer,
+                    DTOConverter.of(
+                        MessageIdReindexingTaskAdditionalInformationDTO.module(mailboxManager.getMessageIdFactory()))),
                 new MessagesRoutes(taskManager,
                     new InMemoryMessageId.Factory(),
                     new MessageIdReIndexerImpl(reIndexerPerformer),
-                    jsonTransformer))
+                    jsonTransformer,
+                    ImmutableSet.of()))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
@@ -166,7 +177,7 @@ class MessageRoutesTest {
                 ComposedMessageId composedMessageId = mailboxManager.getMailbox(INBOX, systemSession)
                     .appendMessage(
                         MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
-                        systemSession);
+                        systemSession).getId();
 
                 String taskId = when()
                     .post("/messages/" + composedMessageId.getMessageId().serialize() + "?task=reIndex")
@@ -197,7 +208,7 @@ class MessageRoutesTest {
                 ComposedMessageId composedMessageId = mailboxManager.getMailbox(INBOX, systemSession)
                     .appendMessage(
                         MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
-                        systemSession);
+                        systemSession).getId();
 
                 String taskId = when()
                     .post("/messages/" + composedMessageId.getMessageId().serialize() + "?task=reIndex")

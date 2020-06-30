@@ -36,7 +36,6 @@ import static org.mockito.Mockito.spy;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
@@ -68,6 +67,7 @@ class ForwardRoutesTest {
 
     private static final Domain DOMAIN = Domain.of("b.com");
     private static final Domain ALIAS_DOMAIN = Domain.of("alias");
+    private static final Domain DOMAIN_MAPPING = Domain.of("mapping");
     public static final String CEDRIC = "cedric@" + DOMAIN.name();
     public static final String ALICE = "alice@" + DOMAIN.name();
     public static final String ALICE_WITH_SLASH = "alice/@" + DOMAIN.name();
@@ -107,16 +107,14 @@ class ForwardRoutesTest {
             memoryRecipientRewriteTable = new MemoryRecipientRewriteTable();
             DNSService dnsService = mock(DNSService.class);
             domainList = new MemoryDomainList(dnsService);
-            domainList.configure(DomainListConfiguration.builder()
-                .autoDetect(false)
-                .autoDetectIp(false));
+            domainList.configure(DomainListConfiguration.DEFAULT);
             domainList.addDomain(DOMAIN);
             domainList.addDomain(ALIAS_DOMAIN);
+            domainList.addDomain(DOMAIN_MAPPING);
             memoryRecipientRewriteTable.setDomainList(domainList);
             MappingSourceModule mappingSourceModule = new MappingSourceModule();
 
             usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
-            usersRepository.configure(new BaseHierarchicalConfiguration());
 
             usersRepository.addUser(Username.of(BOB), BOB_PASSWORD);
             usersRepository.addUser(Username.of(ALICE), ALICE_PASSWORD);
@@ -436,7 +434,8 @@ class ForwardRoutesTest {
             super.setUp();
             memoryRecipientRewriteTable.addErrorMapping(MappingSource.fromUser("error", DOMAIN), "disabled");
             memoryRecipientRewriteTable.addRegexMapping(MappingSource.fromUser("regex", DOMAIN), ".*@b\\.com");
-            memoryRecipientRewriteTable.addAliasDomainMapping(MappingSource.fromDomain(ALIAS_DOMAIN), DOMAIN);
+            memoryRecipientRewriteTable.addDomainMapping(MappingSource.fromDomain(DOMAIN_MAPPING), DOMAIN);
+            memoryRecipientRewriteTable.addDomainAliasMapping(MappingSource.fromDomain(ALIAS_DOMAIN), DOMAIN);
         }
 
     }

@@ -25,7 +25,6 @@ import org.apache.james.mailbox.store.mail.AttachmentMapper;
 import org.apache.james.mailbox.store.mail.model.AttachmentMapperTest;
 
 class MemoryAttachmentMapperTest extends AttachmentMapperTest {
-
     @Override
     protected AttachmentMapper createAttachmentMapper() {
         return new InMemoryAttachmentMapper();

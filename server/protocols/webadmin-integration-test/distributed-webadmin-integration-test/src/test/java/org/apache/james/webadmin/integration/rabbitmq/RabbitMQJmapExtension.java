@@ -23,18 +23,17 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.CleanupTasksPerformer;
 import org.apache.james.DockerCassandraRule;
 import org.apache.james.DockerElasticSearchRule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQSingleton;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestDockerESMetricReporterModule;
 import org.apache.james.modules.TestRabbitMQModule;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.objectstorage.aws.s3.DockerAwsS3TestRule;
-import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.util.FunctionalUtils;
 import org.apache.james.util.Runnables;
 import org.apache.james.webadmin.integration.UnauthorizedModule;
@@ -147,14 +146,13 @@ public class RabbitMQJmapExtension implements BeforeAllCallback, AfterAllCallbac
     }
 
     private GuiceJamesServer james() throws IOException {
-        Configuration configuration = Configuration.builder()
-                .workingDirectory(temporaryFolder.newFolder())
-                .configurationFromClasspath()
-                .build();
+        CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
+            .workingDirectory(temporaryFolder.newFolder())
+            .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
+            .build();
 
-        return GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
-                .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
+        return CassandraRabbitMQJamesServerMain.createServer(configuration)
                 .overrideWith(new TestDockerESMetricReporterModule(elasticSearchRule.getDockerEs().getHttpHost()))
                 .overrideWith(cassandra.getModule())
                 .overrideWith(elasticSearchRule.getModule())

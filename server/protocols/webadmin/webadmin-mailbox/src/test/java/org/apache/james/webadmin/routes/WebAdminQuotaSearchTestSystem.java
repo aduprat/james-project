@@ -19,7 +19,18 @@
 
 package org.apache.james.webadmin.routes;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import org.apache.james.json.DTOConverter;
+import org.apache.james.mailbox.quota.task.RecomputeCurrentQuotasService;
+import org.apache.james.mailbox.quota.task.RecomputeCurrentQuotasTaskAdditionalInformationDTO;
 import org.apache.james.quota.search.QuotaSearchTestSystem;
+import org.apache.james.task.Hostname;
+import org.apache.james.task.MemoryTaskManager;
+import org.apache.james.task.Task;
+import org.apache.james.task.TaskManager;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.jackson.QuotaModule;
@@ -31,6 +42,7 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import com.google.common.collect.ImmutableSet;
 
 import io.restassured.specification.RequestSpecification;
+import reactor.core.publisher.Mono;
 
 public class WebAdminQuotaSearchTestSystem {
     private final QuotaSearchTestSystem quotaSearchTestSystem;
@@ -47,9 +59,17 @@ public class WebAdminQuotaSearchTestSystem {
 
         QuotaModule quotaModule = new QuotaModule();
         JsonTransformer jsonTransformer = new JsonTransformer(quotaModule);
+        TaskManager taskManager = new MemoryTaskManager(new Hostname("foo"));
+        RecomputeCurrentQuotasService mock = mock(RecomputeCurrentQuotasService.class);
+        when(mock.recomputeCurrentQuotas(any(), any())).thenReturn(Mono.just(Task.Result.COMPLETED));
+        TasksRoutes tasksRoutes = new TasksRoutes(taskManager, new JsonTransformer(),
+            DTOConverter.of(RecomputeCurrentQuotasTaskAdditionalInformationDTO.module()));
         UserQuotaRoutes userQuotaRoutes = new UserQuotaRoutes(quotaSearchTestSystem.getUsersRepository(),
-            userQuotaService, jsonTransformer,
-            ImmutableSet.of(quotaModule));
+            userQuotaService,
+            jsonTransformer,
+            ImmutableSet.of(quotaModule),
+            taskManager,
+            ImmutableSet.of(new UserQuotaRoutes.RecomputeCurrentQuotasRequestToTask(mock)));
         DomainQuotaRoutes domainQuotaRoutes = new DomainQuotaRoutes(
             quotaSearchTestSystem.getDomainList(),
             new DomainQuotaService(quotaSearchTestSystem.getMaxQuotaManager()),
@@ -60,7 +80,7 @@ public class WebAdminQuotaSearchTestSystem {
             new GlobalQuotaService(quotaSearchTestSystem.getMaxQuotaManager()),
             jsonTransformer);
 
-        this.webAdminServer = WebAdminUtils.createWebAdminServer(userQuotaRoutes, domainQuotaRoutes, globalQuotaRoutes)
+        this.webAdminServer = WebAdminUtils.createWebAdminServer(userQuotaRoutes, domainQuotaRoutes, globalQuotaRoutes, tasksRoutes)
             .start();
 
         this.requestSpecBuilder = WebAdminUtils.buildRequestSpecification(webAdminServer)

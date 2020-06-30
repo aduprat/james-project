@@ -32,7 +32,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 public class RabbitMQAwsS3SetMessagesMethodTest extends SetMessagesMethodTest {
-
     @Rule
     public DockerCassandraRule cassandra = new DockerCassandraRule();
 

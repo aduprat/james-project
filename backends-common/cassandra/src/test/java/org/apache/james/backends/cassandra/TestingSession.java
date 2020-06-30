@@ -20,7 +20,9 @@
 package org.apache.james.backends.cassandra;
 
 import java.util.Map;
+import java.util.Optional;
 
+import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.CloseFuture;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.PreparedStatement;
@@ -28,24 +30,51 @@ import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class TestingSession implements Session {
     private final Session delegate;
     private volatile Scenario scenario;
+    private volatile boolean printStatements;
+    private volatile Optional<StatementRecorder> statementRecorder;
 
-    TestingSession(Session delegate) {
+    public TestingSession(Session delegate) {
         this.delegate = delegate;
         this.scenario = Scenario.NOTHING;
+        this.printStatements = false;
+        this.statementRecorder = Optional.empty();
+    }
+
+    public void printStatements() {
+        printStatements = true;
+    }
+
+    public void resetInstrumentation() {
+        stopRecordingStatements();
+        stopPrintingStatements();
+        registerScenario(Scenario.NOTHING);
+    }
+
+    public void stopPrintingStatements() {
+        printStatements = false;
     }
 
     public void registerScenario(Scenario scenario) {
         this.scenario = scenario;
     }
 
-    public void registerScenario(Scenario.ExecutionHook hook) {
-        this.scenario = Scenario.combine(hook);
+    public void registerScenario(Scenario.ExecutionHook... hooks) {
+        this.scenario = Scenario.combine(hooks);
+    }
+
+    public void recordStatements(StatementRecorder statementRecorder) {
+        this.statementRecorder = Optional.of(statementRecorder);
+    }
+
+    public void stopRecordingStatements() {
+        this.statementRecorder = Optional.empty();
     }
 
     @Override
@@ -65,44 +94,74 @@ public class TestingSession implements Session {
 
     @Override
     public ResultSet execute(String query) {
+        printStatement(query);
         return delegate.execute(query);
     }
 
     @Override
     public ResultSet execute(String query, Object... values) {
+        printStatement(query);
         return delegate.execute(query, values);
     }
 
     @Override
     public ResultSet execute(String query, Map<String, Object> values) {
+        printStatement(query);
         return delegate.execute(query, values);
     }
 
     @Override
     public ResultSet execute(Statement statement) {
+        printStatement(statement);
+        statementRecorder.ifPresent(recorder -> recorder.recordStatement(statement));
         return delegate.execute(statement);
     }
 
     @Override
     public ResultSetFuture executeAsync(String query) {
+        printStatement(query);
         return delegate.executeAsync(query);
     }
 
     @Override
     public ResultSetFuture executeAsync(String query, Object... values) {
+        printStatement(query);
         return delegate.executeAsync(query, values);
     }
 
     @Override
     public ResultSetFuture executeAsync(String query, Map<String, Object> values) {
+        printStatement(query);
         return delegate.executeAsync(query, values);
     }
 
     @Override
     public ResultSetFuture executeAsync(Statement statement) {
+        printStatement(statement);
+        statementRecorder.ifPresent(recorder -> recorder.recordStatement(statement));
         return scenario
             .getCorrespondingBehavior(statement)
             .execute(delegate, statement);
+    }
+
+    private void printStatement(String query) {
+        if (printStatements) {
+            System.out.println("Executing: " + query);
+        }
+    }
+
+    private void printStatement(Statement statement) {
+        if (printStatements) {
+            if (statement instanceof BoundStatement) {
+                BoundStatement boundStatement = (BoundStatement) statement;
+                System.out.println("Executing: " + boundStatement.preparedStatement().getQueryString());
+            } else if (statement instanceof SimpleStatement) {
+                SimpleStatement simpleStatement = (SimpleStatement) statement;
+                System.out.println("Executing: " + simpleStatement.getQueryString());
+            } else {
+                System.out.println("Executing: " + statement);
+            }
+        }
     }
 
     @Override

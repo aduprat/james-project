@@ -26,26 +26,31 @@ import java.util.stream.Stream;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.google.common.base.Preconditions;
 
 public class Scenario {
+    public static class InjectedFailureException extends RuntimeException {
+        public InjectedFailureException() {
+            super("Injected failure");
+        }
+    }
+
     @FunctionalInterface
     interface Behavior {
         Behavior THROW = (session, statement) -> {
-            RuntimeException injected_failure = new RuntimeException("Injected failure");
-            injected_failure.printStackTrace();
-            throw injected_failure;
+            throw new InjectedFailureException();
         };
 
         Behavior EXECUTE_NORMALLY = Session::executeAsync;
 
-        static Behavior awaitOn(Barrier barrier) {
+        static Behavior awaitOn(Barrier barrier, Behavior behavior) {
             return (session, statement) -> {
                 barrier.call();
-                return session.executeAsync(statement);
+                return behavior.execute(session, statement);
             };
         }
 
@@ -54,10 +59,10 @@ public class Scenario {
 
     @FunctionalInterface
     interface StatementPredicate {
-        class BoundStatementStartingWith implements StatementPredicate {
+        class StatementStartingWith implements StatementPredicate {
             private final String queryStringPrefix;
 
-            BoundStatementStartingWith(String queryStringPrefix) {
+            StatementStartingWith(String queryStringPrefix) {
                 this.queryStringPrefix = queryStringPrefix;
             }
 
@@ -67,6 +72,11 @@ public class Scenario {
                     BoundStatement boundStatement = (BoundStatement) statement;
                     return boundStatement.preparedStatement()
                         .getQueryString()
+                        .startsWith(queryStringPrefix);
+                }
+                if (statement instanceof RegularStatement) {
+                    RegularStatement regularStatement = (RegularStatement) statement;
+                    return regularStatement.getQueryString()
                         .startsWith(queryStringPrefix);
                 }
                 return false;
@@ -122,7 +132,20 @@ public class Scenario {
             }
 
             default ExecutionHook whenQueryStartsWith(String queryStringPrefix) {
-                return statementPredicate(new StatementPredicate.BoundStatementStartingWith(queryStringPrefix));
+                return statementPredicate(new StatementPredicate.StatementStartingWith(queryStringPrefix));
+            }
+        }
+
+        @FunctionalInterface
+        interface ComposeBehavior {
+            RequiresValidity then(Behavior behavior);
+
+            default RequiresValidity thenExecuteNormally() {
+                return then(Behavior.EXECUTE_NORMALLY);
+            }
+
+            default RequiresValidity thenFail() {
+                return then(Behavior.THROW);
             }
         }
 
@@ -140,10 +163,10 @@ public class Scenario {
                 validity);
         }
 
-        static RequiresValidity awaitOn(Barrier barrier) {
-            return validity -> statementPredicate -> new ExecutionHook(
+        static ComposeBehavior awaitOn(Barrier barrier) {
+            return behavior -> validity -> statementPredicate -> new ExecutionHook(
                 statementPredicate,
-                Behavior.awaitOn(barrier),
+                Behavior.awaitOn(barrier, behavior),
                 validity);
         }
     }

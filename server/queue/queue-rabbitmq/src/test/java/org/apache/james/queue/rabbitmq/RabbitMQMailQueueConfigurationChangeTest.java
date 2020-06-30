@@ -44,6 +44,7 @@ import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreMo
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.queue.api.MailQueue;
+import org.apache.james.queue.api.MailQueueName;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.rabbitmq.view.RabbitMQMailQueueConfiguration;
@@ -71,7 +72,7 @@ class RabbitMQMailQueueConfigurationChangeTest {
         .updateBrowseStartPace(UPDATE_BROWSE_START_PACE)
         .sliceWindow(ONE_HOUR_SLICE_WINDOW)
         .build();
-    private static final String SPOOL = "spool";
+    private static final MailQueueName SPOOL = MailQueueName.of("spool");
     private static final Instant IN_SLICE_1 = Instant.parse("2007-12-03T10:15:30.00Z");
     private static final Instant IN_SLICE_2 = IN_SLICE_1.plus(1, HOURS);
     private static final Instant IN_SLICE_3 = IN_SLICE_1.plus(2, HOURS);
@@ -81,7 +82,7 @@ class RabbitMQMailQueueConfigurationChangeTest {
         CassandraSchemaVersionModule.MODULE,
         CassandraBlobModule.MODULE,
         CassandraMailQueueViewModule.MODULE,
-        CassandraEventStoreModule.MODULE));
+        CassandraEventStoreModule.MODULE()));
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ();
@@ -118,14 +119,15 @@ class RabbitMQMailQueueConfigurationChangeTest {
         RabbitMQMailQueueFactory.PrivateFactory privateFactory = new RabbitMQMailQueueFactory.PrivateFactory(
             new RecordingMetricFactory(),
             new NoopGaugeRegistry(),
-            rabbitMQExtension.getRabbitChannelPool(),
+            rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(),
             mimeMessageStoreFactory,
             BLOB_ID_FACTORY,
             mailQueueViewFactory,
             clock,
             new RawMailQueueItemDecoratorFactory(),
             mailQueueSizeConfiguration);
-        RabbitMQMailQueueFactory mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getRabbitChannelPool(), mqManagementApi, privateFactory);
+        RabbitMQMailQueueFactory mailQueueFactory = new RabbitMQMailQueueFactory(rabbitMQExtension.getSender(), mqManagementApi, privateFactory);
         return mailQueueFactory.createQueue(SPOOL);
     }
 

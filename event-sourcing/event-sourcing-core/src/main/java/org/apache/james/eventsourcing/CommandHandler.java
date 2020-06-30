@@ -1,4 +1,4 @@
-/****************************************************************
+/***************************************************************
  * Licensed to the Apache Software Foundation (ASF) under one   *
  * or more contributor license agreements.  See the NOTICE file *
  * distributed with this work for additional information        *
@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations      *
  * under the License.                                           *
  ****************************************************************/
-
 package org.apache.james.eventsourcing;
 
 import java.util.List;
 
-public interface CommandHandler<C> {
+import org.reactivestreams.Publisher;
 
-    Class<C> handledClass();
+public interface CommandHandler<C extends Command> {
+  Class<C> handledClass();
 
-    List<? extends Event> handle(C c);
+  Publisher<List<? extends Event>> handle(C command);
 }

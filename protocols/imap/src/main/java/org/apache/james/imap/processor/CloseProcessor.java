@@ -29,7 +29,7 @@ import org.apache.james.imap.message.request.CloseRequest;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MessageManager.MetaData.FetchGroup;
+import org.apache.james.mailbox.MessageManager.MailboxMetaData.FetchGroup;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.metrics.api.MetricFactory;
@@ -48,7 +48,8 @@ public class CloseProcessor extends AbstractMailboxProcessor<CloseRequest> {
     @Override
     protected void processRequest(CloseRequest request, ImapSession session, Responder responder) {
         try {
-            MessageManager mailbox = getSelectedMailbox(session);
+            MessageManager mailbox = getSelectedMailbox(session)
+                .orElseThrow(() -> new MailboxException("Session not in SELECTED state"));
             final MailboxSession mailboxSession = session.getMailboxSession();
             if (mailbox.getMetaData(false, mailboxSession, FetchGroup.NO_COUNT).isWriteable()) {
                 mailbox.expunge(MessageRange.all(), mailboxSession);

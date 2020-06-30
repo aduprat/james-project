@@ -19,7 +19,7 @@
 
 package org.apache.james.jmap.rabbitmq;
 
-import static org.apache.james.modules.TestJMAPServerModule.LIMIT_TO_3_MESSAGES;
+import static org.apache.james.modules.TestJMAPServerModule.SearchModule.LIMIT_TO_3_MESSAGES;
 
 import java.io.IOException;
 
@@ -27,6 +27,8 @@ import org.apache.james.CassandraRabbitMQAwsS3JmapTestRule;
 import org.apache.james.DockerCassandraRule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.draft.methods.integration.GetMessageListMethodTest;
+import org.apache.james.mailbox.extractor.TextExtractor;
+import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.Rule;
 
@@ -41,7 +43,8 @@ public class RabbitMQAwsS3GetMessageListMethodTest extends GetMessageListMethodT
     @Override
     protected GuiceJamesServer createJmapServer() throws IOException {
         return rule.jmapServer(cassandra.getModule(),
-            TestJMAPServerModule.maximumMessages(LIMIT_TO_3_MESSAGES));
+            binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class),
+            TestJMAPServerModule.SearchModule.maximumMessages(LIMIT_TO_3_MESSAGES));
     }
 
     @Override

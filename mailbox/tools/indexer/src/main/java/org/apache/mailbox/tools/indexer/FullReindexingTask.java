@@ -19,19 +19,17 @@
 
 package org.apache.mailbox.tools.indexer;
 
+import java.time.Clock;
 import java.util.Optional;
 
 import javax.inject.Inject;
 
-import org.apache.james.json.DTOModule;
-import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.server.task.json.dto.TaskDTO;
-import org.apache.james.server.task.json.dto.TaskDTOModule;
+import org.apache.james.mailbox.indexer.ReIndexer.RunningOptions;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import reactor.core.publisher.Mono;
 
 public class FullReindexingTask implements Task {
 
@@ -39,45 +37,20 @@ public class FullReindexingTask implements Task {
 
     private final ReIndexerPerformer reIndexerPerformer;
     private final ReprocessingContext reprocessingContext;
-
-    public static TaskDTOModule<FullReindexingTask, FullReindexingTaskDTO> module(ReIndexerPerformer reIndexerPerformer) {
-        return DTOModule
-            .forDomainObject(FullReindexingTask.class)
-            .convertToDTO(FullReindexingTask.FullReindexingTaskDTO.class)
-            .toDomainObjectConverter(dto -> new FullReindexingTask(reIndexerPerformer))
-            .toDTOConverter((task, type) -> new FullReindexingTaskDTO(type))
-            .typeName(FULL_RE_INDEXING.asString())
-            .withFactory(TaskDTOModule::new);
-    }
-
-    public static class FullReindexingTaskDTO implements TaskDTO {
-
-        private final String type;
-
-        public FullReindexingTaskDTO(@JsonProperty("type") String type) {
-            this.type = type;
-        }
-
-        @Override
-        public String getType() {
-            return type;
-        }
-
-    }
+    private final RunningOptions runningOptions;
 
     @Inject
-    public FullReindexingTask(ReIndexerPerformer reIndexerPerformer) {
+    public FullReindexingTask(ReIndexerPerformer reIndexerPerformer, RunningOptions runningOptions) {
         this.reIndexerPerformer = reIndexerPerformer;
         this.reprocessingContext = new ReprocessingContext();
+        this.runningOptions = runningOptions;
     }
 
     @Override
     public Result run() {
-        try {
-            return reIndexerPerformer.reIndex(reprocessingContext);
-        } catch (MailboxException e) {
-            return Result.PARTIAL;
-        }
+        return reIndexerPerformer.reIndexAllMessages(reprocessingContext, runningOptions)
+            .onErrorResume(e -> Mono.just(Result.PARTIAL))
+            .block();
     }
 
     @Override
@@ -85,8 +58,17 @@ public class FullReindexingTask implements Task {
         return FULL_RE_INDEXING;
     }
 
+    public RunningOptions getRunningOptions() {
+        return runningOptions;
+    }
+
     @Override
     public Optional<TaskExecutionDetails.AdditionalInformation> details() {
-        return Optional.of(ReprocessingContextInformation.forFullReindexingTask(reprocessingContext));
+        return Optional.of(new ReprocessingContextInformationDTO.ReprocessingContextInformationForFullReindexingTask(
+            reprocessingContext.successfullyReprocessedMailCount(),
+            reprocessingContext.failedReprocessingMailCount(),
+            reprocessingContext.failures(),
+            Clock.systemUTC().instant(),
+            runningOptions));
     }
 }

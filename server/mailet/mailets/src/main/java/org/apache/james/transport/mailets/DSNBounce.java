@@ -21,10 +21,16 @@ package org.apache.james.transport.mailets;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import javax.mail.MessagingException;
@@ -33,7 +39,6 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 
-import org.apache.commons.lang3.time.FastDateFormat;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.dnsservice.api.DNSService;
@@ -64,6 +69,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * <p>
@@ -108,7 +114,7 @@ import com.google.common.collect.ImmutableList;
 public class DSNBounce extends GenericMailet implements RedirectNotify {
     private static final Logger LOGGER = LoggerFactory.getLogger(DSNBounce.class);
 
-    private static final String[] CONFIGURABLE_PARAMETERS = new String[]{ "debug", "passThrough", "messageString", "attachment", "sender", "prefix" };
+    private static final ImmutableSet<String> CONFIGURABLE_PARAMETERS = ImmutableSet.of("debug", "passThrough", "messageString", "attachment", "sender", "prefix");
     private static final List<MailAddress> RECIPIENT_MAIL_ADDRESSES = ImmutableList.of(SpecialAddress.REVERSE_PATH);
     private static final List<InternetAddress> TO_INTERNET_ADDRESSES = ImmutableList.of(SpecialAddress.REVERSE_PATH.toInternetAddress());
 
@@ -119,7 +125,7 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
     private static final AttributeName DELIVERY_ERROR = AttributeName.of("delivery-error");
 
     private final DNSService dns;
-    private final FastDateFormat dateFormatter;
+    private final DateTimeFormatter dateFormatter;
     private String messageString = null;
 
     @Inject
@@ -127,7 +133,7 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
         this(dns, DateFormats.RFC822_DATE_FORMAT);
     }
 
-    public DSNBounce(DNSService dns, FastDateFormat dateFormatter) {
+    public DSNBounce(DNSService dns, DateTimeFormatter dateFormatter) {
         this.dns = dns;
         this.dateFormatter = dateFormatter;
     }
@@ -162,7 +168,7 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
     }
 
     @Override
-    public String[] getAllowedInitParameters() {
+    public Set<String> getAllowedInitParameters() {
         return CONFIGURABLE_PARAMETERS;
     }
 
@@ -295,7 +301,7 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
     private String getDateHeader(Mail originalMail) throws MessagingException {
         String[] date = originalMail.getMessage().getHeader(RFC2822Headers.DATE);
         if (date == null) {
-            return dateFormatter.format(new Date());
+            return dateFormatter.format(LocalDateTime.now());
         }
         return date[0];
     }
@@ -351,9 +357,10 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
 
         builder.append(bounceMessage()).append(LINE_BREAK);
         builder.append("Failed recipient(s):").append(LINE_BREAK);
-        for (MailAddress mailAddress : originalMail.getRecipients()) {
-            builder.append(mailAddress);
-        }
+        builder.append(originalMail.getRecipients()
+                .stream()
+                .map(MailAddress::asString)
+                .collect(Collectors.joining(", ")));
         builder.append(LINE_BREAK).append(LINE_BREAK);
         builder.append("Error message:").append(LINE_BREAK);
         builder.append(AttributeUtils.getValueAndCastFromMail(originalMail, DELIVERY_ERROR, String.class).orElse("")).append(LINE_BREAK);
@@ -415,7 +422,7 @@ public class DSNBounce extends GenericMailet implements RedirectNotify {
         buffer.append("Action: failed").append(LINE_BREAK);
         buffer.append("Status: " + deliveryError).append(LINE_BREAK);
         buffer.append("Diagnostic-Code: " + getDiagnosticType(deliveryError) + "; " + deliveryError).append(LINE_BREAK);
-        buffer.append("Last-Attempt-Date: " + dateFormatter.format(lastUpdated))
+        buffer.append("Last-Attempt-Date: " + dateFormatter.format(ZonedDateTime.ofInstant(lastUpdated.toInstant(), ZoneId.systemDefault())))
             .append(LINE_BREAK);
     }
 

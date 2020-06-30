@@ -19,14 +19,13 @@
 
 package org.apache.james.mailbox.quota;
 
-import java.util.List;
-
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.QuotaRoot;
+import org.reactivestreams.Publisher;
 
 public interface QuotaRootResolver extends QuotaRootDeserializer {
 
@@ -40,5 +39,7 @@ public interface QuotaRootResolver extends QuotaRootDeserializer {
 
     QuotaRoot getQuotaRoot(MailboxId mailboxId) throws MailboxException;
 
-    List<Mailbox> retrieveAssociatedMailboxes(QuotaRoot quotaRoot, MailboxSession mailboxSession) throws MailboxException;
+    Publisher<QuotaRoot> getQuotaRootReactive(MailboxId mailboxId);
+
+    Publisher<Mailbox> retrieveAssociatedMailboxes(QuotaRoot quotaRoot, MailboxSession mailboxSession);
 }

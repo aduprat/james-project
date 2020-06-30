@@ -25,20 +25,22 @@ import java.io.InputStream;
 import java.io.PushbackInputStream;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.mail.util.SharedFileInputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.maildir.MaildirMessageName;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.AttachmentId;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.Message;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
 import org.apache.james.mailbox.store.streaming.CountingInputStream;
-import org.apache.james.mailbox.store.streaming.LimitingFileInputStream;
 import org.apache.james.mime4j.MimeException;
 import org.apache.james.mime4j.message.DefaultBodyDescriptorBuilder;
 import org.apache.james.mime4j.message.MaximalBodyDescriptor;
@@ -46,6 +48,10 @@ import org.apache.james.mime4j.stream.EntityState;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.mime4j.stream.MimeTokenStream;
 import org.apache.james.mime4j.stream.RecursionMode;
+
+import com.github.fge.lambdas.Throwing;
+import com.github.steveash.guavate.Guavate;
+import com.google.common.io.ByteStreams;
 
 public class MaildirMessage implements Message {
 
@@ -263,16 +269,27 @@ public class MaildirMessage implements Message {
         if (limit < 0) {
             limit = 0;
         }
-        return new LimitingFileInputStream(messageName.getFile(), limit);
+
+        return ByteStreams.limit(new FileInputStream(messageName.getFile()), limit);
     }
 
     @Override
-    public List<MessageAttachment> getAttachments() {
-        try {
-            return new MessageParser().retrieveAttachments(getFullContent());
-        } catch (MimeException | IOException e) {
+    public List<MessageAttachmentMetadata> getAttachments() {
+        try (InputStream fullContent = getFullContent()) {
+            AtomicInteger counter = new AtomicInteger(0);
+            return new MessageParser().retrieveAttachments(fullContent)
+                .stream()
+                .map(Throwing.<ParsedAttachment, MessageAttachmentMetadata>function(
+                    attachmentMetadata -> attachmentMetadata.asMessageAttachment(generateFixedAttachmentId(counter.incrementAndGet())))
+                    .sneakyThrow())
+                .collect(Guavate.toImmutableList());
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private AttachmentId generateFixedAttachmentId(int position) {
+        return AttachmentId.from(messageName.getFullName() + "-" + position);
     }
 
     @Override

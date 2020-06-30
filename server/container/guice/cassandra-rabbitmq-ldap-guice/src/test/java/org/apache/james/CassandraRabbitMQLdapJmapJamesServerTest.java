@@ -32,7 +32,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.SwiftBlobStoreExtension;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.modules.blobstore.BlobStoreChoosingConfiguration;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,10 +57,8 @@ class CassandraRabbitMQLdapJmapJamesServerTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class WithSwift implements ContractSuite {
         @RegisterExtension
-        JamesServerExtension testExtension = baseJamesServerExtensionBuilder()
+        JamesServerExtension testExtension = baseJamesServerExtensionBuilder(BlobStoreConfiguration.objectStorage().disableCache())
             .extension(new SwiftBlobStoreExtension())
-            .overrideServerModule(binder -> binder.bind(BlobStoreChoosingConfiguration.class)
-                .toInstance(BlobStoreChoosingConfiguration.objectStorage()))
             .build();
     }
 
@@ -68,10 +66,8 @@ class CassandraRabbitMQLdapJmapJamesServerTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class WithAwsS3 implements ContractSuite {
         @RegisterExtension
-        JamesServerExtension testExtension = baseJamesServerExtensionBuilder()
+        JamesServerExtension testExtension = baseJamesServerExtensionBuilder(BlobStoreConfiguration.objectStorage().disableCache())
             .extension(new AwsS3BlobStoreExtension())
-            .overrideServerModule(binder -> binder.bind(BlobStoreChoosingConfiguration.class)
-                .toInstance(BlobStoreChoosingConfiguration.objectStorage()))
             .build();
     }
 
@@ -79,21 +75,23 @@ class CassandraRabbitMQLdapJmapJamesServerTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class WithoutSwiftOrAwsS3 implements ContractSuite {
         @RegisterExtension
-        JamesServerExtension testExtension = baseJamesServerExtensionBuilder()
-            .overrideServerModule(binder -> binder.bind(BlobStoreChoosingConfiguration.class)
-                .toInstance(BlobStoreChoosingConfiguration.cassandra()))
+        JamesServerExtension testExtension = baseJamesServerExtensionBuilder(BlobStoreConfiguration.cassandra())
             .build();
     }
 
-    JamesServerBuilder baseJamesServerExtensionBuilder() {
-        return new JamesServerBuilder()
+    JamesServerBuilder baseJamesServerExtensionBuilder(BlobStoreConfiguration blobStoreConfiguration) {
+        return new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+            CassandraRabbitMQJamesConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(blobStoreConfiguration)
+                .build())
             .extension(new DockerElasticSearchExtension())
             .extension(new CassandraExtension())
             .extension(new RabbitMQExtension())
             .extension(new LdapTestExtension())
-            .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-                .combineWith(CassandraRabbitMQLdapJamesServerMain.MODULES)
-                .overrideWith(TestJMAPServerModule.limitToTenMessages())
+            .server(configuration -> CassandraRabbitMQLdapJamesServerMain.createServer(configuration)
+                .overrideWith(new TestJMAPServerModule())
                 .overrideWith(JmapJamesServerContract.DOMAIN_LIST_CONFIGURATION_MODULE));
     }
 }

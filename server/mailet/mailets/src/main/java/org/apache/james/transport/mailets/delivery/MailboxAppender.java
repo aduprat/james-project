@@ -26,6 +26,7 @@ import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.MessageManager.AppendResult;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.model.ComposedMessageId;
@@ -35,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
+
+import reactor.core.publisher.Mono;
 
 public class MailboxAppender {
     private static final Logger LOGGER = LoggerFactory.getLogger(MailboxAppender.class);
@@ -47,7 +50,8 @@ public class MailboxAppender {
 
     public ComposedMessageId append(MimeMessage mail, Username user, String folder) throws MessagingException {
         MailboxSession session = createMailboxSession(user);
-        return append(mail, user, useSlashAsSeparator(folder, session), session);
+        return append(mail, user, useSlashAsSeparator(folder, session), session)
+            .getId();
     }
 
     private String useSlashAsSeparator(String urlPath, MailboxSession session) throws MessagingException {
@@ -61,7 +65,7 @@ public class MailboxAppender {
         return destination;
     }
 
-    private ComposedMessageId append(MimeMessage mail, Username user, String folder, MailboxSession session) throws MessagingException {
+    private AppendResult append(MimeMessage mail, Username user, String folder, MailboxSession session) throws MessagingException {
         mailboxManager.startProcessingRequest(session);
         try {
             MailboxPath mailboxPath = MailboxPath.forUser(user, folder);
@@ -73,7 +77,7 @@ public class MailboxAppender {
         }
     }
 
-    private ComposedMessageId appendMessageToMailbox(MimeMessage mail, MailboxSession session, MailboxPath path) throws MailboxException, MessagingException {
+    private AppendResult appendMessageToMailbox(MimeMessage mail, MailboxSession session, MailboxPath path) throws MailboxException, MessagingException {
         createMailboxIfNotExist(session, path);
         final MessageManager mailbox = mailboxManager.getMailbox(path, session);
         if (mailbox == null) {
@@ -86,7 +90,7 @@ public class MailboxAppender {
     }
 
     private void createMailboxIfNotExist(MailboxSession session, MailboxPath path) throws MailboxException {
-        if (!mailboxManager.mailboxExists(path, session)) {
+        if (!Mono.from(mailboxManager.mailboxExists(path, session)).block()) {
             try {
                 mailboxManager.createMailbox(path, session);
             } catch (MailboxExistsException e) {

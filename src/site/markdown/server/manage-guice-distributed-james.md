@@ -17,13 +17,16 @@ advanced users.
 
  - [Overall architecture](#Overall_architecture)
  - [Basic Monitoring](#Basic_Monitoring)
+ - [Cassandra table level configuration](#Cassandra_table_level_configuration)
+ - [Deleted Messages Vault](#Deleted_Messages_Vault)
+ - [ElasticSearch Indexing](#Elasticsearch_Indexing)
  - [Mailbox Event Bus](#Mailbox_Event_Bus)
  - [Mail Processing](#Mail_Processing)
- - [ElasticSearch Indexing](#Elasticsearch_Indexing)
- - [Solving cassandra inconsistencies](#Solving_cassandra_inconsistencies) 
+ - [Mail Queue](#Mail_Queue)
  - [Setting Cassandra user permissions](#Setting_Cassandra_user_permissions)
- - [Cassandra table level configuration](#Cassandra_table_level_configuration) 
- 
+ - [Solving cassandra inconsistencies](#Solving_cassandra_inconsistencies)
+ - [Updating Cassandra schema version](#Updating_Cassandra_schema_version)
+
 ## Overall architecture
 
 Guice distributed James server intends to provide a horizontally scalable email server.
@@ -275,25 +278,12 @@ Because of the lack of transactions, it's hard to prevent these kind of issues. 
 fix some existing cassandra inconsistency issues that had been reported to James. 
 
 Here is the list of known inconsistencies:
- - [RRT (RecipientRewriteTable) mapping sources](#Rrt_RecipientRewriteTable_mapping_sources)
  - [Jmap message fast view projections](#Jmap_message_fast_view_projections)
  - [Mailboxes](#Mailboxes)
-
-### RRT (RecipientRewriteTable) mapping sources
-
-`rrt` and `mappings_sources` tables store information about address mappings. 
-The source of truth is `rrt` and `mappings_sources` is the projection table containing all 
-mapping sources.
-
-#### How to detect the inconsistencies
-
-Right now there's no tool for detecting that, we're proposing a [development plan](https://issues.apache.org/jira/browse/JAMES-3069). 
-By the mean time, the recommendation is to execute the `SolveInconsistencies` task below 
-in a regular basis. 
-
-#### How to solve
-
-Execute the Cassandra mapping `SolveInconsistencies` task described in [webadmin documentation](manage-webadmin.html#Operations_on_mappings_sources) 
+ - [Mailboxes Counters](#Mailboxes_counters)
+ - [Messages](#Messages)
+ - [Quotas](#Quotas)
+ - [RRT (RecipientRewriteTable) mapping sources](#Rrt_RecipientRewriteTable_mapping_sources)
 
 ### Jmap message fast view projections
 
@@ -307,7 +297,7 @@ You can watch the `MessageFastViewProjection` health check at [webadmin document
 It provides a check based on the ratio of missed projection reads.  
 
 #### How to solve
- 
+
 Since the MessageFastViewProjection is self healing, you should be concerned only if 
 the health check still returns `degraded` for a while, there's a possible thing you 
 can do is looking at James logs for more clues. 
@@ -327,7 +317,75 @@ avoiding peak traffic in order to address both inconsistencies diagnostic and fi
 
 #### How to solve
 
-Under development: Task for solving mailbox inconsistencies ([JAMES-3058](https://issues.apache.org/jira/browse/JAMES-3058)).
+An admin can run offline webadmin 
+[solve Cassandra mailbox object inconsistencies task](manage-webadmin.html#Fixing_mailboxes_inconsistencies) in order 
+to sanitize his mailbox denormalization.
+                                        
+In order to ensure being offline, stop the traffic on SMTP, JMAP and IMAP ports, for example via re-configuration or 
+firewall rules.
+
+### Mailboxes Counters
+
+James maintains a per mailbox projection for message count and unseen message count. Failures during the denormalization 
+process will lead to incorrect results being returned.
+
+#### How to detect the inconsistencies
+
+Incorrect message count/message unseen count could be seen in the `Mail User Agent` (IMAP or JMAP). Invalid values are reported in the logs 
+as warning with the following class `org.apache.james.mailbox.model.MailboxCounters` and the following message prefix: `Invalid mailbox counters`.
+
+#### How to solve
+
+Execute the [recompute Mailbox counters task](manage-webadmin.html#Recomputing mailbox counters). 
+This task is not concurrent-safe. Concurrent increments & decrements will be ignored during a single mailbox processing. 
+Re-running this task may eventually return the correct result.
+
+### Messages
+
+Messages are denormalized and stored in both `imapUidTable` (source of truth) and `messageIdTable`. Failure in the denormalization 
+process will cause inconsistencies between the two tables.
+
+#### How to detect the inconsistencies
+
+User can see a message in JMAP but not in IMAP, or mark a message as 'SEEN' in JMAP but the message flag is still unchanged in IMAP.
+
+#### How to solve
+
+Execute the [solve Cassandra message inconsistencies task](manage-webadmin.html#Fixing_messages_inconsistencies).
+This task is not concurrent-safe. User actions concurrent to the inconsistency fixing task could result in new inconsistencies 
+being created. However the source of truth `imapUidTable` will not be affected and thus re-running this task may eventually 
+fix all issues.
+
+### Quotas
+
+User can monitor the amount of space and message count he is allowed to use, and that he is effectively using. James relies on 
+an event bus and Cassandra to track the quota of an user. Upon Cassandra failure, this value can be incorrect.
+
+#### How to detect the inconsistencies
+
+Incorrect quotas could be seen in the `Mail User Agent` (IMAP or JMAP).
+
+#### How to solve
+
+Execute the [recompute Quotas counters task](manage-webadmin.html#Recomputing current quotas for users). 
+This task is not concurrent-safe. Concurrent operations will result in an invalid quota to be persisted. Re-running this task may 
+eventually return the correct result.
+
+### RRT (RecipientRewriteTable) mapping sources
+
+`rrt` and `mappings_sources` tables store information about address mappings. 
+The source of truth is `rrt` and `mappings_sources` is the projection table containing all 
+mapping sources.
+
+#### How to detect the inconsistencies
+
+Right now there's no tool for detecting that, we're proposing a [development plan](https://issues.apache.org/jira/browse/JAMES-3069). 
+By the mean time, the recommendation is to execute the `SolveInconsistencies` task below 
+in a regular basis. 
+
+#### How to solve
+
+Execute the Cassandra mapping `SolveInconsistencies` task described in [webadmin documentation](manage-webadmin.html#Operations_on_mappings_sources) 
 
 ## Setting Cassandra user permissions
 
@@ -447,3 +505,105 @@ A review of your usage can be conducted using
 Table level options can be changed using **ALTER TABLE** for example with the 
 [cqlsh](https://cassandra.apache.org/doc/latest/tools/cqlsh.html) utility. A full compaction might be 
 needed in order for the changes to be taken into account.
+
+## Mail Queue
+
+An email queue is a mandatory component of SMTP servers. It is a system that creates a queue of emails that are waiting to be processed for delivery. Email queuing is a form of Message Queuing – an asynchronous service-to-service communication. A message queue is meant to decouple a producing process from a consuming one. An email queue decouples email reception from email processing. It allows them to communicate without being connected. As such, the queued emails wait for processing until the recipient is available to receive them. As James is an Email Server, it also supports mail queue as well.
+
+### Why Mail Queue is necessary
+
+You might often need to check mail queue to make sure all emails are delivered properly. At first, you need to know why email queues get clogged. Here are the two core reasons for that:
+
+- Exceeded volume of emails
+
+Some mailbox providers enforce email rate limits on IP addresses. The limits are based on the sender reputation. If you exceeded this rate and queued too many emails, the delivery speed will decrease.
+
+- Spam-related issues
+
+Another common reason is that your email has been busted by spam filters. The filters will let the emails gradually pass to analyze how the rest of the recipients react to the message. If there is slow progress, it’s okay. Your email campaign is being observed and assessed. If it’s stuck, there could be different reasons including the blockage of your IP address. 
+
+### Why combining Cassandra, RabbitMQ and Object storage for MailQueue
+
+ - RabbitMQ ensures the messaging function, and avoids polling.
+ - Cassandra enables administrative operations such as browsing, deleting using a time series which might require fine performance tuning (see [Operating Casandra documentation](http://cassandra.apache.org/doc/latest/operating/index.html)).
+ - Object Storage stores potentially large binary payload.
+
+However the current design do not implement delays. Delays allow to define the time a mail have to be living in the 
+mailqueue before being dequeued and is used for example for exponential wait delays upon remote delivery retries, or
+SMTP traffic rate limiting.
+
+### Fine tune configuration for RabbitMQ
+
+In order to adapt mail queue settings to the actual traffic load, an administrator needs to perform fine configuration tunning as explained in [rabbitmq.properties](https://github.com/apache/james-project/blob/master/src/site/xdoc/server/config-rabbitmq.xml).
+
+Be aware that `MailQueue::getSize` is currently performing a browse and thus is expensive. Size recurring metric 
+reporting thus introduces performance issues. As such, we advise setting `mailqueue.size.metricsEnabled=false`.
+
+### Managing email queues
+
+Managing an email queue is an easy task if you follow this procedure:
+
+- First, [List mail queues](manage-webadmin.html#Listing_mail_queues) and [get a mail queue details](manage-webadmin.html#Getting_a_mail_queue_details).
+- And then [List the mails of a mail queue](manage-webadmin.html#Listing_the_mails_of_a_mail_queue).
+- If all mails in the mail queue are needed to be delivered you will [flush mails from a mail queue](manage-webadmin.html#Flushing_mails_from_a_mail_queue).
+
+In case, you need to clear an email queue because there are only spam or trash emails in the email queue you have this procedure to follow:
+
+- All mails from the given mail queue will be deleted with [Clearing a mail queue](manage-webadmin.html#Clearing_a_mail_queue).
+
+## Updating Cassandra schema version
+
+A schema version indicates you which schema your James server is relying on. The schema version number tracks if a migration is required. For instance, when the latest schema version is 2, and the current schema version is 1, you might think that you still have data in the deprecated Message table in the database. Hence, you need to migrate these messages into the MessageV2 table. Once done, you can safely bump the current schema version to 2.
+
+Relying on outdated schema version prevents you to benefit from the newest performance and safety improvements. Otherwise, there's something very unexpected in the way we manage cassandra schema: we create new tables without asking the admin about it. That means your James version is always using the last tables but may also take into account the old ones if the migration is not done yet.
+
+### How to detect when we should update Cassandra schema version
+
+When you see in James logs `org.apache.james.modules.mailbox.CassandraSchemaVersionStartUpCheck` showing a warning like `Recommended version is versionX`, you should perform an update of the Cassandra schema version.
+
+Also, we keep track of changes needed when upgrading to a newer version. You can read this [upgrade instructions](https://github.com/apache/james-project/blob/master/upgrade-instructions.md).
+
+### How to update Cassandra schema version
+
+These schema updates can be triggered by webadmin using the Cassandra backend. Following steps are for updating Cassandra schema version:
+
+- At the very first step, you need to [retrieve current Cassandra schema version](manage-webadmin.html#Retrieving_current_Cassandra_schema_version)
+- And then, you [retrieve latest available Cassandra schema version](manage-webadmin.html#Retrieving_latest_available_Cassandra_schema_version) to make sure there is a latest available version
+- Eventually, you can update the current schema version to the one you got with [upgrading to the latest version](manage-webadmin.html#Upgrading_to_the_latest_version)
+
+Otherwise, if you need to run the migrations to a specific version, you can use [Upgrading to a specific version](manage-webadmin.html#Upgrading_to_a_specific_version)
+
+## Deleted Messages Vault
+
+Deleted Messages Vault is an interesting feature that will help James users have a chance to:
+
+- retain users deleted messages for some time.
+- restore & export deleted messages by various criteria.
+- permanently delete some retained messages.
+
+If the Deleted Messages Vault is enabled when users delete their mails, and by that we mean when they try to definitely delete them by emptying the trash, James will retain these mails into the Deleted Messages Vault, before an email or a mailbox is going to be deleted. And only administrators can interact with this component via [WebAdmin REST APIs](manage-webadmin.html#deleted-messages-vault).
+
+However, mails are not retained forever as you have to configure a retention period before using it (with one-year retention by default if not defined). It's also possible to permanently delete a mail if needed and we recommend the administrator to [run it](#Cleaning_expired_deleted_messages) in cron job to save storage volume.
+
+### How to configure deleted messages vault
+
+To setup James with Deleted Messages Vault, you need to follow those steps:
+
+- Enable Deleted Messages Vault by configuring Pre Deletion Hooks.
+- Configuring the retention time for the Deleted Messages Vault.
+
+#### Enable Deleted Messages Vault by configuring Pre Deletion Hooks
+
+You need to configure this hook in [listeners.xml](https://github.com/apache/james-project/blob/master/dockerfiles/run/guice/cassandra-rabbitmq/destination/conf/listeners.xml) configuration file. More details about configuration & example can be found at [Pre Deletion Hook Configuration](http://james.apache.org/server/config-listeners.html)
+
+#### Configuring the retention time for the Deleted Messages Vault
+
+In order to configure the retention time for the Deleted Messages Vault, an administrator needs to perform fine configuration tunning as explained in [deletedMessageVault.properties](https://github.com/apache/james-project/blob/master/dockerfiles/run/guice/cassandra/destination/conf/deletedMessageVault.properties). Mails are not retained forever as you have to configure a retention period (by `retentionPeriod`) before using it (with one-year retention by default if not defined).
+
+### Restore deleted messages after deletion
+
+After users deleted their mails and emptied the trash, the admin can use [Restore Deleted Messages](manage-webadmin.html#deleted-messages-vault) to restore all the deleted mails.  
+
+### Cleaning expired deleted messages
+
+You can delete all deleted messages older than the configured `retentionPeriod` by using [Purge Deleted Messages](manage-webadmin.html#deleted-messages-vault). We recommend calling this API in CRON job on 1st day each month.

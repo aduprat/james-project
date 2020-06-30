@@ -22,23 +22,16 @@ package org.apache.james;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
-import org.apache.james.utils.FailingPropertiesProvider;
-import org.apache.james.utils.PropertiesProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class DefaultMemoryJamesServerTest {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder()
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MemoryJamesServerMain.IN_MEMORY_SERVER_AGGREGATE_MODULE)
-            .overrideWith(TestJMAPServerModule.limitToTenMessages())
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(binder -> binder.bind(PropertiesProvider.class).to(FailingPropertiesProvider.class))
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+        .server(configuration -> MemoryJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(binder -> binder.bind(ConfigurationProvider.class).toInstance((s, l) -> new BaseHierarchicalConfiguration())))
         .build();
 

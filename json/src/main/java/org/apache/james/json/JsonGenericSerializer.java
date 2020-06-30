@@ -59,11 +59,11 @@ public class JsonGenericSerializer<T, U extends DTO> {
     public interface RequireNestedConfiguration<T, U extends DTO> {
         JsonGenericSerializer<T, U> withNestedTypeModules(Set<DTOModule<?, ?>> modules);
 
-        default JsonGenericSerializer<T, U> withNestedTypeModules(DTOModule<?, ?>... modules) {
+        default JsonGenericSerializer<T, U> withMultipleNestedTypeModules(DTOModule<?, ?>... modules) {
             return withNestedTypeModules(ImmutableSet.copyOf(modules));
         }
 
-        default JsonGenericSerializer<T, U> withNestedTypeModules(Set<DTOModule<?, ?>>... modules) {
+        default JsonGenericSerializer<T, U> withMultipleNestedTypeModules(Set<DTOModule<?, ?>>... modules) {
             return withNestedTypeModules(Arrays.stream(modules).flatMap(Collection::stream).collect(Guavate.toImmutableSet()));
         }
 

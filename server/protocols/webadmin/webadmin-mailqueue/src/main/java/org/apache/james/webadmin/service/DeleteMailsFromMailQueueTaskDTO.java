@@ -1,3 +1,22 @@
+/****************************************************************
+ * Licensed to the Apache Software Foundation (ASF) under one   *
+ * or more contributor license agreements.  See the NOTICE file *
+ * distributed with this work for additional information        *
+ * regarding copyright ownership.  The ASF licenses this file   *
+ * to you under the Apache License, Version 2.0 (the            *
+ * "License"); you may not use this file except in compliance   *
+ * with the License.  You may obtain a copy of the License at   *
+ *                                                              *
+ *   http://www.apache.org/licenses/LICENSE-2.0                 *
+ *                                                              *
+ * Unless required by applicable law or agreed to in writing,   *
+ * software distributed under the License is distributed on an  *
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
+ * KIND, either express or implied.  See the License for the    *
+ * specific language governing permissions and limitations      *
+ * under the License.                                           *
+ ****************************************************************/
+
 package org.apache.james.webadmin.service;
 
 import java.util.Optional;
@@ -5,6 +24,7 @@ import java.util.Optional;
 import org.apache.james.core.MailAddress;
 import org.apache.james.json.DTOModule;
 import org.apache.james.queue.api.MailQueueFactory;
+import org.apache.james.queue.api.MailQueueName;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
@@ -27,7 +47,7 @@ public class DeleteMailsFromMailQueueTaskDTO implements TaskDTO {
     public static DeleteMailsFromMailQueueTaskDTO toDTO(DeleteMailsFromMailQueueTask domainObject, String typeName) {
         return new DeleteMailsFromMailQueueTaskDTO(
             typeName,
-            domainObject.getQueue().getName(),
+            domainObject.getQueueName().asString(),
             domainObject.getMaybeSender().map(MailAddress::asString),
             domainObject.getMaybeName(),
             domainObject.getMaybeRecipient().map(MailAddress::asString)
@@ -35,18 +55,18 @@ public class DeleteMailsFromMailQueueTaskDTO implements TaskDTO {
     }
 
     private final String type;
-    private final String queue;
+    private final String queueName;
     private final Optional<String> sender;
     private final Optional<String> name;
     private final Optional<String> recipient;
 
     public DeleteMailsFromMailQueueTaskDTO(@JsonProperty("type") String type,
-                                           @JsonProperty("queue") String queue,
+                                           @JsonProperty("queue") String queueName,
                                            @JsonProperty("sender") Optional<String> sender,
                                            @JsonProperty("name") Optional<String> name,
                                            @JsonProperty("recipient") Optional<String> recipient) {
         this.type = type;
-        this.queue = queue;
+        this.queueName = queueName;
         this.sender = sender;
         this.name = name;
         this.recipient = recipient;
@@ -54,7 +74,7 @@ public class DeleteMailsFromMailQueueTaskDTO implements TaskDTO {
 
     public DeleteMailsFromMailQueueTask fromDTO(MailQueueFactory<? extends ManageableMailQueue> mailQueueFactory) {
         return new DeleteMailsFromMailQueueTask(
-            mailQueueFactory.getQueue(queue).orElseThrow(() -> new DeleteMailsFromMailQueueTask.UnknownSerializedQueue(queue)),
+            MailQueueName.of(queueName), name -> mailQueueFactory.getQueue(name).orElseThrow(() -> new DeleteMailsFromMailQueueTask.UnknownSerializedQueue(queueName)),
             sender.map(Throwing.<String, MailAddress>function(MailAddress::new).sneakyThrow()),
             name,
             recipient.map(Throwing.<String, MailAddress>function(MailAddress::new).sneakyThrow())
@@ -67,7 +87,7 @@ public class DeleteMailsFromMailQueueTaskDTO implements TaskDTO {
     }
 
     public String getQueue() {
-        return queue;
+        return queueName;
     }
 
     public Optional<String> getSender() {

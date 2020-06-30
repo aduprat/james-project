@@ -73,7 +73,7 @@ public abstract class AbstractStateMailetProcessorTest {
 
             @Override
             public void afterMatcher(Matcher m, String mailName, Collection<MailAddress> recipients,
-                                     Collection<MailAddress> matches, long processTime, Exception e) {
+                                     Collection<MailAddress> matches, long processTime, Throwable e) {
                 if (MockMatcher.class.equals(m.getClass())) {
                     assertThat(mailName).isEqualTo(mail.getName());
                     // match one recipient
@@ -85,7 +85,7 @@ public abstract class AbstractStateMailetProcessorTest {
             }
 
             @Override
-            public void afterMailet(Mailet m, String mailName, String state, long processTime, Exception e) {
+            public void afterMailet(Mailet m, String mailName, String state, long processTime, Throwable e) {
                 // check for class name as the terminating  mailet will kick in too
 
                 if (MockMailet.class.equals(m.getClass())) {
@@ -118,7 +118,7 @@ public abstract class AbstractStateMailetProcessorTest {
 
             @Override
             public void afterMatcher(Matcher m, String mailName, Collection<MailAddress> recipients,
-                                     Collection<MailAddress> matches, long processTime, Exception e) {
+                                     Collection<MailAddress> matches, long processTime, Throwable e) {
                 if (MockMatcher.class.equals(m.getClass())) {
                     assertThat(mailName).isEqualTo(mail.getName());
                     // match all recipient
@@ -130,7 +130,7 @@ public abstract class AbstractStateMailetProcessorTest {
             }
 
             @Override
-            public void afterMailet(Mailet m, String mailName, String state, long processTime, Exception e) {
+            public void afterMailet(Mailet m, String mailName, String state, long processTime, Throwable e) {
                 // check for class name as the terminating  mailet will kick in too
 
                 if (MockMailet.class.equals(m.getClass())) {
@@ -165,7 +165,7 @@ public abstract class AbstractStateMailetProcessorTest {
 
             @Override
             public void afterMatcher(Matcher m, String mailName, Collection<MailAddress> recipients,
-                                     Collection<MailAddress> matches, long processTime, Exception e) {
+                                     Collection<MailAddress> matches, long processTime, Throwable e) {
                 if (ExceptionThrowingMatcher.class.equals(m.getClass())) {
                     assertThat(mailName).isEqualTo(mail.getName());
                     // match no recipient because of the error
@@ -177,7 +177,7 @@ public abstract class AbstractStateMailetProcessorTest {
             }
 
             @Override
-            public void afterMailet(Mailet m, String mailName, String state, long processTime, Exception e) {
+            public void afterMailet(Mailet m, String mailName, String state, long processTime, Throwable e) {
                 throw new RuntimeException("Should not call any mailet!");
             }
         });
@@ -204,7 +204,7 @@ public abstract class AbstractStateMailetProcessorTest {
 
             @Override
             public void afterMatcher(Matcher m, String mailName, Collection<MailAddress> recipients,
-                                     Collection<MailAddress> matches, long processTime, Exception e) {
+                                     Collection<MailAddress> matches, long processTime, Throwable e) {
                 if (ExceptionThrowingMatcher.class.equals(m.getClass())) {
                     latch.countDown();
                 }
@@ -212,7 +212,7 @@ public abstract class AbstractStateMailetProcessorTest {
             }
 
             @Override
-            public void afterMailet(Mailet m, String mailName, String state, long processTime, Exception e) {
+            public void afterMailet(Mailet m, String mailName, String state, long processTime, Throwable e) {
                 throw new RuntimeException("Should not call any mailet!");
             }
         });
@@ -237,7 +237,7 @@ public abstract class AbstractStateMailetProcessorTest {
 
             @Override
             public void afterMatcher(Matcher m, String mailName, Collection<MailAddress> recipients,
-                                     Collection<MailAddress> matches, long processTime, Exception e) {
+                                     Collection<MailAddress> matches, long processTime, Throwable e) {
                 if (MockMatcher.class.equals(m.getClass())) {
                     assertThat(mailName).isEqualTo(mail.getName());
                     // match one recipient
@@ -249,7 +249,7 @@ public abstract class AbstractStateMailetProcessorTest {
             }
 
             @Override
-            public void afterMailet(Mailet m, String mailName, String state, long processTime, Exception e) {
+            public void afterMailet(Mailet m, String mailName, String state, long processTime, Throwable e) {
                 if (ExceptionThrowingMailet.class.equals(m.getClass())) {
                     // the name should be not the same as we have a part match
                     assertThat(mail.getName()).isNotEqualTo(mailName);

@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.james.core.Username;
@@ -40,7 +41,6 @@ import org.apache.james.mailbox.quota.model.HistoryEvolution;
 import org.apache.james.mailbox.quota.model.QuotaThresholdChange;
 import org.apache.james.mailbox.quota.model.QuotaThresholdHistory;
 import org.apache.james.mailbox.quota.model.QuotaThresholds;
-import org.apache.james.util.OptionalUtils;
 
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Joiner;
@@ -126,7 +126,8 @@ public class UserQuotaThresholds {
     private UserQuotaThresholds(Id aggregateId, History history) {
         this.aggregateId = aggregateId;
         this.history = history;
-        this.events = history.getEvents().stream()
+        this.events = history.getEventsJava()
+            .stream()
             .map(QuotaThresholdChangedEvent.class::cast)
             .collect(Collectors.toList());
     }
@@ -161,7 +162,7 @@ public class UserQuotaThresholds {
             events.stream()
                 .map(QuotaThresholdChangedEvent::getSizeHistoryEvolution)
                 .map(HistoryEvolution::getThresholdChange)
-                .flatMap(OptionalUtils::toStream)
+                .flatMap(Optional::stream)
                 .collect(Guavate.toImmutableList()));
     }
 
@@ -170,7 +171,7 @@ public class UserQuotaThresholds {
             events.stream()
                 .map(QuotaThresholdChangedEvent::getCountHistoryEvolution)
                 .map(HistoryEvolution::getThresholdChange)
-                .flatMap(OptionalUtils::toStream)
+                .flatMap(Optional::stream)
                 .collect(Guavate.toImmutableList()));
     }
 

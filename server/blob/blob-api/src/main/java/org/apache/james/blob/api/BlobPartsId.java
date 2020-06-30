@@ -23,8 +23,8 @@ import java.util.Map;
 
 public interface BlobPartsId {
     interface Factory<I extends BlobPartsId> {
-        I generate(Map<Store.BlobType, BlobId> map);
+        I generate(Map<BlobType, BlobId> map);
     }
 
-    Map<Store.BlobType, BlobId> asMap();
+    Map<BlobType, BlobId> asMap();
 }

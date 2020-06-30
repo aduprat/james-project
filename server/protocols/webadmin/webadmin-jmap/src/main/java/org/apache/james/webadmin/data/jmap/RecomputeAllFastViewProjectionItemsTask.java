@@ -29,6 +29,7 @@ import org.apache.james.server.task.json.dto.TaskDTOModule;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
+import org.apache.james.webadmin.data.jmap.MessageFastViewProjectionCorrector.RunningOptions;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -38,8 +39,9 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
     static final TaskType TASK_TYPE = TaskType.of("RecomputeAllFastViewProjectionItemsTask");
 
     public static class AdditionalInformation implements TaskExecutionDetails.AdditionalInformation {
-        private static AdditionalInformation from(MessageFastViewProjectionCorrector.Progress progress) {
-            return new AdditionalInformation(
+        private static AdditionalInformation from(MessageFastViewProjectionCorrector.Progress progress,
+                                                  RunningOptions runningOptions) {
+            return new AdditionalInformation(runningOptions,
                 progress.getProcessedUserCount(),
                 progress.getProcessedMessageCount(),
                 progress.getFailedUserCount(),
@@ -47,13 +49,15 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
                 Clock.systemUTC().instant());
         }
 
+        private final RunningOptions runningOptions;
         private final long processedUserCount;
         private final long processedMessageCount;
         private final long failedUserCount;
         private final long failedMessageCount;
         private final Instant timestamp;
 
-        public AdditionalInformation(long processedUserCount, long processedMessageCount, long failedUserCount, long failedMessageCount, Instant timestamp) {
+        public AdditionalInformation(RunningOptions runningOptions, long processedUserCount, long processedMessageCount, long failedUserCount, long failedMessageCount, Instant timestamp) {
+            this.runningOptions = runningOptions;
             this.processedUserCount = processedUserCount;
             this.processedMessageCount = processedMessageCount;
             this.failedUserCount = failedUserCount;
@@ -77,6 +81,10 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
             return failedMessageCount;
         }
 
+        public RunningOptions getRunningOptions() {
+            return runningOptions;
+        }
+
         @Override
         public Instant timestamp() {
             return timestamp;
@@ -85,14 +93,21 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
 
     public static class RecomputeAllFastViewTaskDTO implements TaskDTO {
         private final String type;
+        private final Optional<RunningOptionsDTO> runningOptions;
 
-        public RecomputeAllFastViewTaskDTO(@JsonProperty("type") String type) {
+        public RecomputeAllFastViewTaskDTO(@JsonProperty("type") String type,
+                                           @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions) {
             this.type = type;
+            this.runningOptions = runningOptions;
         }
 
         @Override
         public String getType() {
             return type;
+        }
+
+        public Optional<RunningOptionsDTO> getRunningOptions() {
+            return runningOptions;
         }
     }
 
@@ -100,30 +115,38 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
         return DTOModule
             .forDomainObject(RecomputeAllFastViewProjectionItemsTask.class)
             .convertToDTO(RecomputeAllFastViewTaskDTO.class)
-            .toDomainObjectConverter(dto -> new RecomputeAllFastViewProjectionItemsTask(corrector))
-            .toDTOConverter((task, type) -> new RecomputeAllFastViewTaskDTO(type))
+            .toDomainObjectConverter(dto -> asTask(corrector, dto))
+            .toDTOConverter(RecomputeAllFastViewProjectionItemsTask::asDTO)
             .typeName(TASK_TYPE.asString())
             .withFactory(TaskDTOModule::new);
     }
 
+    private static RecomputeAllFastViewTaskDTO asDTO(RecomputeAllFastViewProjectionItemsTask task, String type) {
+        return new RecomputeAllFastViewTaskDTO(type, Optional.of(RunningOptionsDTO.asDTO(task.runningOptions)));
+    }
+
+    private static RecomputeAllFastViewProjectionItemsTask asTask(MessageFastViewProjectionCorrector corrector, RecomputeAllFastViewTaskDTO dto) {
+        return new RecomputeAllFastViewProjectionItemsTask(corrector,
+            dto.getRunningOptions()
+                .map(RunningOptionsDTO::asDomainObject)
+                .orElse(RunningOptions.DEFAULT));
+    }
+
     private final MessageFastViewProjectionCorrector corrector;
     private final MessageFastViewProjectionCorrector.Progress progress;
+    private final RunningOptions runningOptions;
 
-    RecomputeAllFastViewProjectionItemsTask(MessageFastViewProjectionCorrector corrector) {
+    RecomputeAllFastViewProjectionItemsTask(MessageFastViewProjectionCorrector corrector, RunningOptions runningOptions) {
         this.corrector = corrector;
+        this.runningOptions = runningOptions;
         this.progress = new MessageFastViewProjectionCorrector.Progress();
     }
 
     @Override
     public Result run() {
-        corrector.correctAllProjectionItems(progress)
+        return corrector.correctAllProjectionItems(progress, runningOptions)
             .subscribeOn(Schedulers.elastic())
             .block();
-
-        if (progress.failed()) {
-            return Result.PARTIAL;
-        }
-        return Result.COMPLETED;
     }
 
     @Override
@@ -133,6 +156,6 @@ public class RecomputeAllFastViewProjectionItemsTask implements Task {
 
     @Override
     public Optional<TaskExecutionDetails.AdditionalInformation> details() {
-        return Optional.of(AdditionalInformation.from(progress));
+        return Optional.of(AdditionalInformation.from(progress, runningOptions));
     }
 }

@@ -47,7 +47,6 @@ import org.apache.james.jmap.draft.model.SetMessagesRequest;
 import org.apache.james.jmap.draft.model.SetMessagesResponse;
 import org.apache.james.jmap.draft.model.UpdateMessagePatch;
 import org.apache.james.jmap.draft.send.MailSpool;
-import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.BlobManager;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
@@ -65,14 +64,14 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.apache.james.rrt.api.CanSendFrom;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.api.RecipientRewriteTableException;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
 import org.apache.james.rrt.lib.CanSendFromImpl;
 import org.apache.james.rrt.lib.MappingSource;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
-import org.apache.james.util.OptionalUtils;
-import org.apache.james.util.html.HtmlTextExtractor;
-import org.apache.james.util.mime.MessageContentExtractor;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -107,9 +106,9 @@ public class SetMessagesUpdateProcessorTest {
         @Override
         public Stream<MessageManager> getMailboxByRole(Role aRole, Username username) {
             if (aRole.equals(Role.OUTBOX)) {
-                return OptionalUtils.toStream(outboxSupplier.get());
+                return outboxSupplier.get().stream();
             } else if (aRole.equals(Role.DRAFTS)) {
-                return OptionalUtils.toStream(draftsSupplier.get());
+                return draftsSupplier.get().stream();
             }
             return Stream.empty();
         }
@@ -152,8 +151,6 @@ public class SetMessagesUpdateProcessorTest {
 
     @Before
     public void setUp() throws MailboxException, DomainListException, UnknownHostException, ConfigurationException {
-        MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
-        HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
         BlobManager blobManager = mock(BlobManager.class);
         when(blobManager.toBlobId(any(MessageId.class))).thenReturn(org.apache.james.mailbox.model.BlobId.fromString("fake"));
         MessageIdManager messageIdManager = mock(MessageIdManager.class);
@@ -161,13 +158,13 @@ public class SetMessagesUpdateProcessorTest {
 
         DNSService dnsService = mock(DNSService.class);
         MemoryDomainList domainList = new MemoryDomainList(dnsService);
-        domainList.configure(DomainListConfiguration.builder()
-            .autoDetect(false)
-            .autoDetectIp(false));
+        domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(Domain.of("example.com"));
         domainList.addDomain(Domain.of("other.org"));
         recipientRewriteTable.setDomainList(domainList);
-        canSendFrom = new CanSendFromImpl(recipientRewriteTable);
+        recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        AliasReverseResolver aliasReverseResolver = new AliasReverseResolverImpl(recipientRewriteTable);
+        canSendFrom = new CanSendFromImpl(recipientRewriteTable, aliasReverseResolver);
         mockedMailSpool = mock(MailSpool.class);
         mockedMailboxManager = mock(MailboxManager.class);
         mockedMailboxIdFactory = mock(MailboxId.Factory.class);
@@ -199,7 +196,9 @@ public class SetMessagesUpdateProcessorTest {
         when(outbox.getMailboxPath()).thenReturn(MailboxPath.forUser(USER, OUTBOX));
 
         when(outbox.appendMessage(any(MessageManager.AppendCommand.class), any(MailboxSession.class)))
-            .thenReturn(new ComposedMessageId(OUTBOX_ID, TestMessageId.of(23), MessageUid.of(1)));
+            .thenReturn(new MessageManager.AppendResult(
+                new ComposedMessageId(OUTBOX_ID, TestMessageId.of(23), MessageUid.of(1)),
+                Optional.empty()));
 
         drafts = mock(MessageManager.class);
         when(drafts.getId()).thenReturn(DRAFTS_ID);
@@ -251,7 +250,7 @@ public class SetMessagesUpdateProcessorTest {
         SetMessagesResponse result = sut.process(requestWithInvalidUpdate, null);
 
         // Then
-        assertThat(result.getNotUpdated()).isNotEmpty().describedAs("NotUpdated should not be empty");
+        assertThat(result.getNotUpdated()).describedAs("NotUpdated should not be empty").isNotEmpty();
         assertThat(result.getNotUpdated()).containsKey(requestMessageId);
         assertThat(result.getNotUpdated().get(requestMessageId).getProperties()).isPresent();
         assertThat(result.getNotUpdated().get(requestMessageId).getProperties().get()).contains(invalidProperty);

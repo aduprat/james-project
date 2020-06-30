@@ -19,17 +19,13 @@
 
 package org.apache.james.vault.metadata;
 
-import static org.apache.james.vault.DeletedMessageFixture.MESSAGE_ID;
+import static org.apache.james.backends.cassandra.Scenario.Builder.fail;
 import static org.apache.james.vault.DeletedMessageFixture.USERNAME;
 import static org.apache.james.vault.metadata.DeletedMessageMetadataModule.MODULE;
 import static org.apache.james.vault.metadata.DeletedMessageVaultMetadataFixture.BUCKET_NAME;
 import static org.apache.james.vault.metadata.DeletedMessageVaultMetadataFixture.DELETED_MESSAGE;
 import static org.apache.james.vault.metadata.DeletedMessageVaultMetadataFixture.DELETED_MESSAGE_2;
-import static org.apache.james.vault.metadata.DeletedMessageVaultMetadataFixture.STORAGE_INFORMATION;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -42,6 +38,7 @@ import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.vault.dto.DeletedMessageWithStorageInformationConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -63,9 +60,9 @@ public class CassandraDeletedMessageMetadataVaultTest implements DeletedMessageM
         InMemoryMessageId.Factory messageIdFactory = new InMemoryMessageId.Factory();
         DeletedMessageWithStorageInformationConverter dtoConverter = new DeletedMessageWithStorageInformationConverter(blobIdFactory, messageIdFactory, new InMemoryId.Factory());
 
-        metadataDAO = spy(new MetadataDAO(cassandra.getConf(), messageIdFactory, new MetadataSerializer(dtoConverter)));
-        storageInformationDAO = spy(new StorageInformationDAO(cassandra.getConf(), blobIdFactory));
-        userPerBucketDAO = spy(new UserPerBucketDAO(cassandra.getConf()));
+        metadataDAO = new MetadataDAO(cassandra.getConf(), messageIdFactory, new MetadataSerializer(dtoConverter));
+        storageInformationDAO = new StorageInformationDAO(cassandra.getConf(), blobIdFactory);
+        userPerBucketDAO = new UserPerBucketDAO(cassandra.getConf());
 
         testee = new CassandraDeletedMessageMetadataVault(metadataDAO, storageInformationDAO, userPerBucketDAO);
     }
@@ -75,247 +72,251 @@ public class CassandraDeletedMessageMetadataVaultTest implements DeletedMessageM
         return testee;
     }
 
-    @Test
-    void listShouldNotReturnMessagesWhenStorageDAOFailed() {
-        when(storageInformationDAO.referenceStorageInformation(USERNAME, MESSAGE_ID, STORAGE_INFORMATION))
-            .thenReturn(Mono.error(new RuntimeException()));
+    @Nested
+    class ConsistencyTest {
+        @Test
+        void listShouldNotReturnMessagesWhenStorageDAOFailed(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO storageInformation (owner,messageId,bucketName,blobId) VALUES (:owner,:messageId,:bucketName,:blobId);"));
 
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
         }
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
+        @Test
+        void listShouldNotReturnMessagesWhenMetadataDAOFailed(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO deletedMessageMetadata (bucketName,owner,messageId,payload) VALUES (:bucketName,:owner,:messageId,:payload);"));
 
-    @Test
-    void listShouldNotReturnMessagesWhenMetadataDAOFailed() {
-        when(metadataDAO.store(DELETED_MESSAGE))
-            .thenReturn(Mono.error(new RuntimeException()));
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
         }
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
+        @Test
+        void listShouldReturnMessagesWhenUserPerBucketDAOFailed(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-    @Test
-    void listShouldReturnMessagesWhenUserPerBucketDAOFailed() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).contains(DELETED_MESSAGE);
         }
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).contains(DELETED_MESSAGE);
-    }
+        @Test
+        void retrieveStorageInformationShouldReturnMetadataWhenUserPerBucketDAOStoreFailed(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-    @Test
-    void retrieveStorageInformationShouldReturnMetadataWhenUserPerBucketDAOStoreFailed() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
+            Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .blockOptional();
+            assertThat(maybeInfo).isPresent();
         }
 
-        Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .blockOptional();
-        assertThat(maybeInfo).isPresent();
-    }
+        @Disabled("The bucket being not referenced, the entry will not be dropped. Note that this get corrected by next " +
+            "metadata referenced for this user")
+        @Test
+        void removingBucketShouldCleanUpInvalidStateForList(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-    @Disabled("The bucket being not referenced, the entry will not be dropped. Note that this get corrected by next " +
-        "metadata referenced for this user")
-    @Test
-    void removingBucketShouldCleanUpInvalidStateForList() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
-
-    @Disabled("The bucket being not referenced, the entry will not be dropped. Note that this get corrected by next " +
-        "metadata referenced for this user")
-    @Test
-    void removingBucketShouldCleanUpInvalidStateForRetrievingMetadata() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-
-        Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .blockOptional();
-        assertThat(maybeInfo).isEmpty();
-    }
-
-    @Test
-    void removingBucketShouldBeEventuallyConsistentForList() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-        reset(userPerBucketDAO);
-        Mono.from(testee.store(DELETED_MESSAGE_2)).block();
-
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
-
-    @Test
-    void removingBucketShouldBeEventuallyConsistentForMetadata() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-        reset(userPerBucketDAO);
-        Mono.from(testee.store(DELETED_MESSAGE_2)).block();
-
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-
-        Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .blockOptional();
-        assertThat(maybeInfo).isEmpty();
-    }
-
-    @Test
-    void directDeletionShouldCleanUpInvalidStateForList() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-
-        Mono.from(metadataVault().remove(BUCKET_NAME,
-            DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .block();
-
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
-
-    @Test
-    void directDeletionShouldCleanUpInvalidStateForRetrievingMetadata() {
-        when(userPerBucketDAO.addUser(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
-            Mono.from(testee.store(DELETED_MESSAGE)).block();
-        } catch (Exception e) {
-            // ignored
-        }
-
-        Mono.from(metadataVault().remove(BUCKET_NAME,
-            DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .block();
-
-        Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
-            DELETED_MESSAGE.getDeletedMessage().getMessageId()))
-            .blockOptional();
-        assertThat(maybeInfo).isEmpty();
-    }
-
-    @Test
-    void retentionShouldBeRetriableWhenUserPerBucketDAOFails() {
-        Mono.from(testee.store(DELETED_MESSAGE)).block();
-
-        when(userPerBucketDAO.deleteBucket(BUCKET_NAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
             Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-        } catch (Exception e) {
-            // ignored
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
         }
 
-        reset(userPerBucketDAO);
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+        @Disabled("The bucket being not referenced, the entry will not be dropped. Note that this get corrected by next " +
+            "metadata referenced for this user")
+        @Test
+        void removingBucketShouldCleanUpInvalidStateForRetrievingMetadata(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-    @Test
-    void retentionShouldBeRetriableWhenMetadataDAOFails() {
-        Mono.from(testee.store(DELETED_MESSAGE)).block();
-
-        when(metadataDAO.deleteInBucket(BUCKET_NAME, USERNAME))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
             Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-        } catch (Exception e) {
-            // ignored
+
+            Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .blockOptional();
+            assertThat(maybeInfo).isEmpty();
         }
 
-        reset(metadataDAO);
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+        @Test
+        void removingBucketShouldBeEventuallyConsistentForList(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
-    }
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
 
-    @Test
-    void retentionShouldBeRetriableWhenStorageInformationDAOFails() {
-        Mono.from(testee.store(DELETED_MESSAGE)).block();
+            Mono.from(testee.store(DELETED_MESSAGE_2)).block();
 
-        when(storageInformationDAO.deleteStorageInformation(USERNAME, MESSAGE_ID))
-            .thenReturn(Mono.error(new RuntimeException()));
-
-        try {
             Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
-        } catch (Exception e) {
-            // ignored
+
+            Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .blockOptional();
+            assertThat(maybeInfo).isEmpty();
         }
 
-        reset(storageInformationDAO);
-        Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+        @Test
+        void directDeletionShouldCleanUpInvalidStateForList(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
 
-        Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
-        assertThat(messages).isEmpty();
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Mono.from(metadataVault().remove(BUCKET_NAME,
+                DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .block();
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
+        }
+
+        @Test
+        void directDeletionShouldCleanUpInvalidStateForRetrievingMetadata(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("INSERT INTO userPerBucket (bucketName,user) VALUES (:bucketName,:user);"));
+
+            try {
+                Mono.from(testee.store(DELETED_MESSAGE)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Mono.from(metadataVault().remove(BUCKET_NAME,
+                DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .block();
+
+            Optional<StorageInformation> maybeInfo = Mono.from(metadataVault().retrieveStorageInformation(DELETED_MESSAGE.getDeletedMessage().getOwner(),
+                DELETED_MESSAGE.getDeletedMessage().getMessageId()))
+                .blockOptional();
+            assertThat(maybeInfo).isEmpty();
+        }
+
+        @Test
+        void retentionShouldBeRetriableWhenUserPerBucketDAOFails(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("DELETE FROM userPerBucket WHERE bucketName=:bucketName;"));
+            Mono.from(testee.store(DELETED_MESSAGE)).block();
+
+            try {
+                Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
+        }
+
+        @Test
+        void retentionShouldBeRetriableWhenMetadataDAOFails(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("DELETE FROM deletedMessageMetadata WHERE owner=:owner AND bucketName=:bucketName;"));
+
+            Mono.from(testee.store(DELETED_MESSAGE)).block();
+
+            try {
+                Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
+        }
+
+        @Test
+        void retentionShouldBeRetriableWhenStorageInformationDAOFails(CassandraCluster cassandra) {
+            cassandra.getConf()
+                .registerScenario(fail()
+                    .times(1)
+                    .whenQueryStartsWith("DELETE FROM storageInformation WHERE owner=:owner AND messageId=:messageId;"));
+
+            Mono.from(testee.store(DELETED_MESSAGE)).block();
+
+            try {
+                Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+            } catch (Exception e) {
+                // ignored
+            }
+
+            Mono.from(testee.removeMetadataRelatedToBucket(BUCKET_NAME)).block();
+
+            Stream<DeletedMessageWithStorageInformation> messages = Flux.from(metadataVault().listMessages(BUCKET_NAME, USERNAME)).toStream();
+            assertThat(messages).isEmpty();
+        }
     }
 }

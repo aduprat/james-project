@@ -58,8 +58,13 @@ public class RabbitMQMailQueue implements ManageableMailQueue {
     }
 
     @Override
-    public String getName() {
-        return name.asString();
+    public void close() {
+        dequeuer.close();
+    }
+
+    @Override
+    public org.apache.james.queue.api.MailQueueName getName() {
+        return org.apache.james.queue.api.MailQueueName.of(name.asString());
     }
 
     @Override
@@ -79,7 +84,7 @@ public class RabbitMQMailQueue implements ManageableMailQueue {
     @Override
     public Flux<MailQueueItem> deQueue() {
         return dequeuer.deQueue()
-            .map(decoratorFactory::decorate);
+            .map(item -> decoratorFactory.decorate(item, name.toModel()));
     }
 
     @Override

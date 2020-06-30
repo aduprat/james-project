@@ -969,6 +969,7 @@ public abstract class AbstractMessageIdManagerStorageTest {
             .appendMessage(MessageManager.AppendCommand.builder()
             .withFlags(new Flags(Flags.Flag.DELETED))
             .build(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/twoAttachmentsApi.eml")), bobSession)
+            .getId()
             .getMessageId();
 
         List<MessageResult> messages = messageIdManager.getMessage(messageId, FetchGroup.MINIMAL, bobSession);

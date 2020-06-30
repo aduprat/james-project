@@ -35,6 +35,7 @@ import org.apache.james.jmap.api.model.Preview;
 import org.apache.james.jmap.api.projections.MessageFastViewPrecomputedProperties;
 import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor;
 import org.apache.james.jmap.memory.projections.MemoryMessageFastViewProjection;
+import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
@@ -133,7 +134,8 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
         Preview.Factory previewFactory = new Preview.Factory(messageContentExtractor, htmlTextExtractor);
         MessageFastViewPrecomputedProperties.Factory projectionItemFactory = new MessageFastViewPrecomputedProperties.Factory(previewFactory);
         webAdminServer = WebAdminUtils.createWebAdminServer(
-            new TasksRoutes(taskManager, jsonTransformer),
+            new TasksRoutes(taskManager, jsonTransformer,
+                DTOConverter.of(RecomputeUserFastViewTaskAdditionalInformationDTO.module())),
             new JMAPRoutes(
                 new MessageFastViewProjectionCorrector(usersRepository, mailboxManager, messageFastViewProjection, projectionItemFactory),
                 taskManager, usersRepository))
@@ -174,6 +176,48 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
             .body("type", is(ErrorResponder.ErrorType.INVALID_ARGUMENT.getType()))
             .body("message", is("Invalid arguments supplied in the user request"))
             .body("details", is("'action' query parameter cannot be empty or blank. Supported values are [recomputeFastViewProjectionItems]"));
+    }
+
+    @Test
+    void postShouldFailWhenMessagesPerSecondIsNotAnInt() {
+        given()
+            .queryParam("action", "recomputeFastViewProjectionItems")
+            .queryParam("messagesPerSecond", "abc")
+            .post()
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("statusCode", is(400))
+            .body("type", is(ErrorResponder.ErrorType.INVALID_ARGUMENT.getType()))
+            .body("message", is("Invalid arguments supplied in the user request"))
+            .body("details", is("Illegal value supplied for query parameter 'messagesPerSecond', expecting a strictly positive optional integer"));
+    }
+
+    @Test
+    void postShouldFailWhenMessagesPerSecondIsNegative() {
+        given()
+            .queryParam("action", "recomputeFastViewProjectionItems")
+            .queryParam("messagesPerSecond", "-1")
+            .post()
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("statusCode", is(400))
+            .body("type", is(ErrorResponder.ErrorType.INVALID_ARGUMENT.getType()))
+            .body("message", is("Invalid arguments supplied in the user request"))
+            .body("details", is("'messagesPerSecond' must be strictly positive"));
+    }
+
+    @Test
+    void postShouldFailWhenMessagesPerSecondIsZero() {
+        given()
+            .queryParam("action", "recomputeFastViewProjectionItems")
+            .queryParam("messagesPerSecond", "0")
+            .post()
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("statusCode", is(400))
+            .body("type", is(ErrorResponder.ErrorType.INVALID_ARGUMENT.getType()))
+            .body("message", is("Invalid arguments supplied in the user request"))
+            .body("details", is("'messagesPerSecond' must be strictly positive"));
     }
 
     @Test
@@ -227,6 +271,17 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
     }
 
     @Test
+    void postShouldCreateANewTaskWhenConcurrencyParametersSpecified() {
+        given()
+            .queryParam("messagesPerSecond", "1")
+            .queryParam("action", "recomputeFastViewProjectionItems")
+            .post()
+        .then()
+            .statusCode(HttpStatus.CREATED_201)
+            .body("taskId", notNullValue());
+    }
+
+    @Test
     void recomputeUserShouldCompleteWhenUserWithNoMailbox() throws Exception {
         String taskId = with()
             .queryParam("action", "recomputeFastViewProjectionItems")
@@ -248,6 +303,25 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
             .body("startedDate", is(notNullValue()))
             .body("submitDate", is(notNullValue()))
             .body("completedDate", is(notNullValue()));
+    }
+
+    @Test
+    void runningOptionsShouldBePartOfTaskDetails() {
+        String taskId = with()
+            .queryParam("action", "recomputeFastViewProjectionItems")
+            .queryParam("messagesPerSecond", "20")
+            .post()
+            .jsonPath()
+            .get("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("taskId", is(taskId))
+            .body("type", is("RecomputeUserFastViewProjectionItemsTask"))
+            .body("additionalInformation.runningOptions.messagesPerSecond", is(20));
     }
 
     @Test
@@ -372,7 +446,7 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
     void recomputeUserShouldUpdateProjection() throws Exception {
         ComposedMessageId messageId = mailboxManager.getMailbox(bobInboxboxId, bobSession).appendMessage(
             MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
-            bobSession);
+            bobSession).getId();
 
         String taskId = with()
             .queryParam("action", "recomputeFastViewProjectionItems")
@@ -392,7 +466,7 @@ class RecomputeUserFastViewProjectionItemsRequestToTaskTest {
     void recomputeUserShouldBeIdempotent() throws Exception {
         ComposedMessageId messageId = mailboxManager.getMailbox(bobInboxboxId, bobSession).appendMessage(
             MessageManager.AppendCommand.builder().build("header: value\r\n\r\nbody"),
-            bobSession);
+            bobSession).getId();
 
         String taskId1 = with()
             .queryParam("action", "recomputeFastViewProjectionItems")

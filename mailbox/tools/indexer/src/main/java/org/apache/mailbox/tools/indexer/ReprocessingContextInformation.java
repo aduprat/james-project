@@ -19,47 +19,28 @@
 
 package org.apache.mailbox.tools.indexer;
 
-import java.time.Clock;
 import java.time.Instant;
 
 import org.apache.james.mailbox.indexer.IndexingDetailInformation;
+import org.apache.james.mailbox.indexer.ReIndexer.RunningOptions;
 import org.apache.james.mailbox.indexer.ReIndexingExecutionFailures;
 import org.apache.james.task.TaskExecutionDetails;
-import org.apache.mailbox.tools.indexer.ReprocessingContextInformationDTO.ReprocessingContextInformationForErrorRecoveryIndexationTask;
-import org.apache.mailbox.tools.indexer.ReprocessingContextInformationDTO.ReprocessingContextInformationForFullReindexingTask;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReprocessingContextInformation implements TaskExecutionDetails.AdditionalInformation, IndexingDetailInformation {
-
-    public static ReprocessingContextInformationForErrorRecoveryIndexationTask forErrorRecoveryIndexationTask(ReprocessingContext reprocessingContext) {
-        return new ReprocessingContextInformationForErrorRecoveryIndexationTask(
-            reprocessingContext.successfullyReprocessedMailCount(),
-            reprocessingContext.failedReprocessingMailCount(),
-            reprocessingContext.failures(),
-            Clock.systemUTC().instant());
-    }
-
-    public static ReprocessingContextInformationForFullReindexingTask forFullReindexingTask(ReprocessingContext reprocessingContext) {
-        return new ReprocessingContextInformationForFullReindexingTask(
-            reprocessingContext.successfullyReprocessedMailCount(),
-            reprocessingContext.failedReprocessingMailCount(),
-            reprocessingContext.failures(),
-            Clock.systemUTC().instant());
-    }
 
     private final int successfullyReprocessedMailCount;
     private final int failedReprocessedMailCount;
     private final ReIndexingExecutionFailures failures;
     private final Instant timestamp;
+    private final RunningOptions runningOptions;
 
     ReprocessingContextInformation(int successfullyReprocessedMailCount, int failedReprocessedMailCount,
-                                   ReIndexingExecutionFailures failures, Instant timestamp) {
+                                   ReIndexingExecutionFailures failures, Instant timestamp, RunningOptions runningOptions) {
         this.successfullyReprocessedMailCount = successfullyReprocessedMailCount;
         this.failedReprocessedMailCount = failedReprocessedMailCount;
         this.failures = failures;
         this.timestamp = timestamp;
+        this.runningOptions = runningOptions;
     }
 
     @Override
@@ -73,18 +54,16 @@ public class ReprocessingContextInformation implements TaskExecutionDetails.Addi
     }
 
     @Override
-    @JsonIgnore
     public ReIndexingExecutionFailures failures() {
         return failures;
-    }
-
-    @JsonProperty("failures")
-    public SerializableReIndexingExecutionFailures failuresAsJson() {
-        return SerializableReIndexingExecutionFailures.from(failures());
     }
 
     @Override
     public Instant timestamp() {
         return timestamp;
+    }
+
+    public RunningOptions getRunningOptions() {
+        return runningOptions;
     }
 }

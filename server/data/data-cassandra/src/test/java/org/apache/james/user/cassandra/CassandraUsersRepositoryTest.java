@@ -21,33 +21,61 @@ package org.apache.james.user.cassandra;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.user.lib.AbstractUsersRepository;
-import org.apache.james.user.lib.AbstractUsersRepositoryTest;
-import org.junit.jupiter.api.AfterEach;
+import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.user.lib.UsersRepositoryImpl;
+import org.apache.james.user.lib.UsersRepositoryContract;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-class CassandraUsersRepositoryTest extends AbstractUsersRepositoryTest {
+class CassandraUsersRepositoryTest {
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraUsersRepositoryModule.MODULE);
 
-    @BeforeEach
-    void setup() throws Exception {
-        super.setUp();
+    @Nested
+    class WhenEnableVirtualHosting implements UsersRepositoryContract.WithVirtualHostingContract {
+        @RegisterExtension
+        UserRepositoryExtension extension = UserRepositoryExtension.withVirtualHost();
+
+        private UsersRepositoryImpl usersRepository;
+
+        @BeforeEach
+        void setUp(TestSystem testSystem) throws Exception {
+            usersRepository = getUsersRepository(testSystem.getDomainList(), extension.isSupportVirtualHosting());
+        }
+
+        @Override
+        public UsersRepositoryImpl testee() {
+            return usersRepository;
+        }
     }
 
-    @AfterEach
-    void teardown() throws Exception {
-        super.tearDown();
+    @Nested
+    class WhenDisableVirtualHosting implements UsersRepositoryContract.WithOutVirtualHostingContract {
+        @RegisterExtension
+        UserRepositoryExtension extension = UserRepositoryExtension.withoutVirtualHosting();
+
+        private UsersRepositoryImpl usersRepository;
+
+        @BeforeEach
+        void setUp(TestSystem testSystem) throws Exception {
+            usersRepository = getUsersRepository(testSystem.getDomainList(), extension.isSupportVirtualHosting());
+        }
+
+        @Override
+        public UsersRepositoryImpl testee() {
+            return usersRepository;
+        }
     }
 
-    @Override
-    protected AbstractUsersRepository getUsersRepository() throws Exception {
-        CassandraUsersRepository cassandraUsersRepository = new CassandraUsersRepository(domainList, cassandraCluster.getCassandraCluster().getConf());
+    private static UsersRepositoryImpl getUsersRepository(DomainList domainList, boolean enableVirtualHosting) throws Exception {
+        CassandraUsersDAO usersDAO = new CassandraUsersDAO(cassandraCluster.getCassandraCluster().getConf());
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("enableVirtualHosting", "true");
-        cassandraUsersRepository.configure(configuration);
-        return cassandraUsersRepository;
+        configuration.addProperty("enableVirtualHosting", String.valueOf(enableVirtualHosting));
+
+        UsersRepositoryImpl usersRepository = new UsersRepositoryImpl(domainList, usersDAO);
+        usersRepository.configure(configuration);
+        return usersRepository;
     }
 }

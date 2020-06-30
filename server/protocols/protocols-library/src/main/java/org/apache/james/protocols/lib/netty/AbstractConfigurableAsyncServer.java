@@ -186,7 +186,7 @@ public abstract class AbstractConfigurableAsyncServer extends AbstractAsyncServe
 
             bindAddresses.add(address);
         }
-        setListenAddresses(bindAddresses.toArray(new InetSocketAddress[bindAddresses.size()]));
+        setListenAddresses(bindAddresses.toArray(InetSocketAddress[]::new));
 
         jmxName = config.getString("jmxName", getDefaultJMXName());
         int ioWorker = config.getInt("ioWorkerCount", DEFAULT_IO_WORKER_COUNT);
@@ -208,7 +208,7 @@ public abstract class AbstractConfigurableAsyncServer extends AbstractAsyncServe
         String connectionLimitString = config.getString("connectionLimit", null);
         if (connectionLimitString != null) {
             try {
-                connectionLimit = new Integer(connectionLimitString);
+                connectionLimit = Integer.parseInt(connectionLimitString);
             } catch (NumberFormatException nfe) {
                 LOGGER.error("Connection limit value is not properly formatted.", nfe);
             }

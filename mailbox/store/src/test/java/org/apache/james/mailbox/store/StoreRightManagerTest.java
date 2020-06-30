@@ -51,14 +51,17 @@ import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.TestId;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mailbox.store.mail.MailboxMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import reactor.core.publisher.Mono;
+
 class StoreRightManagerTest {
 
     static final MailboxId MAILBOX_ID = TestId.of(42);
-    static final long UID_VALIDITY = 3421L;
+    static final UidValidity UID_VALIDITY = UidValidity.of(3421L);
 
     StoreRightManager storeRightManager;
     MailboxSession aliceSession;
@@ -67,7 +70,7 @@ class StoreRightManagerTest {
     MailboxMapper mockedMailboxMapper;
 
     @BeforeEach
-    void setup() throws MailboxException {
+    void setup() {
         aliceSession = MailboxSessionUtil.create(MailboxFixture.ALICE);
         MailboxSessionMapperFactory mockedMapperFactory = mock(MailboxSessionMapperFactory.class);
         mockedMailboxMapper = mock(MailboxMapper.class);
@@ -81,10 +84,10 @@ class StoreRightManagerTest {
     }
 
     @Test
-    void hasRightShouldThrowMailboxNotFoundExceptionWhenMailboxDoesNotExist() throws MailboxException {
+    void hasRightShouldThrowMailboxNotFoundExceptionWhenMailboxDoesNotExist() {
         MailboxPath mailboxPath = MailboxPath.forUser(MailboxFixture.ALICE, "unexisting mailbox");
         when(mockedMailboxMapper.findMailboxByPath(mailboxPath))
-            .thenThrow(new MailboxNotFoundException(""));
+            .thenReturn(Mono.error(new MailboxNotFoundException("")));
 
         assertThatThrownBy(() ->
             storeRightManager.hasRight(mailboxPath, Right.Read, aliceSession))
@@ -92,7 +95,7 @@ class StoreRightManagerTest {
     }
 
     @Test
-    void hasRightShouldReturnTrueWhenTheUserOwnTheMailbox() throws MailboxException {
+    void hasRightShouldReturnTrueWhenTheUserOwnTheMailbox() {
         Mailbox mailbox = new Mailbox(MailboxPath.forUser(ALICE, MailboxConstants.INBOX), UID_VALIDITY, MAILBOX_ID);
 
         assertThat(storeRightManager.hasRight(mailbox, Right.Write, aliceSession))
@@ -118,7 +121,7 @@ class StoreRightManagerTest {
     }
 
     @Test
-    void hasRightShouldReturnFalseWhenTheUserDoesNotOwnTheMailboxAndHasNoRightOnIt() throws MailboxException {
+    void hasRightShouldReturnFalseWhenTheUserDoesNotOwnTheMailboxAndHasNoRightOnIt() {
         Mailbox mailbox = new Mailbox(MailboxPath.forUser(BOB, MailboxConstants.INBOX), UID_VALIDITY, MAILBOX_ID);
 
         assertThat(storeRightManager.hasRight(mailbox, Right.Write, aliceSession))

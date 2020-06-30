@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.mail.Flags;
 import javax.persistence.Basic;
@@ -48,10 +49,12 @@ import org.apache.james.mailbox.jpa.JPAId;
 import org.apache.james.mailbox.jpa.mail.model.JPAMailbox;
 import org.apache.james.mailbox.jpa.mail.model.JPAProperty;
 import org.apache.james.mailbox.jpa.mail.model.JPAUserFlag;
+import org.apache.james.mailbox.model.AttachmentId;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.ComposedMessageIdWithMetaData;
-import org.apache.james.mailbox.model.MessageAttachment;
+import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.DelegatingMailboxMessage;
 import org.apache.james.mailbox.store.mail.model.FlagsFactory;
@@ -59,11 +62,11 @@ import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.mail.model.Property;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
-import org.apache.james.mime4j.MimeException;
 import org.apache.openjpa.persistence.jdbc.ElementJoinColumn;
 import org.apache.openjpa.persistence.jdbc.ElementJoinColumns;
 import org.apache.openjpa.persistence.jdbc.Index;
 
+import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Objects;
 
@@ -84,10 +87,10 @@ import com.google.common.base.Objects;
         @NamedQuery(name = "findDeletedMessagesInMailboxWithUID", query = "SELECT message FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid=:uidParam AND message.deleted=TRUE ORDER BY message.uid ASC"),
         @NamedQuery(name = "findDeletedMessagesInMailboxAfterUID", query = "SELECT message FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid>=:uidParam AND message.deleted=TRUE ORDER BY message.uid ASC"),
 
-        @NamedQuery(name = "deleteDeletedMessagesInMailbox", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.deleted=TRUE"),
-        @NamedQuery(name = "deleteDeletedMessagesInMailboxBetweenUIDs", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid BETWEEN :fromParam AND :toParam AND message.deleted=TRUE"),
-        @NamedQuery(name = "deleteDeletedMessagesInMailboxWithUID", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid=:uidParam AND message.deleted=TRUE"),
-        @NamedQuery(name = "deleteDeletedMessagesInMailboxAfterUID", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid>=:uidParam AND message.deleted=TRUE"),
+        @NamedQuery(name = "deleteMessagesInMailbox", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam"),
+        @NamedQuery(name = "deleteMessagesInMailboxBetweenUIDs", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid BETWEEN :fromParam AND :toParam"),
+        @NamedQuery(name = "deleteMessagesInMailboxWithUID", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid=:uidParam"),
+        @NamedQuery(name = "deleteMessagesInMailboxAfterUID", query = "DELETE FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.uid>=:uidParam"),
 
         @NamedQuery(name = "countUnseenMessagesInMailbox", query = "SELECT COUNT(message) FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam AND message.seen=FALSE"),
         @NamedQuery(name = "countMessagesInMailbox", query = "SELECT COUNT(message) FROM MailboxMessage message WHERE message.mailbox.mailboxId = :idParam"),
@@ -503,12 +506,22 @@ public abstract class AbstractJPAMailboxMessage implements MailboxMessage {
     }
 
     @Override
-    public List<MessageAttachment> getAttachments() {
+    public List<MessageAttachmentMetadata> getAttachments() {
         try {
-            return new MessageParser().retrieveAttachments(getFullContent());
-        } catch (MimeException | IOException e) {
+            AtomicInteger counter = new AtomicInteger(0);
+            return new MessageParser().retrieveAttachments(getFullContent())
+                .stream()
+                .map(Throwing.<ParsedAttachment, MessageAttachmentMetadata>function(
+                    attachmentMetadata -> attachmentMetadata.asMessageAttachment(generateFixedAttachmentId(counter.incrementAndGet())))
+                    .sneakyThrow())
+                .collect(Guavate.toImmutableList());
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private AttachmentId generateFixedAttachmentId(int position) {
+        return AttachmentId.from(getMailboxId().serialize() + "-" + getUid().asLong() + "-" + position);
     }
 
     @Override

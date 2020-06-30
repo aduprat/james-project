@@ -44,10 +44,12 @@ import org.apache.james.backends.cassandra.migration.MigrationTask;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.SchemaTransition;
 import org.apache.james.backends.cassandra.versions.SchemaVersion;
+import org.apache.james.json.DTOConverter;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.apache.james.webadmin.dto.WebAdminMigrationTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.After;
@@ -87,7 +89,8 @@ public class CassandraMigrationRoutesTest {
         webAdminServer = WebAdminUtils.createWebAdminServer(
                 new CassandraMigrationRoutes(new CassandraMigrationService(schemaVersionDAO, transitions, version -> new MigrationTask(schemaVersionDAO, transitions, version), LATEST_VERSION),
                     taskManager, jsonTransformer),
-                new TasksRoutes(taskManager, jsonTransformer))
+                new TasksRoutes(taskManager, jsonTransformer,
+                    DTOConverter.of(WebAdminMigrationTaskAdditionalInformationDTO.module())))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)

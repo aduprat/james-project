@@ -31,11 +31,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.event.json.EventSerializer;
 import org.apache.james.util.MDCBuilder;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 
 import reactor.core.Disposable;
@@ -48,6 +47,7 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
+import reactor.util.retry.Retry;
 
 class GroupRegistration implements Registration {
     static class WorkQueueName {
@@ -72,7 +72,7 @@ class GroupRegistration implements Registration {
     static final String RETRY_COUNT = "retry-count";
     static final int DEFAULT_RETRY_COUNT = 0;
 
-    private final MailboxListener mailboxListener;
+    private final MailboxListener.ReactiveMailboxListener mailboxListener;
     private final WorkQueueName queueName;
     private final Receiver receiver;
     private final Runnable unregisterGroup;
@@ -81,18 +81,20 @@ class GroupRegistration implements Registration {
     private final GroupConsumerRetry retryHandler;
     private final WaitDelayGenerator delayGenerator;
     private final Group group;
+    private final RetryBackoffConfiguration retryBackoff;
     private final MailboxListenerExecutor mailboxListenerExecutor;
     private Optional<Disposable> receiverSubscriber;
 
-    GroupRegistration(ReactorRabbitMQChannelPool reactorRabbitMQChannelPool, EventSerializer eventSerializer,
-                      MailboxListener mailboxListener, Group group, RetryBackoffConfiguration retryBackoff,
+    GroupRegistration(Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer,
+                      MailboxListener.ReactiveMailboxListener mailboxListener, Group group, RetryBackoffConfiguration retryBackoff,
                       EventDeadLetters eventDeadLetters,
                       Runnable unregisterGroup, MailboxListenerExecutor mailboxListenerExecutor) {
         this.eventSerializer = eventSerializer;
         this.mailboxListener = mailboxListener;
         this.queueName = WorkQueueName.of(group);
-        this.sender = reactorRabbitMQChannelPool.getSender();
-        this.receiver = reactorRabbitMQChannelPool.createReceiver();
+        this.sender = sender;
+        this.receiver = receiverProvider.createReceiver();
+        this.retryBackoff = retryBackoff;
         this.mailboxListenerExecutor = mailboxListenerExecutor;
         this.receiverSubscriber = Optional.empty();
         this.unregisterGroup = unregisterGroup;
@@ -106,6 +108,7 @@ class GroupRegistration implements Registration {
             .of(createGroupWorkQueue()
                 .then(retryHandler.createRetryExchange(queueName))
                 .then(Mono.fromCallable(() -> this.consumeWorkQueue()))
+                .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.elastic()))
                 .block());
         return this;
     }
@@ -138,8 +141,7 @@ class GroupRegistration implements Registration {
         int currentRetryCount = getRetryCount(acknowledgableDelivery);
 
         return delayGenerator.delayIfHaveTo(currentRetryCount)
-            .publishOn(Schedulers.elastic())
-            .flatMap(any -> Mono.fromRunnable(Throwing.runnable(() -> runListener(event))))
+            .flatMap(any -> runListener(event))
             .onErrorResume(throwable -> retryHandler.handleRetry(event, currentRetryCount, throwable))
             .then(Mono.fromRunnable(acknowledgableDelivery::ack));
     }
@@ -148,8 +150,8 @@ class GroupRegistration implements Registration {
         return retryHandler.retryOrStoreToDeadLetter(event, DEFAULT_RETRY_COUNT);
     }
 
-    private void runListener(Event event) throws Exception {
-        mailboxListenerExecutor.execute(
+    private Mono<Void> runListener(Event event) {
+        return mailboxListenerExecutor.execute(
             mailboxListener,
             MDCBuilder.create()
                 .addContext(EventBus.StructuredLoggingFields.GROUP, group),

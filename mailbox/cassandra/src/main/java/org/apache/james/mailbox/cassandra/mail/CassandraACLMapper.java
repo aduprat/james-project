@@ -35,12 +35,12 @@ import org.apache.james.backends.cassandra.init.configuration.CassandraConfigura
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.mailbox.acl.ACLDiff;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
+import org.apache.james.mailbox.cassandra.json.MailboxACLJsonConverter;
 import org.apache.james.mailbox.cassandra.table.CassandraACLTable;
 import org.apache.james.mailbox.cassandra.table.CassandraMailboxTable;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
-import org.apache.james.mailbox.store.json.MailboxACLJsonConverter;
 import org.apache.james.util.FunctionalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +49,7 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import reactor.core.publisher.Mono;
@@ -64,6 +65,7 @@ public class CassandraACLMapper {
     private final PreparedStatement conditionalInsertStatement;
     private final PreparedStatement conditionalUpdateStatement;
     private final PreparedStatement readStatement;
+    private final PreparedStatement deleteStatement;
 
     @Inject
     public CassandraACLMapper(Session session, CassandraUserMailboxRightsDAO userMailboxRightsDAO, CassandraConfiguration cassandraConfiguration) {
@@ -72,7 +74,15 @@ public class CassandraACLMapper {
         this.conditionalInsertStatement = prepareConditionalInsert(session);
         this.conditionalUpdateStatement = prepareConditionalUpdate(session);
         this.readStatement = prepareReadStatement(session);
+        this.deleteStatement = prepareDelete(session);
         this.userMailboxRightsDAO = userMailboxRightsDAO;
+    }
+
+    private PreparedStatement prepareDelete(Session session) {
+        return session.prepare(
+            QueryBuilder.delete().from(CassandraACLTable.TABLE_NAME)
+                .where(eq(CassandraACLTable.ID, bindMarker(CassandraACLTable.ID)))
+                .ifExists());
     }
 
     private PreparedStatement prepareConditionalInsert(Session session) {
@@ -102,8 +112,7 @@ public class CassandraACLMapper {
 
     public Mono<MailboxACL> getACL(CassandraId cassandraId) {
         return getStoredACLRow(cassandraId)
-            .map(row -> getAcl(cassandraId, row))
-            .switchIfEmpty(Mono.just(MailboxACL.EMPTY));
+            .map(row -> getAcl(cassandraId, row));
     }
 
     private MailboxACL getAcl(CassandraId cassandraId, Row row) {
@@ -111,21 +120,19 @@ public class CassandraACLMapper {
         return deserializeACL(cassandraId, serializedACL);
     }
 
-    public ACLDiff updateACL(CassandraId cassandraId, MailboxACL.ACLCommand command) throws MailboxException {
-        MailboxACL replacement = MailboxACL.EMPTY.apply(command);
-        return updateAcl(cassandraId, aclWithVersion -> aclWithVersion.apply(command), replacement)
+    public Mono<ACLDiff> updateACL(CassandraId cassandraId, MailboxACL.ACLCommand command) {
+        return Mono.fromCallable(() -> MailboxACL.EMPTY.apply(command))
+        .flatMap(replacement -> updateAcl(cassandraId, aclWithVersion -> aclWithVersion.apply(command), replacement))
             .flatMap(aclDiff -> userMailboxRightsDAO.update(cassandraId, aclDiff)
             .thenReturn(aclDiff))
-            .blockOptional()
-            .orElseThrow(() -> new MailboxException("Unable to update ACL"));
+            .switchIfEmpty(Mono.error(new MailboxException("Unable to update ACL")));
     }
 
-    public ACLDiff setACL(CassandraId cassandraId, MailboxACL mailboxACL) throws MailboxException {
+    public Mono<ACLDiff> setACL(CassandraId cassandraId, MailboxACL mailboxACL) {
         return updateAcl(cassandraId, acl -> new ACLWithVersion(acl.version, mailboxACL), mailboxACL)
             .flatMap(aclDiff -> userMailboxRightsDAO.update(cassandraId, aclDiff)
             .thenReturn(aclDiff))
-            .blockOptional()
-            .orElseThrow(() -> new MailboxException("Unable to update ACL"));
+            .switchIfEmpty(Mono.defer(() -> Mono.error(new MailboxException("Unable to update ACL"))));
     }
 
     private Mono<ACLDiff> updateAcl(CassandraId cassandraId, Function<ACLWithVersion, ACLWithVersion> aclTransformation, MailboxACL replacement) {
@@ -157,11 +164,17 @@ public class CassandraACLMapper {
             .map(any -> aclWithVersion.mailboxACL);
     }
 
+    public Mono<Void> delete(CassandraId cassandraId) {
+        return executor.executeVoid(
+            deleteStatement.bind()
+                .setUUID(CassandraACLTable.ID, cassandraId.asUuid()));
+    }
+
     private Mono<MailboxACL> insertACL(CassandraId cassandraId, MailboxACL acl) {
-        return Mono.defer(() -> executor.executeReturnApplied(
+        return executor.executeReturnApplied(
             conditionalInsertStatement.bind()
                     .setUUID(CassandraACLTable.ID, cassandraId.asUuid())
-                    .setString(CassandraACLTable.ACL, convertAclToJson(acl))))
+                    .setString(CassandraACLTable.ACL, convertAclToJson(acl)))
             .filter(FunctionalUtils.identityPredicate())
             .map(any -> acl);
     }

@@ -65,7 +65,7 @@ class ConfigurationAggregate {
         this.history = history;
         this.state = State.initial();
 
-        history.getEvents().forEach(this::apply);
+        history.getEventsJava().forEach(this::apply);
     }
 
     List<? extends Event> registerConfiguration(CassandraMailQueueViewConfiguration configuration) {

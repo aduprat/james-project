@@ -40,12 +40,15 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MessageRangeException;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.metrics.api.MetricFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.steveash.guavate.Guavate;
+
+import reactor.core.publisher.Mono;
 
 public abstract class AbstractMessageRangeProcessor<R extends AbstractMessageRangeRequest> extends AbstractMailboxProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMessageRangeProcessor.class);
@@ -69,7 +72,7 @@ public abstract class AbstractMessageRangeProcessor<R extends AbstractMessageRan
         try {
             MailboxSession mailboxSession = session.getMailboxSession();
 
-            if (!getMailboxManager().mailboxExists(targetMailbox, mailboxSession)) {
+            if (!Mono.from(getMailboxManager().mailboxExists(targetMailbox, mailboxSession)).block()) {
                 no(request, responder, HumanReadableText.FAILURE_NO_SUCH_MAILBOX, StatusResponse.ResponseCode.tryCreate());
             } else {
                 StatusResponse.ResponseCode code = handleRanges(request, session, targetMailbox, mailboxSession);
@@ -101,10 +104,10 @@ public abstract class AbstractMessageRangeProcessor<R extends AbstractMessageRan
                 .sneakyThrow())
             .map(IdRange::from)
             .collect(Guavate.toImmutableList()))
-            .toArray(new IdRange[0]);
+            .toArray(IdRange[]::new);
 
         // get folder UIDVALIDITY
-        Long uidValidity = mailbox.getMailboxEntity().getUidValidity();
+        UidValidity uidValidity = mailbox.getMailboxEntity().getUidValidity();
 
         return StatusResponse.ResponseCode.copyUid(uidValidity, request.getIdSet(), resultUids);
     }

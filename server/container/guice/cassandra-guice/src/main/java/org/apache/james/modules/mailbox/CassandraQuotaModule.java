@@ -35,7 +35,6 @@ import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
 import org.apache.james.mailbox.store.quota.ListeningCurrentQuotaUpdater;
 import org.apache.james.mailbox.store.quota.QuotaUpdater;
-import org.apache.james.mailbox.store.quota.StoreCurrentQuotaManager;
 import org.apache.james.mailbox.store.quota.StoreQuotaManager;
 
 import com.google.inject.AbstractModule;
@@ -59,7 +58,6 @@ public class CassandraQuotaModule extends AbstractModule {
         bind(QuotaManager.class).to(StoreQuotaManager.class);
         bind(QuotaRootResolver.class).to(DefaultUserQuotaRootResolver.class);
         bind(QuotaRootDeserializer.class).to(DefaultUserQuotaRootResolver.class);
-        bind(StoreCurrentQuotaManager.class).to(CassandraCurrentQuotaManager.class);
         bind(UserQuotaRootResolver.class).to(DefaultUserQuotaRootResolver.class);
 
         Multibinder<CassandraModule> cassandraDataDefinitions = Multibinder.newSetBinder(binder(), CassandraModule.class);
@@ -67,7 +65,7 @@ public class CassandraQuotaModule extends AbstractModule {
 
         bind(ListeningCurrentQuotaUpdater.class).in(Scopes.SINGLETON);
         bind(QuotaUpdater.class).to(ListeningCurrentQuotaUpdater.class);
-        Multibinder.newSetBinder(binder(), MailboxListener.GroupMailboxListener.class)
+        Multibinder.newSetBinder(binder(), MailboxListener.ReactiveGroupMailboxListener.class)
             .addBinding()
             .to(ListeningCurrentQuotaUpdater.class);
     }

@@ -20,6 +20,8 @@
 
 package org.apache.james.task.eventsourcing.distributed;
 
+import static org.apache.james.util.ReactorUtils.publishIfPresent;
+
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -28,7 +30,7 @@ import java.util.UUID;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
-import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.cassandra.JsonEventSerializer;
 import org.apache.james.lifecycle.api.Startable;
@@ -54,31 +56,29 @@ import reactor.rabbitmq.Sender;
 
 public class RabbitMQTerminationSubscriber implements TerminationSubscriber, Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQTerminationSubscriber.class);
-    private static final Integer MAX_CHANNELS_NUMBER = 1;
     private static final String EXCHANGE_NAME = "terminationSubscriberExchange";
     private static final String QUEUE_NAME_PREFIX = "terminationSubscriber";
     private static final String ROUTING_KEY = "terminationSubscriberRoutingKey";
 
     private final JsonEventSerializer serializer;
-    private final ReactorRabbitMQChannelPool channelPool;
+    private final Sender sender;
+    private final ReceiverProvider receiverProvider;
     private final String queueName;
     private UnicastProcessor<OutboundMessage> sendQueue;
     private DirectProcessor<Event> listener;
     private Disposable sendQueueHandle;
     private Disposable listenQueueHandle;
     private Receiver listenerReceiver;
-    private Sender sender;
 
     @Inject
-    RabbitMQTerminationSubscriber(ReactorRabbitMQChannelPool channelPool, JsonEventSerializer serializer) {
+    RabbitMQTerminationSubscriber(Sender sender, ReceiverProvider receiverProvider, JsonEventSerializer serializer) {
+        this.sender = sender;
+        this.receiverProvider = receiverProvider;
         this.serializer = serializer;
-        this.channelPool = channelPool;
         this.queueName = QUEUE_NAME_PREFIX + UUID.randomUUID().toString();
     }
 
     public void start() {
-        sender = channelPool.getSender();
-
         sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)).block();
         sender.declare(QueueSpecification.queue(queueName).durable(false).autoDelete(true)).block();
         sender.bind(BindingSpecification.binding(EXCHANGE_NAME, ROUTING_KEY, queueName)).block();
@@ -88,12 +88,13 @@ public class RabbitMQTerminationSubscriber implements TerminationSubscriber, Sta
             .subscribeOn(Schedulers.elastic())
             .subscribe();
 
-        listenerReceiver = channelPool.createReceiver();
+        listenerReceiver = receiverProvider.createReceiver();
         listener = DirectProcessor.create();
         listenQueueHandle = listenerReceiver
             .consumeAutoAck(queueName)
             .subscribeOn(Schedulers.elastic())
-            .<Event>handle((delivery, sink) -> toEvent(delivery).ifPresent(sink::next))
+            .map(this::toEvent)
+            .handle(publishIfPresent())
             .subscribe(listener::onNext);
     }
 
@@ -132,6 +133,5 @@ public class RabbitMQTerminationSubscriber implements TerminationSubscriber, Sta
         Optional.ofNullable(sendQueueHandle).ifPresent(Disposable::dispose);
         Optional.ofNullable(listenQueueHandle).ifPresent(Disposable::dispose);
         Optional.ofNullable(listenerReceiver).ifPresent(Receiver::close);
-        Optional.ofNullable(sender).ifPresent(Sender::close);
     }
 }

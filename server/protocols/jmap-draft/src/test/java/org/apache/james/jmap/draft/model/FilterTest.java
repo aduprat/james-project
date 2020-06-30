@@ -19,6 +19,9 @@
 package org.apache.james.jmap.draft.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.stream.IntStream;
 
 import org.apache.james.jmap.draft.json.ObjectMapperFactory;
 import org.apache.james.mailbox.inmemory.InMemoryId;
@@ -90,5 +93,100 @@ public class FilterTest {
                                 FilterCondition.builder().build()));
         Filter actual = parser.readValue(json, Filter.class);
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    public void flattenShouldNoopWhenCondition() {
+        FilterCondition condition = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+
+        assertThat(condition.breadthFirstVisit(10))
+            .containsExactly(condition);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldUnboxOneLevelOperator() {
+        FilterCondition condition1 = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+        FilterCondition condition2 = FilterCondition.builder()
+            .to("alice@domain.tld")
+            .build();
+
+        assertThat(FilterOperator.and(condition1, condition2)
+                .breadthFirstVisit())
+            .containsExactly(condition1, condition2);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldUnboxTwoLevelOperator() {
+        FilterCondition condition1 = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+        FilterCondition condition2 = FilterCondition.builder()
+            .to("alice@domain.tld")
+            .build();
+        FilterCondition condition3 = FilterCondition.builder()
+            .to("cedric@domain.tld")
+            .build();
+
+        assertThat(FilterOperator.and(condition1, FilterOperator.and(condition2, condition3))
+                .breadthFirstVisit())
+            .containsOnly(condition1, condition2, condition3);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldBeBreadthFirst() {
+        FilterCondition condition1 = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+        FilterCondition condition2 = FilterCondition.builder()
+            .to("alice@domain.tld")
+            .build();
+        FilterCondition condition3 = FilterCondition.builder()
+            .to("cedric@domain.tld")
+            .build();
+        FilterCondition condition4 = FilterCondition.builder()
+            .to("david@domain.tld")
+            .build();
+
+        assertThat(FilterOperator.and(condition1, FilterOperator.and(condition2, condition3), condition4)
+                .breadthFirstVisit())
+            .containsOnly(condition1, condition2, condition3, condition4);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldAllowUpToLimitNesting() {
+        FilterCondition condition = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+
+        Filter nestedFilter = IntStream.range(0, 10).boxed().reduce(
+            (Filter) condition,
+            (filter, i) -> FilterOperator.and(filter),
+            (f1, f2) -> {
+                throw new RuntimeException("unsupported combination");
+            });
+
+        assertThat(nestedFilter.breadthFirstVisit())
+            .containsExactly(condition);
+    }
+
+    @Test
+    public void breadthFirstVisitShouldRejectDeepNesting() {
+        FilterCondition condition = FilterCondition.builder()
+            .to("bob@domain.tld")
+            .build();
+
+        Filter nestedFilter = IntStream.range(0, 11).boxed().reduce(
+            (Filter) condition,
+            (filter, i) -> FilterOperator.and(filter),
+            (f1, f2) -> {
+                throw new RuntimeException("unsupported combination");
+            });
+
+        assertThatThrownBy(nestedFilter::breadthFirstVisit)
+            .isInstanceOf(Filter.TooDeepFilterHierarchyException.class);
     }
 }

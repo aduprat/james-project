@@ -37,6 +37,14 @@ import com.google.common.base.Preconditions;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * Will be removed in future release (3.6.0).
+ * Prefer using CachedBlobStore.
+ *
+ * Introduced to fasten small blob access, its usage could be compared to a cache, but with a sub-optimal
+ * implementation (no eviction, default replication factor, no  circuit breaking).
+ */
+@Deprecated
 public class HybridBlobStore implements BlobStore {
     @FunctionalInterface
     public interface RequireLowCost {
@@ -129,7 +137,7 @@ public class HybridBlobStore implements BlobStore {
     @Override
     public Mono<BlobId> save(BucketName bucketName, byte[] data, StoragePolicy storagePolicy) {
         return selectBlobStore(storagePolicy, Mono.just(data.length > configuration.getSizeThreshold()))
-            .flatMap(blobStore -> blobStore.save(bucketName, data, storagePolicy));
+            .flatMap(blobStore -> Mono.from(blobStore.save(bucketName, data, storagePolicy)));
     }
 
     @Override
@@ -138,7 +146,7 @@ public class HybridBlobStore implements BlobStore {
 
         BufferedInputStream bufferedInputStream = new BufferedInputStream(data, configuration.getSizeThreshold() + 1);
         return selectBlobStore(storagePolicy, Mono.fromCallable(() -> isItABigStream(bufferedInputStream)))
-            .flatMap(blobStore -> blobStore.save(bucketName, bufferedInputStream, storagePolicy));
+            .flatMap(blobStore -> Mono.from(blobStore.save(bucketName, bufferedInputStream, storagePolicy)));
     }
 
     private Mono<BlobStore> selectBlobStore(StoragePolicy storagePolicy, Mono<Boolean> largeData) {
@@ -180,9 +188,9 @@ public class HybridBlobStore implements BlobStore {
 
     @Override
     public Mono<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
-        return Mono.defer(() -> highPerformanceBlobStore.readBytes(bucketName, blobId))
+        return Mono.defer(() -> Mono.from(highPerformanceBlobStore.readBytes(bucketName, blobId)))
             .onErrorResume(this::logAndReturnEmpty)
-            .switchIfEmpty(Mono.defer(() -> lowCostBlobStore.readBytes(bucketName, blobId)));
+            .switchIfEmpty(Mono.defer(() -> Mono.from(lowCostBlobStore.readBytes(bucketName, blobId))));
     }
 
     @Override
@@ -199,14 +207,14 @@ public class HybridBlobStore implements BlobStore {
 
     @Override
     public Mono<Void> deleteBucket(BucketName bucketName) {
-        return Mono.defer(() -> lowCostBlobStore.deleteBucket(bucketName))
+        return Mono.defer(() -> Mono.from(lowCostBlobStore.deleteBucket(bucketName)))
             .and(highPerformanceBlobStore.deleteBucket(bucketName))
             .onErrorResume(this::logDeleteFailureAndReturnEmpty);
     }
 
     @Override
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
-        return Mono.defer(() -> lowCostBlobStore.delete(bucketName, blobId))
+        return Mono.defer(() -> Mono.from(lowCostBlobStore.delete(bucketName, blobId)))
             .and(highPerformanceBlobStore.delete(bucketName, blobId))
             .onErrorResume(this::logDeleteFailureAndReturnEmpty);
     }

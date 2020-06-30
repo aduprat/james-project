@@ -2,7 +2,11 @@
 #
 # VERSION	1.0
 
-FROM openjdk:8u222-jre
+FROM adoptopenjdk:11-jre-hotspot
+
+# Install unzip
+RUN apt-get update
+RUN apt-get install -y unzip
 
 # Ports that are used
 #
@@ -17,7 +21,7 @@ EXPOSE 25 110 143 465 587 993 4000
 
 WORKDIR /root
 
-ARG VERSION=3.5.0-SNAPSHOT
+ARG VERSION=3.6.0-SNAPSHOT
 
 # Get data we need to run James : build results and configuration
 ADD "destination/james-server-app-$VERSION-app.zip" "/root/james-server-app-$VERSION-app.zip"

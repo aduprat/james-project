@@ -25,11 +25,10 @@ import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mailbox.store.CombinationManagerTestSystem;
 
 public class InMemoryCombinationManagerTestSystem extends CombinationManagerTestSystem {
-    private static final int UID_VALIDITY = 1024;
-
     private final InMemoryMailboxManager inMemoryMailboxManager;
 
     public InMemoryCombinationManagerTestSystem(MailboxManager mailboxManager, MessageIdManager messageIdManager) {
@@ -46,7 +45,7 @@ public class InMemoryCombinationManagerTestSystem extends CombinationManagerTest
     public Mailbox createMailbox(MailboxPath mailboxPath, MailboxSession session) throws MailboxException {
         inMemoryMailboxManager.createMailbox(mailboxPath, session);
         MessageManager messageManager = inMemoryMailboxManager.getMailbox(mailboxPath, session);
-        return new Mailbox(mailboxPath, UID_VALIDITY, messageManager.getId());
+        return messageManager.getMailboxEntity();
     }
 
 }

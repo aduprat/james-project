@@ -38,18 +38,21 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.json.DTOConverter;
+import org.apache.james.queue.api.MailQueueName;
 import org.apache.james.queue.api.Mails;
 import org.apache.james.queue.api.ManageableMailQueue;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
-import org.apache.james.queue.memory.MemoryMailQueueFactory.MemoryMailQueue;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
 import org.apache.james.task.TaskManager;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.service.ClearMailQueueTask;
+import org.apache.james.webadmin.service.ClearMailQueueTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.service.DeleteMailsFromMailQueueTask;
+import org.apache.james.webadmin.service.WebAdminDeleteMailsFromMailQueueTaskAdditionalInformationDTO;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.test.FakeMail;
@@ -68,10 +71,10 @@ import io.restassured.specification.RequestSpecification;
 
 class MailQueueRoutesTest {
 
-    static final String FIRST_QUEUE = "first one";
-    static final String SECOND_QUEUE = "second one";
-    static final String THIRD_QUEUE = "third one";
-    static final String FOURTH_QUEUE = "fourth one";
+    static final MailQueueName FIRST_QUEUE = MailQueueName.of("first one");
+    static final MailQueueName SECOND_QUEUE = MailQueueName.of("second one");
+    static final MailQueueName THIRD_QUEUE = MailQueueName.of("third one");
+    static final MailQueueName FOURTH_QUEUE = MailQueueName.of("fourth one");
     static final String SENDER_1_JAMES_ORG = "sender1@james.org";
     static final String SENDER_2_JAMES_ORG = "sender2@james.org";
     static final String RECIPIENT_JAMES_ORG = "recipient@james.org";
@@ -91,7 +94,9 @@ class MailQueueRoutesTest {
 
         return WebAdminUtils.createWebAdminServer(
                 new MailQueueRoutes(mailQueueFactory, jsonTransformer, taskManager),
-                new TasksRoutes(taskManager, jsonTransformer))
+                new TasksRoutes(taskManager, jsonTransformer,
+                    DTOConverter.of(WebAdminDeleteMailsFromMailQueueTaskAdditionalInformationDTO.module(),
+                        ClearMailQueueTaskAdditionalInformationDTO.module())))
             .start();
     }
 
@@ -130,7 +135,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("limit", "-1")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -142,7 +147,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("limit", "0")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -154,7 +159,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("limit", "abc")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -192,7 +197,7 @@ class MailQueueRoutesTest {
                     .jsonPath()
                     .getList(".");
 
-                assertThat(actual).containsOnly(FIRST_QUEUE);
+                assertThat(actual).containsOnly(FIRST_QUEUE.asString());
             }
 
             @Test
@@ -212,7 +217,12 @@ class MailQueueRoutesTest {
                     .jsonPath()
                     .getList(".");
 
-                assertThat(actual).containsOnly(FIRST_QUEUE, SECOND_QUEUE, THIRD_QUEUE, FOURTH_QUEUE);
+                assertThat(actual)
+                    .containsOnly(
+                        FIRST_QUEUE.asString(),
+                        SECOND_QUEUE.asString(),
+                        THIRD_QUEUE.asString(),
+                        FOURTH_QUEUE.asString());
             }
 
             @Test
@@ -220,7 +230,7 @@ class MailQueueRoutesTest {
                 mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -229,12 +239,12 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnMailsWhenSome() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 queue.enQueue(Mails.defaultMail().name("name").build());
                 queue.enQueue(Mails.defaultMail().name("name").build());
 
                 when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -243,7 +253,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnMailDetailsWhenSome() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail);
 
@@ -253,7 +263,7 @@ class MailQueueRoutesTest {
                         .collect(Guavate.toImmutableList());
 
                 when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -265,14 +275,14 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnEmptyWhenNoDelayedMailsAndAskFor() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail);
 
                 given()
                     .param("delayed", "true")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -281,14 +291,14 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnCurrentMailsWhenMailsAndAskForNotDelayed() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail);
 
                 given()
                     .param("delayed", "false")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -297,14 +307,14 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnDelayedMailsWhenAskFor() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail, 10, TimeUnit.MINUTES);
 
                 given()
                     .param("delayed", "true")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -313,7 +323,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void listMailsShouldReturnOneMailWhenMailsAndAskForALimitOfOne() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail);
                 queue.enQueue(mail);
@@ -322,7 +332,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("limit", "1")
                 .when()
-                    .get(FIRST_QUEUE + "/mails")
+                    .get(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.OK_200)
                     .contentType(ContentType.JSON)
@@ -336,21 +346,21 @@ class MailQueueRoutesTest {
 
         @Test
         public void getMailQueueShouldReturnTheMailQueueDataWhenMailQueueExists() throws Exception {
-            MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+            MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
             queue.enQueue(Mails.defaultMail().name("name").build());
 
             when()
-                .get(FIRST_QUEUE)
+                .get(FIRST_QUEUE.asString())
             .then()
                 .statusCode(HttpStatus.OK_200)
-                .body("name", equalTo(FIRST_QUEUE))
+                .body("name", equalTo(FIRST_QUEUE.asString()))
                 .body("size", equalTo(1));
         }
 
         @Test
         void getMailQueueShouldReturnNotFoundWhenMailQueueDoesntExist() {
             when()
-                .get(FIRST_QUEUE)
+                .get(FIRST_QUEUE.asString())
             .then()
                 .statusCode(HttpStatus.NOT_FOUND_404);
         }
@@ -370,7 +380,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "true")
                     .body("{\"delayed\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                     .then()
                     .statusCode(HttpStatus.NO_CONTENT_204);
             }
@@ -393,7 +403,7 @@ class MailQueueRoutesTest {
                 given()
                     .body("{\"delayed\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -406,7 +416,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "false")
                     .body("{\"delayed\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -419,7 +429,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "wrong")
                     .body("{\"delayed\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -431,7 +441,7 @@ class MailQueueRoutesTest {
                 given()
                     .queryParam("delayed", "true")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -444,7 +454,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "true")
                     .body("{\"xx\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -460,7 +470,7 @@ class MailQueueRoutesTest {
                         "\"delayed\": \"false\"" +
                         "}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -473,7 +483,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "true")
                     .body("{\"xx\":")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -486,7 +496,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "false")
                     .body("{\"delayed\": \"true\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -499,7 +509,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "false")
                     .body("{\"delayed\": \"string\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails")
+                    .patch(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -509,7 +519,7 @@ class MailQueueRoutesTest {
         class SideEffects {
             @Test
             public void forcingDelayedMailsDeliveryShouldActuallyChangePropertyOnMails() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 FakeMail mail = Mails.defaultMail().name("name").build();
                 queue.enQueue(mail, 10L, TimeUnit.MINUTES);
                 queue.enQueue(mail, 10L, TimeUnit.MINUTES);
@@ -519,7 +529,7 @@ class MailQueueRoutesTest {
                     .queryParam("delayed", "true")
                     .body("{\"delayed\": \"false\"}")
                 .when()
-                    .patch(FIRST_QUEUE + "/mails");
+                    .patch(FIRST_QUEUE.asString() + "/mails");
 
                 assertThat(queue.browse())
                     .toIterable()
@@ -542,7 +552,7 @@ class MailQueueRoutesTest {
             @Test
             void deleteMailsShouldReturnNotFoundWhenMailQueueDoesntExist() {
                 when()
-                    .delete(FIRST_QUEUE + "/mails")
+                    .delete(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.NOT_FOUND_404);
             }
@@ -554,7 +564,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("sender", "123")
                 .when()
-                    .delete(FIRST_QUEUE + "/mails")
+                    .delete(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -566,7 +576,7 @@ class MailQueueRoutesTest {
                 given()
                     .param("recipient", "123")
                 .when()
-                    .delete(FIRST_QUEUE + "/mails")
+                    .delete(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -579,7 +589,7 @@ class MailQueueRoutesTest {
                     .param("name", "mailName")
                     .param("recipient", "recipient@james.org")
                 .when()
-                    .delete(FIRST_QUEUE + "/mails")
+                    .delete(FIRST_QUEUE.asString() + "/mails")
                  .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -591,7 +601,7 @@ class MailQueueRoutesTest {
                     .param("sender", "sender@james.org")
                     .param("name", "mailName")
                 .when()
-                    .delete(FIRST_QUEUE + "/mails")
+                    .delete(FIRST_QUEUE.asString() + "/mails")
                 .then()
                     .statusCode(HttpStatus.BAD_REQUEST_400);
             }
@@ -606,7 +616,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("sender", SENDER_1_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -624,7 +634,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("name", "mailName")
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -642,7 +652,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("recipient", RECIPIENT_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -656,7 +666,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsTasksShouldHaveDetailsWhenSenderIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -670,7 +680,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("sender", SENDER_1_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -682,7 +692,7 @@ class MailQueueRoutesTest {
                     .body("status", is("completed"))
                     .body("taskId", is(notNullValue()))
                     .body("type", is(DeleteMailsFromMailQueueTask.TYPE.asString()))
-                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE))
+                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE.asString()))
                     .body("additionalInformation.initialCount", is(2))
                     .body("additionalInformation.remainingCount", is(1))
                     .body("additionalInformation.sender", is(SENDER_1_JAMES_ORG))
@@ -693,7 +703,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsTasksShouldHaveDetailsWhenNameIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -705,7 +715,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("name", FAKE_MAIL_NAME_1)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -717,7 +727,7 @@ class MailQueueRoutesTest {
                     .body("status", is("completed"))
                     .body("taskId", is(notNullValue()))
                     .body("type", is(DeleteMailsFromMailQueueTask.TYPE.asString()))
-                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE))
+                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE.asString()))
                     .body("additionalInformation.initialCount", is(2))
                     .body("additionalInformation.remainingCount", is(1))
                     .body("additionalInformation.name", is(FAKE_MAIL_NAME_1))
@@ -728,7 +738,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsTasksShouldHaveDetailsWhenRecipientIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -747,7 +757,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("recipient", RECIPIENT_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -759,7 +769,7 @@ class MailQueueRoutesTest {
                     .body("status", is("completed"))
                     .body("taskId", is(notNullValue()))
                     .body("type", is(DeleteMailsFromMailQueueTask.TYPE.asString()))
-                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE))
+                    .body("additionalInformation.mailQueueName", is(FIRST_QUEUE.asString()))
                     .body("additionalInformation.initialCount", is(3))
                     .body("additionalInformation.remainingCount", is(1))
                     .body("additionalInformation.recipient", is(RECIPIENT_JAMES_ORG))
@@ -774,7 +784,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsShouldDeleteMailsWhenSenderIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -788,7 +798,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("sender", SENDER_1_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -808,7 +818,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsShouldDeleteMailsWhenNameIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -820,7 +830,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("name", FAKE_MAIL_NAME_1)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -840,7 +850,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsShouldDeleteMailsWhenRecipientIsGiven() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
                 queue.enQueue(FakeMail.builder()
                     .name(FAKE_MAIL_NAME_1)
@@ -859,7 +869,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("recipient", RECIPIENT_JAMES_ORG)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -880,7 +890,7 @@ class MailQueueRoutesTest {
 
             @Test
             public void deleteMailsShouldDeleteMailsWhenTheyAreMatching() throws Exception {
-                MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+                MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
                 String recipient = "recipient@james.org";
                 queue.enQueue(Mails.defaultMail()
                         .name("name")
@@ -891,7 +901,7 @@ class MailQueueRoutesTest {
 
                 String taskId = with()
                     .param("recipient", recipient)
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                     .jsonPath()
                     .getString("taskId");
 
@@ -921,7 +931,7 @@ class MailQueueRoutesTest {
             mailQueueFactory.createQueue(FIRST_QUEUE);
 
             when()
-                .delete(SECOND_QUEUE + "/mails")
+                .delete(SECOND_QUEUE.asString() + "/mails")
             .then()
                 .statusCode(HttpStatus.NOT_FOUND_404);
         }
@@ -931,7 +941,7 @@ class MailQueueRoutesTest {
             mailQueueFactory.createQueue(FIRST_QUEUE);
 
             String taskId = with()
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                 .jsonPath()
                 .getString("taskId");
 
@@ -945,7 +955,7 @@ class MailQueueRoutesTest {
 
         @Test
         public void clearMailQueueShouldHaveDetailsWhenNoQueryParameters() throws Exception {
-            MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+            MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
             queue.enQueue(FakeMail.builder()
                 .name(FAKE_MAIL_NAME_1)
@@ -960,7 +970,7 @@ class MailQueueRoutesTest {
                 .build());
 
             String taskId = with()
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                 .jsonPath()
                 .getString("taskId");
 
@@ -972,7 +982,7 @@ class MailQueueRoutesTest {
                 .body("status", is("completed"))
                 .body("taskId", is(notNullValue()))
                 .body("type", is(ClearMailQueueTask.TYPE.asString()))
-                .body("additionalInformation.mailQueueName", is(FIRST_QUEUE))
+                .body("additionalInformation.mailQueueName", is(FIRST_QUEUE.asString()))
                 .body("additionalInformation.initialCount", is(3))
                 .body("additionalInformation.remainingCount", is(0))
                 .body("startedDate", is(notNullValue()))
@@ -982,7 +992,7 @@ class MailQueueRoutesTest {
 
         @Test
         void clearMailQueueShouldDeleteAllMailsInQueueWhenNoQueryParameters() throws Exception {
-            MemoryMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
+            MemoryMailQueueFactory.MemoryCacheableMailQueue queue = mailQueueFactory.createQueue(FIRST_QUEUE);
 
             queue.enQueue(FakeMail.builder()
                 .name(FAKE_MAIL_NAME_1)
@@ -997,7 +1007,7 @@ class MailQueueRoutesTest {
                 .build());
 
             String taskId = with()
-                .delete(FIRST_QUEUE + "/mails")
+                .delete(FIRST_QUEUE.asString() + "/mails")
                 .jsonPath()
                 .getString("taskId");
 

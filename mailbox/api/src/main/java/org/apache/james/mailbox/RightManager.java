@@ -19,11 +19,15 @@
 
 package org.apache.james.mailbox;
 
+import java.util.List;
+
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.MailboxACL;
+import org.apache.james.mailbox.model.MailboxACL.Rfc4314Rights;
 import org.apache.james.mailbox.model.MailboxACL.Right;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.reactivestreams.Publisher;
 
 public interface RightManager {
     /**
@@ -76,7 +80,7 @@ public interface RightManager {
      * @return result suitable for the LISTRIGHTS IMAP command
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
-    MailboxACL.Rfc4314Rights[] listRights(MailboxPath mailboxPath, MailboxACL.EntryKey identifier, MailboxSession session) throws MailboxException;
+    List<MailboxACL.Rfc4314Rights> listRights(MailboxPath mailboxPath, MailboxACL.EntryKey identifier, MailboxSession session) throws MailboxException;
 
     MailboxACL listRights(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
 
@@ -91,7 +95,7 @@ public interface RightManager {
      *         {@code session.getUser()} is null.
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
-    MailboxACL.Rfc4314Rights myRights(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
+    Rfc4314Rights myRights(MailboxPath mailboxPath, MailboxSession session) throws MailboxException;
 
 
     /**
@@ -105,7 +109,7 @@ public interface RightManager {
      *         {@code session.getUser()} is null.
      * @throws MailboxException in case of unknown mailbox or unsupported right
      */
-    MailboxACL.Rfc4314Rights myRights(MailboxId mailboxId, MailboxSession session) throws MailboxException;
+    Publisher<Rfc4314Rights> myRights(MailboxId mailboxId, MailboxSession session);
 
     /**
      * Update the Mailbox ACL of the designated mailbox. We can either ADD REPLACE or REMOVE entries.

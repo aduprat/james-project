@@ -132,12 +132,14 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
             assertIsUserOwnerOfMailboxes(mailboxIds, mailboxSession);
             performCreate(create, responseBuilder, mailboxSession);
         } catch (MailboxSendingNotAllowedException e) {
+            LOG.debug("{} is not allowed to send a mail using {} identity", e.getConnectedUser().asString(), e.getFromField());
+
             responseBuilder.notCreated(create.getCreationId(),
                     SetError.builder()
                         .type(SetError.Type.INVALID_PROPERTIES)
                         .properties(MessageProperty.from)
-                        .description("Invalid 'from' field. Must be " +
-                                e.getAllowedFrom())
+                        .description("Invalid 'from' field. One accepted value is " +
+                                e.getConnectedUser().asString())
                         .build());
 
         } catch (InvalidDraftKeywordsException e) {
@@ -287,7 +289,7 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
     private MessageWithId handleOutboxMessages(CreationMessageEntry entry, MailboxSession session) throws MailboxException, MessagingException, IOException {
         assertUserCanSendFrom(session.getUser(), entry.getValue().getFrom());
         MetaDataWithContent newMessage = messageAppender.appendMessageInMailboxes(entry, toMailboxIds(entry), session);
-        MessageFullView jmapMessage = messageFullViewFactory.fromMetaDataWithContent(newMessage);
+        MessageFullView jmapMessage = messageFullViewFactory.fromMetaDataWithContent(newMessage).block();
         Envelope envelope = EnvelopeUtils.fromMessage(jmapMessage);
         messageSender.sendMessage(newMessage, envelope, session);
         referenceUpdater.updateReferences(entry.getValue().getHeaders(), session);
@@ -296,17 +298,27 @@ public class SetMessagesCreationProcessor implements SetMessagesProcessor {
 
     @VisibleForTesting
     void assertUserCanSendFrom(Username connectedUser, Optional<DraftEmailer> from) throws MailboxSendingNotAllowedException {
-        if (!from.flatMap(DraftEmailer::getEmail)
-                .filter(email -> canSendFrom.userCanSendFrom(connectedUser, Username.of(email)))
-                .isPresent()) {
+
+        Optional<Username> maybeFromUser = from.flatMap(DraftEmailer::getEmail)
+            .map(Username::of);
+
+        if (!canSendMailUsingIdentity(connectedUser, maybeFromUser)) {
             String allowedSender = connectedUser.asString();
-            throw new MailboxSendingNotAllowedException(allowedSender);
+            throw new MailboxSendingNotAllowedException(connectedUser, maybeFromUser);
+        } else {
+            LOG.debug("{} is allowed to send a mail using {} identity", connectedUser.asString(), from);
         }
+    }
+
+    private boolean canSendMailUsingIdentity(Username connectedUser, Optional<Username> maybeFromUser) {
+        return maybeFromUser
+                .filter(fromUser -> canSendFrom.userCanSendFrom(connectedUser, fromUser))
+                .isPresent();
     }
 
     private MessageWithId handleDraftMessages(CreationMessageEntry entry, MailboxSession session) throws MailboxException, MessagingException, IOException {
         MetaDataWithContent newMessage = messageAppender.appendMessageInMailboxes(entry, toMailboxIds(entry), session);
-        MessageFullView jmapMessage = messageFullViewFactory.fromMetaDataWithContent(newMessage);
+        MessageFullView jmapMessage = messageFullViewFactory.fromMetaDataWithContent(newMessage).block();
         return new ValueWithId.MessageWithId(entry.getCreationId(), jmapMessage);
     }
 

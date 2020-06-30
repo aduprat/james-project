@@ -27,7 +27,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Date;
-import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -44,23 +43,29 @@ import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
+import org.apache.james.mailbox.events.Event;
 import org.apache.james.mailbox.events.EventBus;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.mailbox.events.MailboxListener;
+import org.apache.james.mailbox.events.Registration;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageMetaData;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.TestId;
+import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.event.EventFactory;
 import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.util.concurrent.NamedThreadFactory;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.core.publisher.Mono;
 
 
 public class SelectedMailboxImplTest {
@@ -69,6 +74,7 @@ public class SelectedMailboxImplTest {
     private static final MessageUid EMITTED_EVENT_UID = MessageUid.of(5);
     private static final ModSeq MOD_SEQ = ModSeq.of(12);
     private static final int SIZE = 38;
+    private static final String CUSTOM_FLAG = "custom";
 
     private ExecutorService executorService;
     private MailboxManager mailboxManager;
@@ -122,9 +128,35 @@ public class SelectedMailboxImplTest {
             mailboxManager,
             eventBus,
             imapSession,
-            mailboxPath);
+            messageManager);
 
         assertThat(selectedMailbox.getLastUid().get()).isEqualTo(EMITTED_EVENT_UID);
+    }
+
+    @Ignore("JAMES-3177 SelectedMailboxImpl is not thread safe")
+    @Test
+    public void customFlagsEventShouldNotFailWhenConcurrentWithCreation() throws Exception {
+        AtomicInteger successCount = new AtomicInteger(0);
+        doAnswer(generateEmitCustomFlagEventAnswer(successCount))
+            .when(eventBus)
+            .register(any(MailboxListener.class), eq(mailboxIdRegistrationKey));
+
+        new SelectedMailboxImpl(mailboxManager, eventBus, imapSession, messageManager);
+
+        assertThat(successCount.get()).isEqualTo(1);
+    }
+
+    @Ignore("JAMES-3177 SelectedMailboxImpl is not thread safe")
+    @Test
+    public void applicableFlagsShouldBeWellUpdatedWhenConcurrentWithCreation() throws Exception {
+        AtomicInteger successCount = new AtomicInteger(0);
+        doAnswer(generateEmitCustomFlagEventAnswer(successCount))
+            .when(eventBus)
+            .register(any(MailboxListener.class), eq(mailboxIdRegistrationKey));
+
+        SelectedMailboxImpl selectedMailbox = new SelectedMailboxImpl(mailboxManager, eventBus, imapSession, messageManager);
+
+        assertThat(selectedMailbox.getApplicableFlags().getUserFlags()).containsOnly(CUSTOM_FLAG);
     }
 
     @Test
@@ -138,7 +170,7 @@ public class SelectedMailboxImplTest {
             mailboxManager,
             eventBus,
             imapSession,
-            mailboxPath);
+            messageManager);
 
         assertThat(successCount.get())
             .as("Get the incremented value in case of successful event processing.")
@@ -152,28 +184,50 @@ public class SelectedMailboxImplTest {
         };
     }
 
-    private Answer<Iterator<MessageUid>> generateEmitEventAnswer(AtomicInteger success) {
+    private Answer<Mono<Registration>> generateEmitEventAnswer(AtomicInteger success) {
+        return generateEmitEventAnswer(event(), success);
+    }
+
+    private Answer<Mono<Registration>> generateEmitCustomFlagEventAnswer(AtomicInteger success) {
+        return generateEmitEventAnswer(customFlagEvent(), success);
+    }
+
+    private Answer<Mono<Registration>> generateEmitEventAnswer(Event event, AtomicInteger success) {
         return invocation -> {
             Object[] args = invocation.getArguments();
             MailboxListener mailboxListener = (MailboxListener) args[0];
             executorService.submit(() -> {
                 try {
-                    emitEvent(mailboxListener);
+                    mailboxListener.event(event);
                     success.incrementAndGet();
                 } catch (Exception e) {
                     LOGGER.error("Error while processing event on a concurrent thread", e);
                 }
             });
-            return null;
+            return Mono.just(() -> {});
         };
     }
 
-    private void emitEvent(MailboxListener mailboxListener) throws Exception {
-        mailboxListener.event(EventFactory.added()
+    private Event event() {
+        return EventFactory.added()
             .randomEventId()
             .mailboxSession(MailboxSessionUtil.create(Username.of("user")))
             .mailbox(mailbox)
             .addMetaData(new MessageMetaData(EMITTED_EVENT_UID, MOD_SEQ, new Flags(), SIZE, new Date(), new DefaultMessageId()))
-            .build());
+            .build();
+    }
+
+    private Event customFlagEvent() {
+        return EventFactory.flagsUpdated()
+            .randomEventId()
+            .mailboxSession(MailboxSessionUtil.create(Username.of("user")))
+            .mailbox(mailbox)
+            .updatedFlag(UpdatedFlags.builder()
+                .modSeq(ModSeq.of(36))
+                .newFlags(new Flags(CUSTOM_FLAG))
+                .oldFlags(new Flags())
+                .uid(MessageUid.of(12))
+                .build())
+            .build();
     }
 }

@@ -26,18 +26,20 @@ import static org.apache.james.webadmin.Constants.JSON_CONTENT_TYPE;
 import static org.apache.james.webadmin.Constants.SEPARATOR;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
 import org.apache.james.CassandraExtension;
+import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.webadmin.integration.WebAdminServerIntegrationTest;
 import org.apache.james.webadmin.integration.WebadminIntegrationTestModule;
 import org.apache.james.webadmin.routes.AliasRoutes;
@@ -57,13 +59,17 @@ import io.restassured.http.ContentType;
 class RabbitMQWebAdminServerIntegrationTest extends WebAdminServerIntegrationTest {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+        CassandraRabbitMQJamesConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
+            .build())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new RabbitMQExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
+        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
             .overrideWith(new WebadminIntegrationTestModule()))
         .build();
 
@@ -145,7 +151,7 @@ class RabbitMQWebAdminServerIntegrationTest extends WebAdminServerIntegrationTes
 
         String taskId = with()
             .queryParam("action", "SolveInconsistencies")
-            .post(CassandraMappingsRoutes.ROOT_PATH)
+        .post(CassandraMappingsRoutes.ROOT_PATH)
             .jsonPath()
             .get("taskId");
 
@@ -164,12 +170,78 @@ class RabbitMQWebAdminServerIntegrationTest extends WebAdminServerIntegrationTes
             .body("source", hasItems(ALIAS_1, ALIAS_2));
     }
 
+    @Test
+    void solveMailboxInconsistenciesTaskShouldBeExposed() {
+        // schema version 6 or higher required to run solve mailbox inconsistencies task
+        String taskId = with().post(UPGRADE_TO_LATEST_VERSION)
+            .jsonPath()
+            .get("taskId");
+
+        with()
+            .get("/tasks/" + taskId + "/await")
+        .then()
+            .body("status", is("completed"));
+
+        taskId = with()
+            .header("I-KNOW-WHAT-I-M-DOING", "ALL-SERVICES-ARE-OFFLINE")
+            .queryParam("task", "SolveInconsistencies")
+        .post("/mailboxes")
+            .jsonPath()
+            .get("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("status", is("completed"))
+            .body("type", is("solve-mailbox-inconsistencies"))
+            .body("additionalInformation.processedMailboxEntries", is(0))
+            .body("additionalInformation.processedMailboxPathEntries", is(0))
+            .body("additionalInformation.errors", is(0))
+            .body("additionalInformation.fixedInconsistencies", hasSize(0))
+            .body("additionalInformation.conflictingEntries", hasSize(0));
+    }
+
+    @Test
+    void solveMessageInconsistenciesTasksShouldBeExposed() {
+        String taskId = with().post(UPGRADE_TO_LATEST_VERSION)
+            .jsonPath()
+            .get("taskId");
+
+        with()
+            .get("/tasks/" + taskId + "/await")
+        .then()
+            .body("status", is("completed"));
+
+        taskId = with()
+            .queryParam("task", "SolveInconsistencies")
+            .post("/messages")
+            .jsonPath()
+            .get("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("status", is("completed"))
+            .body("type", is("solve-message-inconsistencies"))
+            .body("additionalInformation.processedImapUidEntries", is(0))
+            .body("additionalInformation.processedMessageIdEntries", is(0))
+            .body("additionalInformation.addedMessageIdEntries", is(0))
+            .body("additionalInformation.updatedMessageIdEntries", is(0))
+            .body("additionalInformation.removedMessageIdEntries", is(0))
+            .body("additionalInformation.runningOptions.messagesPerSecond", is(100))
+            .body("additionalInformation.fixedInconsistencies", hasSize(0))
+            .body("additionalInformation.errors", hasSize(0));
+    }
 
     @Test
     void getSwaggerShouldContainDistributedEndpoints() {
         when()
             .get(SwaggerRoutes.SWAGGER_ENDPOINT)
-            .then()
+        .then()
             .statusCode(HttpStatus.OK_200)
             .body(containsString("\"tags\":[\"Cassandra Mappings Operations\"]"))
             .body(containsString("{\"name\":\"MessageIdReIndexing\"}"));

@@ -27,6 +27,169 @@ Change list:
  - [User mailboxes reIndexing endpoint change](#user-mailboxes-reindexing-endpoint-change)
  - [Hybrid blobStore replaces Union blobStore](#hybrid-blobstore-replaces-union-blobstore)
  - [New forbidden set of characters in Usernames local part](#new-forbidden-set-of-characters-in-usernames-local-part)
+ - [UidValidity and maildir](#uid-validity-and-maildir)
+ - [UidValidity and JPA or Cassandra](#uid-validity-and-jpa-or-cassandra)
+ - [Differentiation between domain alias and domain mapping](#differentiation-between-domain-alias-and-domain-mapping)
+ - [ProtocolSession storng typing](#protocolsession-storng-typing)
+ - [Tune Cassandra time serie tables options](#tune-cassandra-time-serie-tables-options)
+ - [Log4J2 Adoption](#log4j2-adoption)
+ - [Drop Cassandra schema version prior version 5](#drop-cassandra-schema-version-prior-version-5)
+ - [mailqueue.size.metricsEnabled now defaults to false](#mailqueuesizemetricsenabled-now-defaults-to-false)
+
+### mailqueue.size.metricsEnabled now defaults to false
+
+Date 03/06/2020
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-2760
+
+Concerned product: Distributed James
+
+`mailqueue.size.metricsEnabled` is now false by default. If you previously used it, please be aware that it can have 
+some important performance penalty, and set it explicitly to `true` if you still need it.
+
+### Drop Cassandra schema version prior version 5
+
+Date 06/04/2020
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-2997
+
+Concerned product: Distributed James, Cassandra-guice James server
+
+In an effort to simplify the code base, we dropped support for Cassandra schema version prior version 5.
+
+Installation running older schema version than version 5 needs to rely on release 3.5.0 to upgrade to schema version 7,
+before upgrading to an eventual newer version.
+
+### Log4J2 Adoption
+
+Date 20/03/2020
+
+SHA-1 XXX
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3122
+
+Concerned product: Spring
+
+As Log4J 1.x is not compatible with Java 9+ runtime, we adopted Log4J2 as a logging solution for the Spring product.
+
+As a consequence, the log configuration file for Spring product needs to be updated. See an example 
+[here](server/app/src/main/resources/log4j2.xml).
+
+Also, the deprecated `LogEnabled` API will be removed. We recommend extension developers to obtain their
+Logger instance using the SLF4J `LoggerFactory` class instead.
+
+### Tune Cassandra time serie tables options
+
+Date 18/03/2020
+
+SHA-1 XXX
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3121
+
+Impacted product: Guice distributed James
+
+Our usage of Cassandra for the time series have been improved by fine tuning the compaction strategy and
+the read repair option.
+
+#### Upgrade procedure
+
+In order to unlock these improvements we advise you running the following commands on existing instalations
+
+```
+ALTER TABLE james_keyspace.deletedMailsV2 WITH compaction = { 'class' :  'TimeWindowCompactionStrategy'  };
+ALTER TABLE james_keyspace.enqueuedMailsV3 WITH  compaction = {'compaction_window_size': '1',
+                                                               'compaction_window_unit': 'HOURS',
+                                                               'class': 'org.apache.cassandra.db.compaction.TimeWindowCompaction' };
+ALTER TABLE james_keyspace.applicableFlag WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.attachmentMessageId WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.attachmentV2 WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.firstUnseen WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.mailboxCounters WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.mailboxRecents WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.messageCounter WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.messageDeleted WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.modseq WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.imapUidTable WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.messageIdTable WITH compaction = { 'class' :  'SizeTieredCompactionStrategy'  };
+ALTER TABLE james_keyspace.eventStore WITH compaction = { 'class' :  'LeveledCompactionStrategy'  };
+ALTER TABLE james_keyspace.attachmentOwners WITH bloom_filter_fp_chance = 0.01;
+ALTER TABLE james_keyspace.deletedMailsV2 WITH bloom_filter_fp_chance = 0.01;
+ALTER TABLE james_keyspace.firstUnseen WITH bloom_filter_fp_chance = 0.01;
+ALTER TABLE james_keyspace.mailboxCounters WITH bloom_filter_fp_chance = 0.01;
+ALTER TABLE james_keyspace.messageCounter WITH bloom_filter_fp_chance = 0.01;
+ALTER TABLE james_keyspace.deletedMailsV2 WITH read_repair_chance = 0.0;
+ALTER TABLE james_keyspace.enqueuedMailsV3 WITH read_repair_chance = 0.0;
+```
+
+### ProtocolSession storng typing
+
+Date 19/03/2020
+
+SHA-1 58b1d879ab
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3119
+
+`ProtocolSession` have been reworked in order to increase type strengh
+and reduce errors.
+
+Now `setAttachment` and `getAttachment` are expecting an `AttachmentKey` as key
+and return an `Optional` instead of a `null`-able value.
+
+Moreover `setAttachment` do not allow `null` values and `removeAttachment`
+should be use now to remove elements.
+
+### Differentiation between domain alias and domain mapping
+
+Date 10/03/2020
+
+SHA-1 XXX
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3112
+
+Concerned products: Guice products
+
+We added strong typing for Domain aliases (exposed by this 
+[endpoint](https://github.com/apache/james-project/blob/master/src/site/markdown/server/manage-webadmin.md#get-the-list-of-aliases-for-a-domain))
+to distinguish them from domain mappings (exposed by this 
+[endpoint](https://github.com/apache/james-project/blob/master/src/site/markdown/server/manage-webadmin.md#creating-address-domain-aliases)).
+
+Read [this page](https://james.apache.org/server/config-recipientrewritetable.html) to understand the difference between 
+Domain Alias and Domain Mapping.
+
+As a consequence, existing values returned by the domain alias endpoint (before this fix this is domain mapping) will be 
+considered as domain mappings and might need to be deleted and re-created.
+ 
+### UidValidity and JPA or Cassandra
+
+Date 26/02/2020
+
+SHA-1 XXX
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3074
+
+Concerned products: JPA mailbox backend, Cassandra mailbox backend
+
+Non-Maildir backends could generate '0' uid validity with a low probability, which is invalid regarding RFC-3501. 
+We changed the generation mechanism to use valid UidValidity for newly created mailboxes. Regarding persisted mailboxes,
+we regenerate invalid UidValidity upon reads.
+
+While this sanitizing is transparent to the end user and the admin, it might lead to rare IMAP client full mailbox
+ resynchronisation. (one chance out of two billions).
+
+### UidValidity and maildir
+
+Date 26/02/2020
+
+SHA-1 XXX
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3074
+
+Concerned products: Spring with maildir backend
+
+Maildir generated too big values to conform to RFC-3501. We changed the generation mechanism to use valid UidValidity 
+for newly created mailboxes. Regarding persisted mailboxes, we regenerate invalid UidValidity upon reads.
+
+While this sanitizing is transparent to the end user and the admin, it might lead to IMAP client full resynchronisation.
  
 ### New forbidden set of characters in Usernames local part
 
@@ -121,7 +284,15 @@ The distributed James project (relying on Guice, Cassandra, ElasticSearch, Rabbi
 
 In order to enforce task sequential processing at the cluster level, we rely on a single active consumer, which is a feature introduced in RabbitMQ 3.8.
 
-Users of distributed James product thus need to upgrade their RabbitMQ server to be at least version 3.8.
+Users of distributed James product thus need to upgrade their RabbitMQ server to be at least version 3.8.1.
+
+#### Upgrade procedure
+
+Ensure [no task is running or scheduled](http://james.apache.org/server/manage-webadmin.html#Listing_tasks).
+
+ - Stop James nodes
+ - drop `taskManagerWorkQueue` queue in RabbitMQ
+ - Start new James nodes
 
 #### Enforce usernames to be lower cased
 
@@ -509,7 +680,7 @@ We will assume that Cassandra had been installed with a debian package. Upgrade 
 1. Update Cassandra dists in `/etc/apt/sources.list.d/cassandra.list` to match 311x repository
 
 ```
-deb http://www.apache.org/dist/cassandra/debian 311x main
+deb http://downloads.apache.org/cassandra/debian 311x main
 ```
 
 

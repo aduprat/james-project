@@ -38,7 +38,7 @@ import org.apache.james.imap.processor.EnableProcessor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MessageManager.MetaData;
+import org.apache.james.mailbox.MessageManager.MailboxMetaData;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MessageRangeException;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -60,20 +60,17 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
 
     @Override
     protected void processRequest(FetchRequest request, ImapSession session, Responder responder) {
-        final boolean useUids = request.isUseUids();
-        final IdRange[] idSet = request.getIdSet();
-        final FetchData fetch = computeFetchData(request, session);
+        boolean useUids = request.isUseUids();
+        IdRange[] idSet = request.getIdSet();
+        FetchData fetch = computeFetchData(request, session);
 
         try {
             final long changedSince = fetch.getChangedSince();
 
-            final MessageManager mailbox = getSelectedMailbox(session);
+            MessageManager mailbox = getSelectedMailbox(session)
+                .orElseThrow(() -> new MailboxException("Session not in SELECTED state"));
 
-            if (mailbox == null) {
-                throw new MailboxException("Session not in SELECTED state");
-            }
-
-            final boolean vanished = fetch.getVanished();
+            boolean vanished = fetch.getVanished();
             if (vanished && !EnableProcessor.getEnabledCapabilities(session).contains(ImapConstants.SUPPORTS_QRESYNC)) {
                 taggedBad(request, responder, HumanReadableText.QRESYNC_NOT_ENABLED);
                 return;
@@ -85,7 +82,7 @@ public class FetchProcessor extends AbstractMailboxProcessor<FetchRequest> {
             }
             final MailboxSession mailboxSession = session.getMailboxSession();
 
-            MetaData metaData = mailbox.getMetaData(false, mailboxSession, org.apache.james.mailbox.MessageManager.MetaData.FetchGroup.NO_COUNT);
+            MailboxMetaData metaData = mailbox.getMetaData(false, mailboxSession, MailboxMetaData.FetchGroup.NO_COUNT);
             if (fetch.getChangedSince() != -1 || fetch.contains(Item.MODSEQ)) {
                 // Enable CONDSTORE as this is a CONDSTORE enabling command
                 condstoreEnablingCommand(session, responder,  metaData, true);

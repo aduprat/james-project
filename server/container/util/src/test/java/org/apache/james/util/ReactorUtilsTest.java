@@ -19,25 +19,139 @@
 package org.apache.james.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
+import org.slf4j.MDC;
 
+import com.github.steveash.guavate.Guavate;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Bytes;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 class ReactorUtilsTest {
+    static final int BUFFER_SIZE = 5;
+    
+    @Nested
+    class Throttling {
+        @Test
+        void windowShouldThrowWhenMaxSizeIsNegative() {
+            assertThatThrownBy(() -> ReactorUtils.<Integer, Integer>throttle()
+                    .elements(-1)
+                    .per(Duration.ofSeconds(1))
+                    .forOperation(Mono::just))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void windowShouldThrowWhenMaxSizeIsZero() {
+            assertThatThrownBy(() -> ReactorUtils.throttle()
+                    .elements(0)
+                    .per(Duration.ofSeconds(1))
+                    .forOperation(Mono::just))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void windowShouldThrowWhenDurationIsNegative() {
+            assertThatThrownBy(() -> ReactorUtils.throttle()
+                    .elements(1)
+                    .per(Duration.ofSeconds(-1))
+                    .forOperation(Mono::just))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void windowShouldThrowWhenDurationIsZero() {
+            assertThatThrownBy(() -> ReactorUtils.throttle()
+                    .elements(1)
+                    .per(Duration.ofSeconds(0))
+                    .forOperation(Mono::just))
+                .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        void throttleShouldApplyMaxSize() {
+            int windowMaxSize = 3;
+            Duration windowDuration = Duration.ofMillis(100);
+
+            Stopwatch stopwatch = Stopwatch.createUnstarted();
+
+            ImmutableList<Long> windowMembership = Flux.range(0, 10)
+                .transform(ReactorUtils.<Integer, Long>throttle()
+                    .elements(windowMaxSize)
+                    .per(windowDuration)
+                    .forOperation(i -> Mono.fromCallable(() -> stopwatch.elapsed(TimeUnit.MILLISECONDS))))
+                .map(i -> i / 100)
+                .doOnSubscribe(signal -> stopwatch.start())
+                .collect(Guavate.toImmutableList())
+                .block();
+
+            assertThat(windowMembership)
+                .containsExactly(0L, 0L, 0L, 1L, 1L, 1L, 2L, 2L, 2L, 3L);
+        }
+
+        @Test
+        void largeWindowShouldNotOverrunIntermediateBuffers() {
+            // windowMaxSize exceeds Queues.SMALL_BUFFER_SIZE & Queues.SMALL_BUFFER_SIZE (256 by default)
+            // Combined with slow operations, this ensures we are not filling up intermediate buffers.
+            int windowMaxSize = 3_000;
+            Duration windowDuration = Duration.ofMillis(100);
+
+            assertThatCode(() -> Flux.range(0, 10_000)
+                    .transform(ReactorUtils.<Integer, Long>throttle()
+                        .elements(windowMaxSize)
+                        .per(windowDuration)
+                        .forOperation(i -> Mono.delay(windowDuration.multipliedBy(2))))
+                    .blockLast())
+                .doesNotThrowAnyException();
+        }
+
+        @Test
+        void throttleDownStreamConcurrencyShouldNotExceedWindowMaxSize() {
+            int windowMaxSize = 3;
+            Duration windowDuration = Duration.ofMillis(100);
+
+            AtomicInteger ongoingProcessing = new AtomicInteger();
+
+            Flux<Integer> originalFlux = Flux.range(0, 10);
+            Function<Integer, Publisher<Integer>> longRunningOperation =
+                any -> Mono.fromCallable(ongoingProcessing::incrementAndGet)
+                    .flatMap(i -> Mono.delay(windowDuration.multipliedBy(2)).thenReturn(i))
+                    .flatMap(i -> Mono.fromRunnable(ongoingProcessing::decrementAndGet).thenReturn(i));
+
+            ImmutableList<Integer> ongoingProcessingUponComputationStart = originalFlux
+                .transform(ReactorUtils.<Integer, Integer>throttle()
+                    .elements(windowMaxSize)
+                    .per(windowDuration)
+                    .forOperation(longRunningOperation))
+                .collect(Guavate.toImmutableList())
+                .block();
+
+            assertThat(ongoingProcessingUponComputationStart)
+                .allSatisfy(processingCount -> assertThat(processingCount).isLessThanOrEqualTo(windowMaxSize));
+        }
+    }
 
     @Nested
     class ExecuteAndEmpty {
@@ -86,7 +200,7 @@ class ReactorUtilsTest {
     class ToInputStream {
 
         @Test
-        void givenAFluxOf3BytesShouldReadSuccessfullyTheWholeSource() throws IOException, InterruptedException {
+        void givenAFluxOf3BytesShouldReadSuccessfullyTheWholeSource() {
             byte[] bytes = "foo bar ...".getBytes(StandardCharsets.US_ASCII);
 
             Flux<ByteBuffer> source = Flux.fromIterable(Bytes.asList(bytes))
@@ -101,7 +215,7 @@ class ReactorUtilsTest {
         }
 
         @Test
-        void givenALongFluxBytesShouldReadSuccessfullyTheWholeSource() throws IOException, InterruptedException {
+        void givenALongFluxBytesShouldReadSuccessfullyTheWholeSource() {
             byte[] bytes = RandomStringUtils.randomAlphabetic(41111).getBytes(StandardCharsets.US_ASCII);
 
             Flux<ByteBuffer> source = Flux.fromIterable(Bytes.asList(bytes))
@@ -156,7 +270,7 @@ class ReactorUtilsTest {
         }
 
         @Test
-        void givenAFluxOf3BytesWithAnEmptyByteArrayShouldConsumeOnlyTheReadBytesAndThePrefetch() throws IOException, InterruptedException {
+        void givenAFluxOf3BytesWithAnEmptyByteArrayShouldConsumeOnlyTheReadBytesAndThePrefetch() throws IOException {
             AtomicInteger generateElements = new AtomicInteger(0);
             Flux<ByteBuffer> source = Flux.just(
                 new byte[] {0, 1, 2},
@@ -193,6 +307,135 @@ class ReactorUtilsTest {
             //make sure reactor is done with prefetch
             Thread.sleep(200);
             assertThat(generateElements.get()).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    class ToChunks {
+        @Test
+        void givenInputStreamSmallerThanBufferSizeShouldReturnOneChunk() {
+            byte[] bytes = "foo".getBytes(StandardCharsets.UTF_8);
+            InputStream source = new ByteArrayInputStream(bytes);
+
+            List<ByteBuffer> expected = ImmutableList.of(ByteBuffer.wrap(bytes));
+
+            List<ByteBuffer> chunks = ReactorUtils.toChunks(source, BUFFER_SIZE)
+                .collectList()
+                .block();
+
+            assertThat(chunks).isEqualTo(expected);
+        }
+
+        @Test
+        void givenInputStreamEqualToBufferSizeShouldReturnOneChunk() {
+            byte[] bytes = "foooo".getBytes(StandardCharsets.UTF_8);
+            InputStream source = new ByteArrayInputStream(bytes);
+
+            List<ByteBuffer> expected = ImmutableList.of(ByteBuffer.wrap(bytes));
+
+            List<ByteBuffer> chunks = ReactorUtils.toChunks(source, BUFFER_SIZE)
+                .collectList()
+                .block();
+
+            assertThat(chunks).isEqualTo(expected);
+        }
+
+        @Test
+        void givenInputStreamSlightlyBiggerThanBufferSizeShouldReturnTwoChunks() {
+            byte[] bytes = "foobar...".getBytes(StandardCharsets.UTF_8);
+            InputStream source = new ByteArrayInputStream(bytes);
+
+            List<ByteBuffer> expected = ImmutableList.of(
+                ByteBuffer.wrap("fooba".getBytes(StandardCharsets.UTF_8)),
+                ByteBuffer.wrap("r...".getBytes(StandardCharsets.UTF_8)));
+
+            List<ByteBuffer> chunks = ReactorUtils.toChunks(source, BUFFER_SIZE)
+                .collectList()
+                .block();
+
+            assertThat(chunks).isEqualTo(expected);
+        }
+
+        @Test
+        void givenInputStreamBiggerThanBufferSizeShouldReturnMultipleChunks() {
+            byte[] bytes = RandomStringUtils.randomAlphabetic(41111).getBytes(StandardCharsets.UTF_8);
+            InputStream source = new ByteArrayInputStream(bytes);
+
+            List<ByteBuffer> expected = Flux.fromIterable(Bytes.asList(bytes))
+                .window(BUFFER_SIZE)
+                .flatMapSequential(Flux::collectList)
+                .map(Bytes::toArray)
+                .map(ByteBuffer::wrap)
+                .collectList()
+                .block();
+
+            List<ByteBuffer> chunks = ReactorUtils.toChunks(source, BUFFER_SIZE)
+                .collectList()
+                .block();
+
+            assertThat(chunks).isEqualTo(expected);
+        }
+
+        @Test
+        void givenEmptyInputStreamShouldReturnEmptyChunk() {
+            byte[] bytes = "".getBytes(StandardCharsets.UTF_8);
+            InputStream source = new ByteArrayInputStream(bytes);
+
+            List<ByteBuffer> chunks = ReactorUtils.toChunks(source, BUFFER_SIZE)
+                .collectList()
+                .block();
+
+            List<ByteBuffer> expected = ImmutableList.of(ByteBuffer.wrap(bytes));
+
+            assertThat(chunks).isEqualTo(expected);
+        }
+    }
+
+    @Nested
+    class MDCTest {
+        @Test
+        void contextShouldEnhanceMDC() {
+            String value = "value";
+            String key = "key";
+
+            Flux.just(1)
+                .doOnEach(ReactorUtils.log(() -> {
+                    assertThat(MDC.get(key)).isEqualTo(value);
+                }))
+                .subscriberContext(ReactorUtils.context("test", MDCBuilder.of(key, value)))
+                .blockLast();
+        }
+
+        @Test
+        void contextShouldNotOverwritePreviousKeys() {
+            String value1 = "value1";
+            String value2 = "value2";
+            String key = "key";
+
+            Flux.just(1)
+                .doOnEach(ReactorUtils.log(() -> {
+                    assertThat(MDC.get(key)).isEqualTo(value1);
+                }))
+                .subscriberContext(ReactorUtils.context("test", MDCBuilder.of(key, value1)))
+                .subscriberContext(ReactorUtils.context("test", MDCBuilder.of(key, value2)))
+                .blockLast();
+        }
+
+        @Test
+        void contextShouldCombineMDCs() {
+            String value1 = "value1";
+            String value2 = "value2";
+            String key1 = "key1";
+            String key2 = "key2";
+
+            Flux.just(1)
+                .doOnEach(ReactorUtils.log(() -> {
+                    assertThat(MDC.get(key1)).isEqualTo(value1);
+                    assertThat(MDC.get(key2)).isEqualTo(value2);
+                }))
+                .subscriberContext(ReactorUtils.context("test1", MDCBuilder.of(key1, value1)))
+                .subscriberContext(ReactorUtils.context("test2", MDCBuilder.of(key2, value2)))
+                .blockLast();
         }
     }
 }

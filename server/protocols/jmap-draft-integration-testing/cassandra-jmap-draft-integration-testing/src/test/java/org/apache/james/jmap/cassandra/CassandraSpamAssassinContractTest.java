@@ -18,18 +18,13 @@
  ****************************************************************/
 package org.apache.james.jmap.cassandra;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
-import static org.apache.james.modules.TestJMAPServerModule.LIMIT_TO_20_MESSAGES;
-
 import org.apache.james.CassandraExtension;
+import org.apache.james.CassandraJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.draft.methods.integration.SpamAssassinContract;
 import org.apache.james.jmap.draft.methods.integration.SpamAssassinModuleExtension;
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -38,13 +33,11 @@ class CassandraSpamAssassinContractTest implements SpamAssassinContract {
     private static final SpamAssassinModuleExtension spamAssassinExtension = new SpamAssassinModuleExtension();
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(spamAssassinExtension)
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.maximumMessages(LIMIT_TO_20_MESSAGES)))
+        .server(configuration -> CassandraJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule()))
         .build();
 }

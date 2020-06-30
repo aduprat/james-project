@@ -29,7 +29,7 @@ import javax.inject.Singleton;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.components.CassandraTable;
 import org.apache.james.backends.cassandra.components.CassandraType;
-import org.apache.james.backends.cassandra.init.configuration.ClusterConfiguration;
+import org.apache.james.backends.cassandra.init.configuration.KeyspaceConfiguration;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDAO;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionManager;
 
@@ -42,15 +42,17 @@ public class SessionWithInitializedTablesFactory implements Provider<Session> {
     private final Session session;
 
     @Inject
-    public SessionWithInitializedTablesFactory(ClusterConfiguration clusterConfiguration, Cluster cluster, CassandraModule module) {
+    public SessionWithInitializedTablesFactory(KeyspaceConfiguration keyspaceConfiguration,
+                                               Cluster cluster,
+                                               CassandraModule module) {
         this.module = module;
-        this.session = createSession(cluster, clusterConfiguration.getKeyspace());
+        this.session = createSession(cluster, keyspaceConfiguration.getKeyspace());
     }
 
     private Session createSession(Cluster cluster, String keyspace) {
         Session session = cluster.connect(keyspace);
         try {
-            if (allOperationsAreFullyPerformed(session)) {
+            if (allOperationsAreFullyPerformed(session, module)) {
                 new CassandraSchemaVersionDAO(session)
                     .updateVersion(CassandraSchemaVersionManager.MAX_VERSION)
                     .block();
@@ -62,17 +64,17 @@ public class SessionWithInitializedTablesFactory implements Provider<Session> {
         }
     }
 
-    private boolean allOperationsAreFullyPerformed(Session session) {
-        Stream<Boolean> operations = Stream.of(createTypes(session), createTables(session));
+    private boolean allOperationsAreFullyPerformed(Session session, CassandraModule module) {
+        Stream<Boolean> operations = Stream.of(createTypes(session, module), createTables(session, module));
         return operations.allMatch(updated -> updated);
     }
 
-    private boolean createTypes(Session session) {
+    private boolean createTypes(Session session, CassandraModule module) {
         return new CassandraTypesCreator(module, session)
                 .initializeTypes() == CassandraType.InitializationStatus.FULL;
     }
 
-    private boolean createTables(Session session) {
+    private boolean createTables(Session session, CassandraModule module) {
         return new CassandraTableManager(module, session)
             .initializeTables() == CassandraTable.InitializationStatus.FULL;
     }

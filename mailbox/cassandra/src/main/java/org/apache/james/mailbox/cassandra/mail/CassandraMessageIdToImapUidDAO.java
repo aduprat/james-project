@@ -47,7 +47,6 @@ import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.backends.cassandra.utils.CassandraUtils;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
@@ -62,7 +61,6 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
@@ -79,10 +77,10 @@ public class CassandraMessageIdToImapUidDAO {
     private final PreparedStatement update;
     private final PreparedStatement selectAll;
     private final PreparedStatement select;
-    private CassandraUtils cassandraUtils;
+    private final PreparedStatement listStatement;
 
     @Inject
-    public CassandraMessageIdToImapUidDAO(Session session, CassandraMessageId.Factory messageIdFactory, CassandraUtils cassandraUtils) {
+    public CassandraMessageIdToImapUidDAO(Session session, CassandraMessageId.Factory messageIdFactory) {
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.messageIdFactory = messageIdFactory;
         this.delete = prepareDelete(session);
@@ -90,12 +88,7 @@ public class CassandraMessageIdToImapUidDAO {
         this.update = prepareUpdate(session);
         this.selectAll = prepareSelectAll(session);
         this.select = prepareSelect(session);
-        this.cassandraUtils = cassandraUtils;
-    }
-
-    @VisibleForTesting
-    public CassandraMessageIdToImapUidDAO(Session session, CassandraMessageId.Factory messageIdFactory) {
-        this(session, messageIdFactory, CassandraUtils.WITH_DEFAULT_CONFIGURATION);
+        this.listStatement = prepareList(session);
     }
 
     private PreparedStatement prepareDelete(Session session) {
@@ -118,7 +111,8 @@ public class CassandraMessageIdToImapUidDAO {
                 .value(RECENT, bindMarker(RECENT))
                 .value(SEEN, bindMarker(SEEN))
                 .value(USER, bindMarker(USER))
-                .value(USER_FLAGS, bindMarker(USER_FLAGS)));
+                .value(USER_FLAGS, bindMarker(USER_FLAGS))
+                .ifNotExists());
     }
 
     private PreparedStatement prepareUpdate(Session session) {
@@ -142,6 +136,10 @@ public class CassandraMessageIdToImapUidDAO {
         return session.prepare(select(FIELDS)
                 .from(TABLE_NAME)
                 .where(eq(MESSAGE_ID, bindMarker(MESSAGE_ID))));
+    }
+
+    private PreparedStatement prepareList(Session session) {
+        return session.prepare(select(FIELDS).from(TABLE_NAME));
     }
 
     private PreparedStatement prepareSelect(Session session) {
@@ -199,6 +197,11 @@ public class CassandraMessageIdToImapUidDAO {
                     selectStatement(messageId, mailboxId)
                     .setConsistencyLevel(ConsistencyLevel.SERIAL))
                 .map(this::toComposedMessageIdWithMetadata);
+    }
+
+    public Flux<ComposedMessageIdWithMetaData> retrieveAllMessages() {
+        return cassandraAsyncExecutor.executeRows(listStatement.bind())
+            .map(row -> toComposedMessageIdWithMetadata(row));
     }
 
     private ComposedMessageIdWithMetaData toComposedMessageIdWithMetadata(Row row) {

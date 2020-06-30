@@ -19,6 +19,7 @@
 
 package org.apache.james.mailbox.cassandra.mail;
 
+import static com.datastax.driver.core.ConsistencyLevel.QUORUM;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.insertInto;
@@ -43,6 +44,7 @@ import org.apache.james.mailbox.cassandra.mail.utils.MailboxBaseTupleUtil;
 import org.apache.james.mailbox.cassandra.table.CassandraMailboxTable;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.UidValidity;
 
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Row;
@@ -63,6 +65,7 @@ public class CassandraMailboxDAO {
     private final PreparedStatement deleteStatement;
     private final PreparedStatement insertStatement;
     private final PreparedStatement updateStatement;
+    private final PreparedStatement updateUidValidityStatement;
 
     @Inject
     public CassandraMailboxDAO(Session session, CassandraTypesProvider typesProvider, CassandraUtils cassandraUtils) {
@@ -70,6 +73,7 @@ public class CassandraMailboxDAO {
         this.mailboxBaseTupleUtil = new MailboxBaseTupleUtil(typesProvider);
         this.insertStatement = prepareInsert(session);
         this.updateStatement = prepareUpdate(session);
+        this.updateUidValidityStatement = prepareUpdateUidValidity(session);
         this.deleteStatement = prepareDelete(session);
         this.listStatement = prepareList(session);
         this.readStatement = prepareRead(session);
@@ -96,6 +100,12 @@ public class CassandraMailboxDAO {
             .where(eq(ID, bindMarker(ID))));
     }
 
+    private PreparedStatement prepareUpdateUidValidity(Session session) {
+        return session.prepare(update(TABLE_NAME)
+            .with(set(UIDVALIDITY, bindMarker(UIDVALIDITY)))
+            .where(eq(ID, bindMarker(ID))));
+    }
+
     private PreparedStatement prepareDelete(Session session) {
         return session.prepare(QueryBuilder.delete()
             .from(TABLE_NAME)
@@ -116,7 +126,7 @@ public class CassandraMailboxDAO {
         return executor.executeVoid(insertStatement.bind()
             .setUUID(ID, cassandraId.asUuid())
             .setString(NAME, mailbox.getName())
-            .setLong(UIDVALIDITY, mailbox.getUidValidity())
+            .setLong(UIDVALIDITY, mailbox.getUidValidity().asLong())
             .setUDTValue(MAILBOX_BASE, mailboxBaseTupleUtil.createMailboxBaseUDT(mailbox.getNamespace(), mailbox.getUser())));
     }
 
@@ -134,28 +144,49 @@ public class CassandraMailboxDAO {
 
     public Mono<Mailbox> retrieveMailbox(CassandraId mailboxId) {
         return executor.executeSingleRow(readStatement.bind()
-            .setUUID(ID, mailboxId.asUuid()))
-            .map(row -> mailboxFromRow(row, mailboxId));
+            .setUUID(ID, mailboxId.asUuid())
+            .setConsistencyLevel(QUORUM))
+            .flatMap(row -> mailboxFromRow(row, mailboxId));
     }
 
-    private Mailbox mailboxFromRow(Row row, CassandraId cassandraId) {
-        return new Mailbox(
-            new MailboxPath(
-                row.getUDTValue(MAILBOX_BASE).getString(CassandraMailboxTable.MailboxBase.NAMESPACE),
-                Username.of(row.getUDTValue(MAILBOX_BASE).getString(CassandraMailboxTable.MailboxBase.USER)),
-                row.getString(NAME)),
-            row.getLong(UIDVALIDITY),
-            cassandraId);
+    private Mono<Mailbox> mailboxFromRow(Row row, CassandraId cassandraId) {
+        return sanitizeUidValidity(cassandraId, row.getLong(UIDVALIDITY))
+            .map(uidValidity -> new Mailbox(
+                new MailboxPath(
+                    row.getUDTValue(MAILBOX_BASE).getString(CassandraMailboxTable.MailboxBase.NAMESPACE),
+                    Username.of(row.getUDTValue(MAILBOX_BASE).getString(CassandraMailboxTable.MailboxBase.USER)),
+                    row.getString(NAME)),
+                uidValidity,
+                cassandraId));
+    }
+    
+    private Mono<UidValidity> sanitizeUidValidity(CassandraId cassandraId, long uidValidityAsLong) {
+        if (!UidValidity.isValid(uidValidityAsLong)) {
+            UidValidity newUidValidity = UidValidity.generate();
+            return updateUidValidity(cassandraId, newUidValidity)
+                .then(Mono.just(newUidValidity));
+        }
+        return Mono.just(UidValidity.of(uidValidityAsLong));
+    }
+
+    /**
+     * Expected concurrency issue in the absence of performance expensive LightWeight transaction
+     * As the Uid validity is updated only when equal to 0 (1 chance out of 4 billion) the benefits of LWT don't
+     * outweigh the performance costs
+     */
+    private Mono<Void> updateUidValidity(CassandraId cassandraId, UidValidity uidValidity) {
+        return executor.executeVoid(updateUidValidityStatement.bind()
+                .setUUID(ID, cassandraId.asUuid())
+                .setLong(UIDVALIDITY, uidValidity.asLong()));
     }
 
     public Flux<Mailbox> retrieveAllMailboxes() {
         return executor.execute(listStatement.bind())
             .flatMapMany(cassandraUtils::convertToFlux)
-            .map(this::toMailboxWithId);
+            .flatMap(this::toMailboxWithId);
     }
 
-    private Mailbox toMailboxWithId(Row row) {
+    private Mono<Mailbox> toMailboxWithId(Row row) {
         return mailboxFromRow(row, CassandraId.of(row.getUUID(ID)));
     }
-
 }

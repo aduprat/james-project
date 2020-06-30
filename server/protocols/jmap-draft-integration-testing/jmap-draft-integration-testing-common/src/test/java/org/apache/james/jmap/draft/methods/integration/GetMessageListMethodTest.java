@@ -89,7 +89,7 @@ import org.apache.james.probe.DataProbe;
 import org.apache.james.util.ClassLoaderUtils;
 import org.apache.james.util.date.ImapDateTimeFormatter;
 import org.apache.james.utils.DataProbeImpl;
-import org.apache.james.utils.IMAPMessageReader;
+import org.apache.james.utils.TestIMAPClient;
 import org.awaitility.Duration;
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -105,6 +105,7 @@ public abstract class GetMessageListMethodTest {
     private static final String FORWARDED = "$Forwarded";
     private static final ZoneId ZONE_ID = ZoneId.of("Europe/Paris");
     public static final MailboxPath ALICE_MAILBOX = MailboxPath.forUser(ALICE, "mailbox");
+    public static final MailboxPath ALICE_OTHER_MAILBOX = MailboxPath.forUser(ALICE, "othermailbox");
     private ACLProbeImpl aclProbe;
 
     protected abstract GuiceJamesServer createJmapServer() throws IOException;
@@ -625,6 +626,110 @@ public abstract class GetMessageListMethodTest {
                     not(containsInAnyOrder(messageNotSeenNotFlagged.getMessageId().serialize(),
                             messageSeenNotFlagged.getMessageId().serialize(),
                             messageSeenFlagged.getMessageId().serialize()))));
+    }
+
+    @Category(BasicFeature.class)
+    @Test
+    public void getMessageListShouldFetchUnreadMessagesInMailbox() throws Exception {
+        MailboxId mailboxId = mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, ALICE.asString(), "mailbox");
+        mailboxProbe.createMailbox(MailboxConstants.USER_NAMESPACE, ALICE.asString(), "othermailbox");
+
+        ComposedMessageId messageNotSeenNotFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
+        ComposedMessageId messageNotSeenFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.FLAGGED));
+        ComposedMessageId messageSeenNotFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/oneInlinedImage.eml"), new Date(), false, new Flags(Flags.Flag.SEEN));
+        ComposedMessageId messageSeenFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/oneInlinedImage.eml"), new Date(), false, FlagsBuilder.builder().add(Flags.Flag.SEEN, Flags.Flag.FLAGGED).build());
+
+        ComposedMessageId messageNotSeenFlaggedInOtherMailbox = mailboxProbe.appendMessage(ALICE.asString(), ALICE_OTHER_MAILBOX,
+                ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.FLAGGED));
+
+        ComposedMessageId messageSeenInOtherMailbox = mailboxProbe.appendMessage(ALICE.asString(), ALICE_OTHER_MAILBOX,
+                ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.SEEN));
+
+        await();
+
+        given()
+            .header("Authorization", aliceAccessToken.asString())
+            .body("[[\"getMessageList\", {\"filter\": {\"inMailboxes\": [\""+ mailboxId.serialize() +"\"], \"isUnread\":\"true\"}}, \"#0\"]]")
+
+        .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("messageList"))
+            .body(ARGUMENTS + ".messageIds", allOf(
+                    containsInAnyOrder(messageNotSeenNotFlagged.getMessageId().serialize(), messageNotSeenFlagged.getMessageId().serialize()),
+                    not(containsInAnyOrder(messageSeenNotFlagged.getMessageId().serialize(),
+                            messageSeenFlagged.getMessageId().serialize(),
+                            messageSeenInOtherMailbox.getMessageId().serialize(),
+                            messageNotSeenFlaggedInOtherMailbox.getMessageId().serialize()))));
+    }
+
+    @Test
+    public void getMessageListShouldRejectNestedInMailboxClause() throws Exception {
+        MailboxId mailboxId = mailboxProbe.createMailbox(MailboxPath.forUser(ALICE, "mailbox"));
+        mailboxProbe.createMailbox(MailboxPath.forUser(ALICE, "othermailbox"));
+        mailboxProbe.createMailbox(MailboxPath.inbox(ALICE));
+
+        ComposedMessageId messageNotSeenNotFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()), new Date(), false, new Flags());
+        ComposedMessageId messageNotSeenFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.FLAGGED));
+        ComposedMessageId messageSeenNotFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/oneInlinedImage.eml"), new Date(), false, new Flags(Flags.Flag.SEEN));
+        ComposedMessageId messageSeenFlagged = mailboxProbe.appendMessage(ALICE.asString(), ALICE_MAILBOX,
+            ClassLoader.getSystemResourceAsStream("eml/oneInlinedImage.eml"), new Date(), false, FlagsBuilder.builder().add(Flags.Flag.SEEN, Flags.Flag.FLAGGED).build());
+
+        ComposedMessageId messageNotSeenFlaggedInOtherMailbox = mailboxProbe.appendMessage(ALICE.asString(), ALICE_OTHER_MAILBOX,
+                ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.FLAGGED));
+
+        ComposedMessageId messageSeenInOtherMailbox = mailboxProbe.appendMessage(ALICE.asString(), ALICE_OTHER_MAILBOX,
+                ClassLoader.getSystemResourceAsStream("eml/twoAttachments.eml"), new Date(), false, new Flags(Flags.Flag.SEEN));
+
+        await();
+
+        given()
+            .header("Authorization", aliceAccessToken.asString())
+                .body("[[\"getMessageList\", {\"filter\":{\"operator\":\"AND\",\"conditions\":[{\"inMailboxes\": [\""+ mailboxId.serialize() +"\"]},{\"isUnread\":\"true\"}]}}, \"#0\"]]")
+                .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type",  equalTo("invalidArguments"))
+            .body(ARGUMENTS + ".description",  equalTo("'inMailboxes' and 'notInMailboxes' wrapped within Filter Operators are not implemented. Review your search request."));
+    }
+
+    @Test
+    public void getMessageListShouldRejectTooDeepFilter() {
+        given()
+            .header("Authorization", aliceAccessToken.asString())
+                .body("[[\"getMessageList\", {\"filter\":" +
+                    "{\"operator\":\"AND\"," +
+                    " \"conditions\":[{\"operator\":\"AND\"," +
+                    "  \"conditions\":[{\"operator\":\"AND\"," +
+                    "   \"conditions\":[{\"operator\":\"AND\"," +
+                    "    \"conditions\":[{\"operator\":\"AND\"," +
+                    "     \"conditions\":[{\"operator\":\"AND\"," +
+                    "      \"conditions\":[{\"operator\":\"AND\"," +
+                    "       \"conditions\":[{\"operator\":\"AND\"," +
+                    "        \"conditions\":[{\"operator\":\"AND\"," +
+                    "         \"conditions\":[{\"operator\":\"AND\"," +
+                    "          \"conditions\":[{\"operator\":\"AND\"," +
+                    "           \"conditions\":[{\"operator\":\"AND\"," +
+                    "            \"conditions\":[{\"operator\":\"AND\"," +
+                    "             \"conditions\":[{\"isUnread\":\"true\"}" +
+                    "]}]}]}]}]}]}]}]}]}]}]}]}]}}, \"#0\"]]")
+                .when()
+            .post("/jmap")
+        .then()
+            .statusCode(200)
+            .body(NAME, equalTo("error"))
+            .body(ARGUMENTS + ".type",  equalTo("invalidArguments"))
+            .body(ARGUMENTS + ".description",  equalTo("Filter depth is higher than maximum allowed value 10"));
     }
 
     @Test
@@ -2305,7 +2410,7 @@ public abstract class GetMessageListMethodTest {
                         .setSubject("test 2")
                         .setBody("content 2", StandardCharsets.UTF_8)));
 
-        try (IMAPMessageReader imap = new IMAPMessageReader()) {
+        try (TestIMAPClient imap = new TestIMAPClient()) {
             imap.connect(LOCALHOST, jmapServer.getProbe(ImapGuiceProbe.class).getImapPort())
             .login(ALICE, ALICE_PASSWORD)
             .select("mailbox")

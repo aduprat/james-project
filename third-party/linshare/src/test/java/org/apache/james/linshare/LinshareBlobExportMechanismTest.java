@@ -27,7 +27,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.HashBlobId;
@@ -40,6 +39,8 @@ import org.apache.james.linshare.client.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import reactor.core.publisher.Mono;
 
 class LinshareBlobExportMechanismTest {
     private static final String FILE_CONTENT = "content";
@@ -68,13 +69,13 @@ class LinshareBlobExportMechanismTest {
 
     @Test
     void exportShouldUploadTheDocumentToTargetUserViaLinshare() throws Exception {
-        BlobId blobId = blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST).block();
+        BlobId blobId = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST)).block();
         String filePrefix = "deleted-message-of-bob@james.org-";
 
         testee.blobId(blobId)
             .with(new MailAddress(USER_2.getUsername()))
             .explanation(EXPLANATION)
-            .filePrefix(Optional.of(filePrefix))
+            .filePrefix(filePrefix)
             .fileExtension(FILE_TEXT_EXTENSION)
             .export();
 
@@ -86,7 +87,7 @@ class LinshareBlobExportMechanismTest {
 
     @Test
     void exportShouldUploadTheDocumentAndAllowDownloadViaLinshare(LinshareAPIForTechnicalAccountTesting delegationAPIForTesting) throws Exception {
-        BlobId blobId = blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST).block();
+        BlobId blobId = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST)).block();
 
         testee.blobId(blobId)
             .with(new MailAddress(USER_2.getUsername()))
@@ -116,13 +117,13 @@ class LinshareBlobExportMechanismTest {
 
     @Test
     void exportWithFilePrefixShouldCreateFileWithCustomPrefix() throws Exception {
-        BlobId blobId = blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST).block();
+        BlobId blobId = Mono.from(blobStore.save(blobStore.getDefaultBucketName(), FILE_CONTENT, LOW_COST)).block();
         String filePrefix = "deleted-message-of-bob@james.org";
 
         testee.blobId(blobId)
             .with(new MailAddress(USER_2.getUsername()))
             .explanation(EXPLANATION)
-            .filePrefix(Optional.of(filePrefix))
+            .filePrefix(filePrefix)
             .fileExtension(FILE_TEXT_EXTENSION)
             .export();
 

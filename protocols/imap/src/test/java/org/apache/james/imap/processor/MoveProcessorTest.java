@@ -53,15 +53,19 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
 
+import reactor.core.publisher.Mono;
+
 public class MoveProcessorTest {
     private static final Username USERNAME = Username.of("username");
     private static final MailboxPath INBOX = MailboxPath.inbox(USERNAME);
+    private static final UidValidity UID_VALIDITY = UidValidity.of(58L);
 
     private MoveProcessor testee;
     private ImapProcessor mockNextProcessor;
@@ -109,11 +113,11 @@ public class MoveProcessorTest {
         when(selectedMailbox.existsCount()).thenReturn(8L);
         when(selectedMailbox.getPath()).thenReturn(selected);
         imapSession.selected(selectedMailbox);
-        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(true);
+        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(Mono.just(true));
         MessageManager targetMessageManager = mock(MessageManager.class);
         when(mockMailboxManager.getMailbox(INBOX, mailboxSession)).thenReturn(targetMessageManager);
         Mailbox mailbox = mock(Mailbox.class);
-        when(mailbox.getUidValidity()).thenReturn(58L);
+        when(mailbox.getUidValidity()).thenReturn(UID_VALIDITY);
         when(targetMessageManager.getMailboxEntity()).thenReturn(mailbox);
         StatusResponse okResponse = mock(StatusResponse.class);
         when(mockStatusResponseFactory.taggedOk(any(Tag.class), any(ImapCommand.class), any(HumanReadableText.class), any(StatusResponse.ResponseCode.class))).thenReturn(okResponse);
@@ -142,11 +146,11 @@ public class MoveProcessorTest {
         when(selectedMailbox.existsCount()).thenReturn(8L);
         when(selectedMailbox.getPath()).thenReturn(selected);
         imapSession.selected(selectedMailbox);
-        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(true);
+        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(Mono.just(true));
         MessageManager targetMessageManager = mock(MessageManager.class);
         when(mockMailboxManager.getMailbox(INBOX, mailboxSession)).thenReturn(targetMessageManager);
         Mailbox mailbox = mock(Mailbox.class);
-        when(mailbox.getUidValidity()).thenReturn(58L);
+        when(mailbox.getUidValidity()).thenReturn(UID_VALIDITY);
         when(targetMessageManager.getMailboxEntity()).thenReturn(mailbox);
         StatusResponse okResponse = mock(StatusResponse.class);
         when(mockStatusResponseFactory.taggedOk(any(Tag.class), any(ImapCommand.class), any(HumanReadableText.class), any(StatusResponse.ResponseCode.class))).thenReturn(okResponse);
@@ -173,7 +177,7 @@ public class MoveProcessorTest {
         when(selectedMailbox.existsCount()).thenReturn(8L);
         when(selectedMailbox.getPath()).thenReturn(selected);
         imapSession.selected(selectedMailbox);
-        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(false);
+        when(mockMailboxManager.mailboxExists(INBOX, mailboxSession)).thenReturn(Mono.just(false));
 
         StatusResponse noResponse = mock(StatusResponse.class);
         when(mockStatusResponseFactory.taggedNo(any(Tag.class), any(ImapCommand.class), any(HumanReadableText.class), any(StatusResponse.ResponseCode.class))).thenReturn(noResponse);

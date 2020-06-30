@@ -57,12 +57,17 @@ public class FileConfigurationProvider implements ConfigurationProvider {
         XMLConfiguration xmlConfiguration = builder.getConfiguration();
         FileHandler fileHandler = new FileHandler(xmlConfiguration);
         fileHandler.load(configStream);
+        try {
+            configStream.close();
+        } catch (IOException ignored) {
+            // Ignored
+        }
 
         return xmlConfiguration;
     }
     
     private final FileSystem fileSystem;
-    private final String configurationPrefix;
+    private final Configuration.ConfigurationPath configurationPrefix;
 
     public FileConfigurationProvider(FileSystem fileSystem, Configuration configuration) {
         this.fileSystem = fileSystem;
@@ -91,7 +96,7 @@ public class FileConfigurationProvider implements ConfigurationProvider {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(configurationFileWithoutExtension), "The configuration file name should not be empty or null");
         try {
             return Optional.of(
-                fileSystem.getResource(configurationPrefix + configurationFileWithoutExtension + CONFIGURATION_FILE_SUFFIX));
+                fileSystem.getResource(configurationPrefix.asString() + configurationFileWithoutExtension + CONFIGURATION_FILE_SUFFIX));
         } catch (IOException e) {
             loggingLevelOnError.format(LOGGER, "Unable to locate configuration file {}" + CONFIGURATION_FILE_SUFFIX + ", assuming empty configuration", configurationFileWithoutExtension);
             return Optional.empty();

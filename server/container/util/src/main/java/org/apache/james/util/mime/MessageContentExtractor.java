@@ -179,7 +179,7 @@ public class MessageContentExtractor {
             && part.getHeader().getField(CONTENT_ID) == null;
     }
 
-    public static class MessageContent {
+    public static final class MessageContent {
         private final Optional<String> textBody;
         private final Optional<String> htmlBody;
 
@@ -230,8 +230,13 @@ public class MessageContentExtractor {
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hash(textBody, htmlBody);
+        }
+
+        @Override
         public boolean equals(Object other) {
-            if (other == null || !(other instanceof MessageContent)) {
+            if (!(other instanceof MessageContent)) {
                 return false;
             }
             MessageContent otherMessageContent = (MessageContent)other;

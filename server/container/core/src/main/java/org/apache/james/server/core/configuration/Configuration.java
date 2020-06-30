@@ -20,6 +20,7 @@
 package org.apache.james.server.core.configuration;
 
 import java.io.File;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.james.filesystem.api.FileSystem;
@@ -27,75 +28,127 @@ import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 
-public class Configuration {
+import com.google.common.base.MoreObjects;
 
-    public static final String WORKING_DIRECTORY = "working.directory";
+public interface Configuration {
 
-    public static Builder builder() {
-        return new Builder();
-    }
+    String WORKING_DIRECTORY = "working.directory";
 
-    public static class Builder {
+    class ConfigurationPath {
+        private final String value;
 
-        private Optional<String> rootDirectory;
-        private Optional<String> configurationPath;
-
-        private Builder() {
-            rootDirectory = Optional.empty();
-            configurationPath = Optional.empty();
+        public ConfigurationPath(String value) {
+            this.value = value;
         }
 
-        public Builder workingDirectory(String path) {
-            rootDirectory = Optional.of(path);
-            return this;
+        public String asString() {
+            return value;
         }
 
-        public Builder workingDirectory(File file) {
-            rootDirectory = Optional.of(file.getAbsolutePath());
-            return this;
-        }
+        @Override
+        public final boolean equals(Object o) {
+            if (o instanceof ConfigurationPath) {
+                ConfigurationPath that = (ConfigurationPath) o;
 
-        public Builder useWorkingDirectoryEnvProperty() {
-            rootDirectory = Optional
-                .ofNullable(System.getProperty(WORKING_DIRECTORY));
-            if (!rootDirectory.isPresent()) {
-                throw new MissingArgumentException("Server needs a working.directory env entry");
+                return Objects.equals(this.value, that.value);
             }
-            return this;
+            return false;
         }
 
-        public Builder configurationPath(String path) {
-            configurationPath = Optional.of(path);
-            return this;
+        @Override
+        public final int hashCode() {
+            return Objects.hash(value);
         }
 
-        public Builder configurationFromClasspath() {
-            configurationPath = Optional.of(FileSystem.CLASSPATH_PROTOCOL);
-            return this;
-        }
-
-        public Configuration build() {
-            return new Configuration(
-                rootDirectory
-                    .orElseThrow(() -> new MissingArgumentException("Server needs a working.directory env entry")),
-                configurationPath.orElse(FileSystem.FILE_PROTOCOL_AND_CONF));
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("value", value)
+                .toString();
         }
     }
 
-    private final String configurationPath;
-    private final JamesDirectoriesProvider directoriesProvider;
+    class Basic implements Configuration {
+        public static class Builder {
+            private Optional<String> rootDirectory;
+            private Optional<ConfigurationPath> configurationPath;
 
-    private Configuration(String rootDirectory, String configurationPath) {
-        this.configurationPath = configurationPath;
-        this.directoriesProvider = new JamesServerResourceLoader(rootDirectory);
+            private Builder() {
+                rootDirectory = Optional.empty();
+                configurationPath = Optional.empty();
+            }
+
+            public Builder workingDirectory(String path) {
+                rootDirectory = Optional.of(path);
+                return this;
+            }
+
+            public Builder workingDirectory(File file) {
+                rootDirectory = Optional.of(file.getAbsolutePath());
+                return this;
+            }
+
+            public Builder useWorkingDirectoryEnvProperty() {
+                rootDirectory = Optional.ofNullable(System.getProperty(WORKING_DIRECTORY));
+                if (!rootDirectory.isPresent()) {
+                    throw new MissingArgumentException("Server needs a working.directory env entry");
+                }
+                return this;
+            }
+
+            public Builder configurationPath(ConfigurationPath path) {
+                configurationPath = Optional.of(path);
+                return this;
+            }
+
+            public Builder configurationFromClasspath() {
+                configurationPath = Optional.of(new ConfigurationPath(FileSystem.CLASSPATH_PROTOCOL));
+                return this;
+            }
+
+            public Configuration.Basic build() {
+                ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
+                JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
+                    .orElseThrow(() -> new MissingArgumentException("Server needs a working.directory env entry")));
+
+                return new Basic(
+                    configurationPath,
+                    directories);
+            }
+        }
+
+        private final ConfigurationPath configurationPath;
+        private final JamesDirectoriesProvider directories;
+
+        public Basic(ConfigurationPath configurationPath, JamesDirectoriesProvider directories) {
+            this.configurationPath = configurationPath;
+            this.directories = directories;
+        }
+
+        @Override
+        public ConfigurationPath configurationPath() {
+            return configurationPath;
+        }
+
+        @Override
+        public JamesDirectoriesProvider directories() {
+            return directories;
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("configurationPath", configurationPath)
+                .add("directories", directories)
+                .toString();
+        }
     }
 
-    public String configurationPath() {
-        return configurationPath;
+    static Basic.Builder builder() {
+        return new Basic.Builder();
     }
 
-    public JamesDirectoriesProvider directories() {
-        return directoriesProvider;
-    }
+    ConfigurationPath configurationPath();
 
+    JamesDirectoriesProvider directories();
 }

@@ -50,6 +50,8 @@ import org.apache.mailet.base.RFC2822Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableSet;
+
 
 /**
  * <P>Does an antivirus scan check using a ClamAV daemon (CLAMD)</P>
@@ -253,8 +255,8 @@ public class ClamAVScan extends GenericMailet {
     /**
      * Gets the expected init parameters.
      */
-    protected String[] getAllowedInitParameters() {
-        return new String[]{
+    protected Set<String> getAllowedInitParameters() {
+        return ImmutableSet.of(
                 //            "static",
                 "debug",
                 "host",
@@ -262,7 +264,7 @@ public class ClamAVScan extends GenericMailet {
                 "maxPings",
                 "pingIntervalMilli",
                 "streamBufferSize"
-        };
+        );
     }
 
     /**
@@ -270,7 +272,7 @@ public class ClamAVScan extends GenericMailet {
      */
     protected void initDebug() {
         String debugParam = getInitParameter("debug");
-        setDebug((debugParam == null) ? false : Boolean.parseBoolean(debugParam));
+        this.debug = (debugParam != null) && Boolean.parseBoolean(debugParam);
     }
 
     /**
@@ -280,15 +282,6 @@ public class ClamAVScan extends GenericMailet {
      */
     public boolean isDebug() {
         return this.debug;
-    }
-
-    /**
-     * Setter for property debug.
-     *
-     * @param debug New value of property debug.
-     */
-    public void setDebug(boolean debug) {
-        this.debug = debug;
     }
 
     /**
@@ -309,7 +302,6 @@ public class ClamAVScan extends GenericMailet {
      * @return Value of property host.
      */
     public String getHost() {
-
         return this.host;
     }
 
@@ -322,8 +314,7 @@ public class ClamAVScan extends GenericMailet {
      * @param host New value of property host.
      * @throws UnknownHostException if unable to resolve the host name, or if invalid
      */
-    public void setHost(String host) throws UnknownHostException {
-
+    private void setHost(String host) throws UnknownHostException {
         this.host = host;
 
         setAddresses(InetAddress.getAllByName(host));

@@ -19,13 +19,10 @@
 
 package org.apache.james;
 
-import static org.apache.james.CassandraJamesServerMain.ALL_BUT_JMX_CASSANDRA_MODULE;
 import static org.awaitility.Duration.FIVE_HUNDRED_MILLISECONDS;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.store.search.PDFTextExtractor;
 import org.apache.james.mailrepository.api.MailRepositoryUrl;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
@@ -50,13 +47,11 @@ class CassandraMailRepositoryIntegrationTest {
     private SMTPMessageSender smtpMessageSender = new SMTPMessageSender("other.com");
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(ALL_BUT_JMX_CASSANDRA_MODULE)
-            .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.limitToTenMessages()))
+        .server(configuration -> CassandraJamesServerMain.createServer(configuration)
+            .overrideWith(new TestJMAPServerModule()))
         .build();
 
     @Test

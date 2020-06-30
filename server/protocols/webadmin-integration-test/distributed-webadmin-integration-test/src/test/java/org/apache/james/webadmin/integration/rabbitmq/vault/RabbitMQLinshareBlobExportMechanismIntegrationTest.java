@@ -19,12 +19,10 @@
 
 package org.apache.james.webadmin.integration.rabbitmq.vault;
 
-import static org.apache.james.modules.TestJMAPServerModule.LIMIT_TO_20_MESSAGES;
-
 import org.apache.james.CassandraExtension;
+import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.CassandraRabbitMQJamesServerMain;
 import org.apache.james.DockerElasticSearchExtension;
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQSingleton;
@@ -35,6 +33,7 @@ import org.apache.james.modules.LinshareGuiceExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.TestRabbitMQModule;
+import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
 import org.apache.james.webadmin.integration.WebadminIntegrationTestModule;
 import org.apache.james.webadmin.integration.vault.LinshareBlobExportMechanismIntegrationTest;
@@ -42,16 +41,20 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 class RabbitMQLinshareBlobExportMechanismIntegrationTest extends LinshareBlobExportMechanismIntegrationTest {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
+        CassandraRabbitMQJamesConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .blobStore(BlobStoreConfiguration.objectStorage().disableCache())
+            .build())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new LinshareGuiceExtension())
-        .server(configuration -> GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(CassandraRabbitMQJamesServerMain.MODULES)
+        .server(configuration -> CassandraRabbitMQJamesServerMain.createServer(configuration)
             .overrideWith(binder -> binder.bind(TextExtractor.class).to(PDFTextExtractor.class))
-            .overrideWith(TestJMAPServerModule.maximumMessages(LIMIT_TO_20_MESSAGES))
+            .overrideWith(new TestJMAPServerModule())
             .overrideWith(new TestRabbitMQModule(DockerRabbitMQSingleton.SINGLETON))
             .overrideWith(new WebadminIntegrationTestModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))

@@ -70,8 +70,11 @@ import org.apache.james.protocols.netty.AbstractChannelPipelineFactory;
 import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.queue.api.RawMailQueueItemDecoratorFactory;
 import org.apache.james.queue.memory.MemoryMailQueueFactory;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.apache.james.rrt.api.CanSendFrom;
 import org.apache.james.rrt.api.RecipientRewriteTable;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
 import org.apache.james.rrt.lib.CanSendFromImpl;
 import org.apache.james.rrt.lib.MappingSource;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
@@ -196,8 +199,9 @@ public class SMTPServerTest {
     protected Configuration configuration;
     protected MockProtocolHandlerLoader chain;
     protected MemoryMailQueueFactory queueFactory;
-    protected MemoryMailQueueFactory.MemoryMailQueue queue;
+    protected MemoryMailQueueFactory.MemoryCacheableMailQueue queue;
     protected MemoryRecipientRewriteTable rewriteTable;
+    private AliasReverseResolver aliasReverseResolver;
     protected CanSendFrom canSendFrom;
 
     private SMTPServer smtpServer;
@@ -276,7 +280,9 @@ public class SMTPServerTest {
         dnsServer = new AlterableDNSServer();
 
         rewriteTable = new MemoryRecipientRewriteTable();
-        canSendFrom = new CanSendFromImpl(rewriteTable);
+        rewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        aliasReverseResolver = new AliasReverseResolverImpl(rewriteTable);
+        canSendFrom = new CanSendFromImpl(rewriteTable, aliasReverseResolver);
         queueFactory = new MemoryMailQueueFactory(new RawMailQueueItemDecoratorFactory());
         queue = queueFactory.createQueue(MailQueueFactory.SPOOL);
 
@@ -302,9 +308,7 @@ public class SMTPServerTest {
         smtpProtocol.connect(bindedAddress.getAddress().getHostAddress(), bindedAddress.getPort());
 
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < AbstractChannelPipelineFactory.MAX_LINE_LENGTH; i++) {
-            sb.append("A");
-        }
+        sb.append("A".repeat(AbstractChannelPipelineFactory.MAX_LINE_LENGTH));
         smtpProtocol.sendCommand("EHLO " + sb.toString());
         System.out.println(smtpProtocol.getReplyString());
         assertThat(smtpProtocol.getReplyCode())
@@ -467,9 +471,7 @@ public class SMTPServerTest {
         stringBuilder.append("Subject: test\r\n\r\n");
         String repeatedString = "This is the repeated body...\r\n";
         int repeatCount = (maxSize / repeatedString.length()) + 1;
-        for (int i = 0; i < repeatCount; i++) {
-            stringBuilder.append(repeatedString);
-        }
+        stringBuilder.append(repeatedString.repeat(repeatCount));
         stringBuilder.append("\r\n\r\n.\r\n");
         smtpProtocol.sendShortMessageData(stringBuilder.toString());
 
@@ -502,9 +504,7 @@ public class SMTPServerTest {
         stringBuilder.append("Subject: test\r\n\r\n");
         String repeatedString = "This is the repeated body...\r\n";
         int repeatCount = (maxSize / repeatedString.length()) + 1;
-        for (int i = 0; i < repeatCount; i++) {
-            stringBuilder.append(repeatedString);
-        }
+        stringBuilder.append(repeatedString.repeat(repeatCount));
         stringBuilder.append("\r\n\r\n.\r\n");
         smtpProtocol.sendShortMessageData(stringBuilder.toString());
 
@@ -1454,7 +1454,7 @@ public class SMTPServerTest {
         String sender = "test_user_smtp@examplebis.local";
 
         usersRepository.addUser(Username.of(userName), "pwd");
-        rewriteTable.addAliasDomainMapping(MappingSource.fromDomain(Domain.of("examplebis.local")), Domain.of(LOCAL_DOMAIN));
+        rewriteTable.addDomainAliasMapping(MappingSource.fromDomain(Domain.of("examplebis.local")), Domain.of(LOCAL_DOMAIN));
 
         smtpProtocol.sendCommand("AUTH PLAIN");
         smtpProtocol.sendCommand(Base64.getEncoder().encodeToString(("\0" + userName + "\0pwd\0").getBytes(UTF_8)));

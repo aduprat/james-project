@@ -36,6 +36,7 @@ public class DropWizardMetricsModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        install(new LoggingMetricsModule());
         bind(MetricRegistry.class).in(Scopes.SINGLETON);
         bind(DropWizardMetricFactory.class).in(Scopes.SINGLETON);
         bind(DropWizardGaugeRegistry.class).in(Scopes.SINGLETON);

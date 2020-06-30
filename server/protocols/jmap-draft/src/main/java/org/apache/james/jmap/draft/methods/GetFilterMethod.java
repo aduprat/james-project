@@ -19,14 +19,12 @@
 
 package org.apache.james.jmap.draft.methods;
 
-import java.util.List;
-import java.util.stream.Stream;
+import static org.apache.james.util.ReactorUtils.context;
 
 import javax.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.filtering.FilteringManagement;
-import org.apache.james.jmap.api.filtering.Rule;
 import org.apache.james.jmap.draft.model.GetFilterRequest;
 import org.apache.james.jmap.draft.model.GetFilterResponse;
 import org.apache.james.jmap.draft.model.MethodCallId;
@@ -37,7 +35,11 @@ import org.apache.james.util.MDCBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.steveash.guavate.Guavate;
 import com.google.common.base.Preconditions;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class GetFilterMethod implements Method {
     private static final Logger LOGGER = LoggerFactory.getLogger(GetFilterMethod.class);
@@ -65,7 +67,7 @@ public class GetFilterMethod implements Method {
     }
 
     @Override
-    public Stream<JmapResponse> process(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
+    public Flux<JmapResponse> process(JmapRequest request, MethodCallId methodCallId, MailboxSession mailboxSession) {
         Preconditions.checkNotNull(request);
         Preconditions.checkNotNull(methodCallId);
         Preconditions.checkNotNull(mailboxSession);
@@ -73,34 +75,31 @@ public class GetFilterMethod implements Method {
 
         GetFilterRequest filterRequest = (GetFilterRequest) request;
 
-        return metricFactory.runPublishingTimerMetric(JMAP_PREFIX + METHOD_NAME.getName(),
-            MDCBuilder.create()
-                .addContext(MDCBuilder.ACTION, "GET_FILTER")
-                .wrapArround(() -> process(methodCallId, mailboxSession, filterRequest)));
+        return Flux.from(metricFactory.decorateSupplierWithTimerMetricLogP99(JMAP_PREFIX + METHOD_NAME.getName(),
+            () -> process(methodCallId, mailboxSession, filterRequest)
+                .subscriberContext(context("GET_FILTER", MDCBuilder.of(MDCBuilder.ACTION, "GET_FILTER")))));
     }
 
-    private Stream<JmapResponse> process(MethodCallId methodCallId, MailboxSession mailboxSession, GetFilterRequest request) {
-        try {
-            return retrieveFilter(methodCallId, mailboxSession.getUser());
-        } catch (Exception e) {
-            LOGGER.warn("Failed to retrieve filter");
+    private Mono<JmapResponse> process(MethodCallId methodCallId, MailboxSession mailboxSession, GetFilterRequest request) {
+        return retrieveFilter(methodCallId, mailboxSession.getUser())
+            .onErrorResume(e -> {
+                LOGGER.warn("Failed to retrieve filter", e);
 
-            return Stream.of(unKnownError(methodCallId));
-        }
+                return Mono.just(unKnownError(methodCallId));
+            });
     }
 
-    private Stream<JmapResponse> retrieveFilter(MethodCallId methodCallId, Username username) {
-        List<Rule> rules = filteringManagement.listRulesForUser(username);
-
-        GetFilterResponse getFilterResponse = GetFilterResponse.builder()
-            .rules(rules)
-            .build();
-
-        return Stream.of(JmapResponse.builder()
-            .methodCallId(methodCallId)
-            .response(getFilterResponse)
-            .responseName(RESPONSE_NAME)
-            .build());
+    private Mono<JmapResponse> retrieveFilter(MethodCallId methodCallId, Username username) {
+        return Flux.from(filteringManagement.listRulesForUser(username))
+            .collect(Guavate.toImmutableList())
+            .map(rules -> GetFilterResponse.builder()
+                .rules(rules)
+                .build())
+            .map(getFilterResponse -> JmapResponse.builder()
+                .methodCallId(methodCallId)
+                .response(getFilterResponse)
+                .responseName(RESPONSE_NAME)
+                .build());
     }
 
     private JmapResponse unKnownError(MethodCallId methodCallId) {

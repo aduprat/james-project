@@ -40,19 +40,20 @@ public class SolveMailboxInconsistenciesTaskAdditionalInformationDTO implements 
             details.timestamp());
     }
 
-    public static final AdditionalInformationDTOModule<SolveMailboxInconsistenciesTask.Details, SolveMailboxInconsistenciesTaskAdditionalInformationDTO> MODULE =
-        DTOModule
-            .forDomainObject(SolveMailboxInconsistenciesTask.Details.class)
+    public static AdditionalInformationDTOModule<SolveMailboxInconsistenciesTask.Details, SolveMailboxInconsistenciesTaskAdditionalInformationDTO> module() {
+        return DTOModule.forDomainObject(SolveMailboxInconsistenciesTask.Details.class)
             .convertToDTO(SolveMailboxInconsistenciesTaskAdditionalInformationDTO.class)
             .toDomainObjectConverter(SolveMailboxInconsistenciesTaskAdditionalInformationDTO::toDomainObject)
             .toDTOConverter(SolveMailboxInconsistenciesTaskAdditionalInformationDTO::fromDomainObject)
             .typeName(SolveMailboxInconsistenciesTask.SOLVE_MAILBOX_INCONSISTENCIES.asString())
             .withFactory(AdditionalInformationDTOModule::new);
+    }
+
 
     private final String type;
     private final long processedMailboxEntries;
     private final long processedMailboxPathEntries;
-    private final long fixedInconsistencies;
+    private final ImmutableList<String> fixedInconsistencies;
     private final ImmutableList<ConflictingEntry> conflictingEntries;
     private final long errors;
     private final Instant timestamp;
@@ -60,7 +61,7 @@ public class SolveMailboxInconsistenciesTaskAdditionalInformationDTO implements 
     public SolveMailboxInconsistenciesTaskAdditionalInformationDTO(@JsonProperty("type") String type,
                                                                    @JsonProperty("processedMailboxEntries") long processedMailboxEntries,
                                                                    @JsonProperty("processedMailboxPathEntries") long processedMailboxPathEntries,
-                                                                   @JsonProperty("fixedInconsistencies") long fixedInconsistencies,
+                                                                   @JsonProperty("fixedInconsistencies") ImmutableList<String> fixedInconsistencies,
                                                                    @JsonProperty("conflictingEntries") ImmutableList<ConflictingEntry> conflictingEntries,
                                                                    @JsonProperty("errors") long errors,
                                                                    @JsonProperty("timestamp") Instant timestamp) {
@@ -81,7 +82,7 @@ public class SolveMailboxInconsistenciesTaskAdditionalInformationDTO implements 
         return processedMailboxPathEntries;
     }
 
-    public long getFixedInconsistencies() {
+    public ImmutableList<String> getFixedInconsistencies() {
         return fixedInconsistencies;
     }
 

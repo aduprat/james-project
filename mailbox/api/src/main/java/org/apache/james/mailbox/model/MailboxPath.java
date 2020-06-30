@@ -32,6 +32,8 @@ import org.apache.james.mailbox.exception.MailboxNameException;
 import org.apache.james.mailbox.exception.TooLongMailboxNameException;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -108,6 +110,13 @@ public class MailboxPath {
         return user.equals(mailboxSession.getUser());
     }
 
+    public MailboxPath child(String childName, char delimiter) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(childName), "'childName' should not be null or empty");
+        Preconditions.checkArgument(!childName.contains(String.valueOf(delimiter)), "'childName' should not contain delimiter");
+
+        return new MailboxPath(namespace, user, name + delimiter + childName);
+    }
+
     /**
      * Return a list of MailboxPath representing the hierarchy levels of this
      * MailboxPath. E.g. INBOX.main.sub would yield
@@ -150,9 +159,10 @@ public class MailboxPath {
         return this;
     }
 
-    public void assertAcceptable(char pathDelimiter) throws MailboxNameException {
+    public MailboxPath assertAcceptable(char pathDelimiter) throws MailboxNameException {
         if (hasEmptyNameInHierarchy(pathDelimiter)) {
-            throw new HasEmptyMailboxNameInHierarchyException(asString());
+            throw new HasEmptyMailboxNameInHierarchyException(
+                String.format("'%s' has an empty part within its mailbox name considering %s as a delimiter", asString(), pathDelimiter));
         }
         if (nameContainsForbiddenCharacters()) {
             throw new MailboxNameException(asString() + " contains one of the forbidden characters " + INVALID_CHARS);
@@ -160,6 +170,7 @@ public class MailboxPath {
         if (isMailboxNameTooLong()) {
             throw new TooLongMailboxNameException("Mailbox name exceeds maximum size of " + MAX_MAILBOX_NAME_LENGTH + " characters");
         }
+        return this;
     }
 
     private boolean nameContainsForbiddenCharacters() {

@@ -49,6 +49,8 @@ import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import spark.HaltException;
 import spark.Request;
 import spark.Response;
@@ -94,12 +96,12 @@ public class HealthCheckRoutes implements PublicRoutes {
             message = "Internal server error - When one check has failed.")
     })
     public Object validateHealthChecks(Request request, Response response) {
-        ImmutableList<Result> results = executeHealthChecks();
+        List<Result> results = executeHealthChecks().collectList().block();
         ResultStatus status = retrieveAggregationStatus(results);
         response.status(getCorrespondingStatusCode(status));
         return new HeathCheckAggregationExecutionResultDto(status, mapResultToDto(results));
     }
-    
+
     @GET
     @Path("/checks/{" + PARAM_COMPONENT_NAME + "}")
     @ApiOperation(value = "Perform the component's health check")
@@ -119,8 +121,8 @@ public class HealthCheckRoutes implements PublicRoutes {
             .filter(c -> c.componentName().getName().equals(componentName))
             .findFirst()
             .orElseThrow(() -> throw404(componentName));
-        
-        Result result = healthCheck.check();
+
+        Result result = Mono.from(healthCheck.check()).block();
         logFailedCheck(result);
         response.status(getCorrespondingStatusCode(result.getStatus()));
         return new HealthCheckExecutionResultDto(result);
@@ -151,27 +153,40 @@ public class HealthCheckRoutes implements PublicRoutes {
 
     private void logFailedCheck(Result result) {
         switch (result.getStatus()) {
-        case UNHEALTHY:
-            LOGGER.error("HealthCheck failed for {} : {}",
-                    result.getComponentName().getName(),
-                    result.getCause().orElse(""));
-            break;
-        case DEGRADED:
-            LOGGER.warn("HealthCheck is unstable for {} : {}",
-                    result.getComponentName().getName(),
-                    result.getCause().orElse(""));
-            break;
-        case HEALTHY:
-            // Here only to fix a warning, such cases are already filtered
-            break;
+            case UNHEALTHY:
+                if (result.getError().isPresent()) {
+                    LOGGER.error("HealthCheck failed for {} : {}",
+                        result.getComponentName().getName(),
+                        result.getCause().orElse(""),
+                        result.getError().get());
+                } else {
+                    LOGGER.error("HealthCheck failed for {} : {}",
+                        result.getComponentName().getName(),
+                        result.getCause().orElse(""));
+                }
+                break;
+            case DEGRADED:
+                if (result.getError().isPresent()) {
+                    LOGGER.warn("HealthCheck is unstable for {} : {}",
+                        result.getComponentName().getName(),
+                        result.getCause().orElse(""),
+                        result.getError().get());
+                } else {
+                    LOGGER.warn("HealthCheck is unstable for {} : {}",
+                        result.getComponentName().getName(),
+                        result.getCause().orElse(""));
+                }
+                break;
+            case HEALTHY:
+                // Here only to fix a warning, such cases are already filtered
+                break;
         }
     }
 
-    private ImmutableList<Result> executeHealthChecks() {
-        return healthChecks.stream()
-            .map(HealthCheck::check)
-            .peek(this::logFailedCheck)
-            .collect(ImmutableList.toImmutableList());
+    private Flux<Result> executeHealthChecks() {
+        return Flux.fromIterable(healthChecks)
+            .flatMap(HealthCheck::check)
+            .doOnNext(this::logFailedCheck);
     }
 
     private ResultStatus retrieveAggregationStatus(List<Result> results) {
@@ -194,5 +209,4 @@ public class HealthCheckRoutes implements PublicRoutes {
             .type(ErrorResponder.ErrorType.NOT_FOUND)
             .haltError();
     }
-        
 }

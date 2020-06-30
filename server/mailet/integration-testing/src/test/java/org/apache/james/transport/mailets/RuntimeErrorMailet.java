@@ -27,6 +27,6 @@ import org.apache.mailet.base.GenericMailet;
 public class RuntimeErrorMailet extends GenericMailet {
     @Override
     public void service(Mail mail) throws MessagingException {
-        throw new RuntimeException();
+        throw new Error();
     }
 }

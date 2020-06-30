@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.james</groupId>
         <artifactId>james-server</artifactId>
-        <version>3.5.0-SNAPSHOT</version>
+        <version>3.6.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -59,15 +59,13 @@
         <module>memory-guice</module>
         <module>onami</module>
         <module>protocols/imap</module>
-        <module>protocols/jmap-draft</module>
+        <module>protocols/jmap</module>
         <module>protocols/lmtp</module>
         <module>protocols/managedsieve</module>
         <module>protocols/netty</module>
         <module>protocols/pop</module>
         <module>protocols/smtp</module>
         <module>protocols/webadmin</module>
-        <module>protocols/webadmin-cassandra</module>
-        <module>protocols/webadmin-cassandra-data</module>
         <module>protocols/webadmin-data</module>
         <module>protocols/webadmin-jmap</module>
         <module>protocols/webadmin-mailbox</module>
@@ -101,17 +99,17 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-imap</artifactId>
+                <artifactId>james-server-jmap-rfc-8621</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-jmap-draft</artifactId>
+                <artifactId>james-server-guice-jmap</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-jmap-draft</artifactId>
+                <artifactId>james-server-guice-jmap</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
@@ -182,16 +180,6 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-webadmin-cassandra</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${james.groupId}</groupId>
-                <artifactId>james-server-guice-webadmin-cassandra-data</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-guice-webadmin-data</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -229,6 +217,11 @@
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-jpa-common-guice</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-jmap-rfc-8621</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

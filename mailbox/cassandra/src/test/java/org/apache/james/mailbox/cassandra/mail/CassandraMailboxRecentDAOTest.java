@@ -20,6 +20,7 @@
 package org.apache.james.mailbox.cassandra.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.stream.IntStream;
 
@@ -50,8 +51,8 @@ class CassandraMailboxRecentDAOTest {
     @Test
     void getRecentMessageUidsInMailboxShouldBeEmptyByDefault() {
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .isEmpty();
     }
 
@@ -60,8 +61,8 @@ class CassandraMailboxRecentDAOTest {
         testee.addToRecent(CASSANDRA_ID, UID1).block();
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .containsOnly(UID1);
     }
 
@@ -72,9 +73,27 @@ class CassandraMailboxRecentDAOTest {
         testee.removeFromRecent(CASSANDRA_ID, UID1).block();
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .isEmpty();
+    }
+
+    @Test
+    void getRecentMessageUidsInMailboxShouldNotReturnDeletedItems() {
+        testee.addToRecent(CASSANDRA_ID, UID1).block();
+        testee.addToRecent(CASSANDRA_ID, UID2).block();
+
+        testee.delete(CASSANDRA_ID).block();
+
+        assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
+                .collectList()
+                .block())
+            .isEmpty();
+    }
+
+    @Test
+    void deleteShouldNotThrowWhenNothing() {
+        assertThatCode(() -> testee.delete(CASSANDRA_ID).block()).doesNotThrowAnyException();
     }
 
     @Test
@@ -82,8 +101,8 @@ class CassandraMailboxRecentDAOTest {
         testee.removeFromRecent(CASSANDRA_ID, UID1).block();
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .isEmpty();
     }
 
@@ -94,8 +113,8 @@ class CassandraMailboxRecentDAOTest {
         testee.addToRecent(CASSANDRA_ID, UID2).block();
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .containsOnly(UID1, UID2);
     }
 
@@ -107,8 +126,8 @@ class CassandraMailboxRecentDAOTest {
         testee.removeFromRecent(CASSANDRA_ID, UID2).block();
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .containsOnly(UID1);
     }
 
@@ -132,8 +151,8 @@ class CassandraMailboxRecentDAOTest {
             .forEach(i -> testee.addToRecent(CASSANDRA_ID, MessageUid.of(i + 1)).block());
 
         assertThat(testee.getRecentMessageUidsInMailbox(CASSANDRA_ID)
-            .collectList()
-            .block())
+                .collectList()
+                .block())
             .hasSize(size);
     }
 }

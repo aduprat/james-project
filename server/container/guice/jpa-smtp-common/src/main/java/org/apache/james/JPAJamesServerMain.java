@@ -39,9 +39,9 @@ import org.apache.james.server.core.configuration.Configuration;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 
-public class JPAJamesServerMain {
+public class JPAJamesServerMain implements JamesServerMain {
 
-    public static final Module PROTOCOLS = Modules.combine(
+    private static final Module PROTOCOLS = Modules.combine(
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
         new WebAdminServerModule(),
@@ -52,7 +52,7 @@ public class JPAJamesServerMain {
         new DefaultProcessorsConfigurationProviderModule(),
         new TaskManagerModule());
     
-    public static final Module JPA_SERVER_MODULE = Modules.combine(
+    private static final Module JPA_SERVER_MODULE = Modules.combine(
         new JPAEntityManagerModule(),
         new JPADataModule(),
         new ActiveMQQueueModule(),
@@ -64,9 +64,15 @@ public class JPAJamesServerMain {
             .useWorkingDirectoryEnvProperty()
             .build();
 
-        GuiceJamesServer server = GuiceJamesServer.forConfiguration(configuration)
-                    .combineWith(JPA_SERVER_MODULE, PROTOCOLS, new DKIMMailetModule());
-        server.start();
+        LOGGER.info("Loading configuration {}", configuration.toString());
+        GuiceJamesServer server = createServer(configuration);
+
+        JamesServerMain.main(server);
+    }
+
+    public static GuiceJamesServer createServer(Configuration configuration) {
+        return GuiceJamesServer.forConfiguration(configuration)
+            .combineWith(JPA_SERVER_MODULE,  PROTOCOLS, new DKIMMailetModule());
     }
 
 }
